@@ -27,7 +27,7 @@ export default function TopicsList() {
 
   const loadTopics = async () => {
     if (!user?.id) return;
-    
+
     try {
       const userTopics = await TopicService.getUserTopics(user.id);
       console.log('Loaded topics:', userTopics); // Debug log
@@ -81,10 +81,10 @@ export default function TopicsList() {
       );
 
       console.log('Created topic:', topic); // Debug log
-      
+
       // Reload topics to ensure we have the latest data
       await loadTopics();
-      
+
       setNewTopic('');
       toast({
         title: "Topic Created",

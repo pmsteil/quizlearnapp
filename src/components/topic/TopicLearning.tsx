@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { Brain, MoreVertical, Trash2 } from 'lucide-react';
+import { Brain } from 'lucide-react';
 import { PageLayout } from '../shared/PageLayout';
 import { ChatInterface } from '../shared/ChatInterface';
 import { LearningTree } from '../shared/LearningTree';
@@ -10,13 +10,6 @@ import { useToast } from '@/hooks/use-toast';
 import { db } from '@/lib/db/client';
 import type { Message } from '@/lib/types';
 import type { Topic } from '@/lib/types/database';
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from '@/components/ui/dropdown-menu';
-import { Button } from '@/components/ui/button';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -156,43 +149,25 @@ export default function TopicLearning() {
 
   return (
     <PageLayout>
-      <div className="container mx-auto px-4 py-6">
-        <div className="mb-8">
-          <div className="flex items-center justify-between">
-            <div>
-              <h1 className="text-3xl font-bold mb-2">{topic.title}</h1>
-              <p className="text-muted-foreground">{topic.description}</p>
-            </div>
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button variant="ghost" size="icon">
-                  <MoreVertical className="h-5 w-5" />
-                </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="end">
-                <DropdownMenuItem
-                  className="text-destructive focus:text-destructive"
-                  onClick={() => setShowDeleteDialog(true)}
-                >
-                  <Trash2 className="mr-2 h-4 w-4" />
-                  Delete Topic
-                </DropdownMenuItem>
-              </DropdownMenuContent>
-            </DropdownMenu>
-          </div>
+      <div className="flex flex-col h-[calc(100vh-4rem)]">
+        <div className="container mx-auto px-4 py-2">
+          <LearningProgress
+            topic={topic}
+            onDelete={() => setShowDeleteDialog(true)}
+          />
         </div>
 
-        <LearningProgress topicId={topic.id} />
-
-        <div className="grid grid-cols-3 gap-8">
-          <div className="col-span-2">
-            <ChatInterface
-              messages={messages}
-              onSendMessage={handleSendMessage}
-            />
+        <div className="flex-1 container mx-auto px-4 grid grid-cols-3 gap-8 overflow-hidden">
+          <div className="col-span-2 relative flex flex-col">
+            <div className="absolute inset-0">
+              <ChatInterface
+                messages={messages}
+                onSendMessage={handleSendMessage}
+              />
+            </div>
           </div>
 
-          <div className="space-y-6">
+          <div className="overflow-y-auto pr-4">
             <LearningTree
               topics={[{
                 name: topic.lessonPlan?.mainTopics?.[0]?.name || "Learning Path",

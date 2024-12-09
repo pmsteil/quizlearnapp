@@ -1,22 +1,31 @@
 import { useEffect, useState } from 'react';
 import { Progress } from '@/components/ui/progress';
 import { Card } from '@/components/ui/card';
-import { CheckCircle, XCircle, Clock } from 'lucide-react';
+import { CheckCircle, XCircle, Clock, MoreVertical, Trash2 } from 'lucide-react';
 import { TopicService, type TopicProgress } from '@/lib/services/topic';
 import { formatDuration } from '@/lib/utils/learning';
+import type { Topic } from '@/lib/types/database';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
+import { Button } from '@/components/ui/button';
 
 interface LearningProgressProps {
-  topicId: string;
+  topic: Topic;
+  onDelete: () => void;
 }
 
-export function LearningProgress({ topicId }: LearningProgressProps) {
+export function LearningProgress({ topic, onDelete }: LearningProgressProps) {
   const [progress, setProgress] = useState<TopicProgress | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
     const loadProgress = async () => {
       try {
-        const data = await TopicService.getTopicProgress(topicId);
+        const data = await TopicService.getTopicProgress(topic.id);
         setProgress(data);
       } catch (error) {
         console.error('Error loading progress:', error);
@@ -26,7 +35,7 @@ export function LearningProgress({ topicId }: LearningProgressProps) {
     };
 
     loadProgress();
-  }, [topicId]);
+  }, [topic.id]);
 
   if (isLoading || !progress) {
     return (
@@ -47,7 +56,30 @@ export function LearningProgress({ topicId }: LearningProgressProps) {
 
   return (
     <Card className="p-6 mb-8">
-      <div className="flex justify-between items-center">
+      <div className="flex items-center justify-between mb-6">
+        <div>
+          <h1 className="text-3xl font-bold mb-2">{topic.title}</h1>
+          <p className="text-muted-foreground">{topic.description}</p>
+        </div>
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button variant="ghost" size="icon">
+              <MoreVertical className="h-5 w-5" />
+            </Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end">
+            <DropdownMenuItem
+              className="text-destructive focus:text-destructive"
+              onClick={onDelete}
+            >
+              <Trash2 className="mr-2 h-4 w-4" />
+              Delete Topic
+            </DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
+      </div>
+
+      <div className="flex justify-between items-center mb-4">
         <div className="space-y-1">
           <div className="text-sm text-muted-foreground">Current Progress</div>
           <div className="flex items-center space-x-6">
@@ -83,7 +115,7 @@ export function LearningProgress({ topicId }: LearningProgressProps) {
           </div>
         </div>
       </div>
-      <Progress value={progressPercentage} className="h-2 mt-4" />
+      <Progress value={progressPercentage} className="h-2" />
     </Card>
   );
 }
