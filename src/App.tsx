@@ -1,6 +1,5 @@
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { Toaster } from '@/components/ui/toaster';
-import { ThemeProvider } from '@/lib/context/ThemeContext';
 import { DatabaseProvider } from '@/lib/context/DatabaseContext';
 import { AuthProvider } from '@/lib/context/AuthContext';
 import { ProtectedRoute } from '@/components/auth/ProtectedRoute';
@@ -12,35 +11,33 @@ import AdminPage from '@/components/admin/AdminPage';
 
 function App() {
   return (
-    <ThemeProvider defaultTheme="dark" storageKey="quiz-learn-theme">
-      <DatabaseProvider>
-        <AuthProvider>
-          <BrowserRouter>
-            <Routes>
-              <Route path="/" element={<PublicHome />} />
-              <Route path="/dashboard" element={
-                <ProtectedRoute>
-                  <Dashboard />
-                </ProtectedRoute>
-              } />
-              <Route path="/topic/:id" element={
-                <ProtectedRoute>
-                  <TopicLearning />
-                </ProtectedRoute>
-              } />
-              <Route path="/new-topic" element={
-                <ProtectedRoute>
-                  <NewTopicSetup />
-                </ProtectedRoute>
-              } />
-              <Route path="/admin" element={<AdminPage />} />
-              <Route path="*" element={<Navigate to="/" replace />} />
-            </Routes>
-            <Toaster />
-          </BrowserRouter>
-        </AuthProvider>
-      </DatabaseProvider>
-    </ThemeProvider>
+    <DatabaseProvider>
+      <AuthProvider>
+        <BrowserRouter>
+          <Routes>
+            <Route path="/" element={<PublicHome />} />
+            <Route path="/dashboard" element={
+              <ProtectedRoute>
+                <Dashboard />
+              </ProtectedRoute>
+            } />
+            <Route path="/topic/:id" element={
+              <ProtectedRoute>
+                <TopicLearning />
+              </ProtectedRoute>
+            } />
+            <Route path="/new-topic" element={
+              <ProtectedRoute>
+                <NewTopicSetup />
+              </ProtectedRoute>
+            } />
+            <Route path="/admin" element={<AdminPage />} />
+            <Route path="*" element={<Navigate to="/" replace />} />
+          </Routes>
+          <Toaster />
+        </BrowserRouter>
+      </AuthProvider>
+    </DatabaseProvider>
   );
 }
 

@@ -53,7 +53,7 @@ export default function TopicsList() {
 
     setIsCreating(true);
     try {
-      const defaultLessonPlan = {
+      const defaultLessonPlan: LessonPlan = {
         mainTopics: [{
           name: "Learning Path",
           subtopics: [

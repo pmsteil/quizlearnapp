@@ -1,12 +1,41 @@
-import { LucideIcon } from 'lucide-react';
+import type { LucideIcon } from 'lucide-react';
 
-// Common types used across the dashboard
-export interface Topic {
-  id: number;
+export interface User {
+  id: string;
+  email: string;
   name: string;
+  created_at: number;
+  updated_at: number;
+}
+
+export type SubtopicStatus = 'current' | 'not-started' | 'in-progress' | 'completed' | 'upcoming';
+
+export interface Subtopic {
+  name: string;
+  status: SubtopicStatus;
+  icon?: LucideIcon;
+}
+
+export interface MainTopic {
+  name: string;
+  subtopics: Subtopic[];
+}
+
+export interface LessonPlan {
+  mainTopics: MainTopic[];
+  currentTopic: string;
+  completedTopics: string[];
+}
+
+export interface Topic {
+  id: string;
+  user_id: string;
+  title: string;
+  description: string;
   progress: number;
-  status: 'on-track' | 'behind' | 'ahead';
-  lastActivity: string;
+  lesson_plan: LessonPlan;
+  created_at: number;
+  updated_at: number;
 }
 
 export interface RecommendedTopic {

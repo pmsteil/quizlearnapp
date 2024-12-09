@@ -31,9 +31,9 @@ export function LoginDialog({ open, onOpenChange }: LoginDialogProps) {
       await login(email, password);
       onOpenChange(false);
       toast({
-        title: "Success",
-        description: "You have successfully logged in.",
-        variant: "success"
+        title: "Login Successful",
+        description: "Welcome back!",
+        variant: "default"
       });
     } catch (error) {
       toast({

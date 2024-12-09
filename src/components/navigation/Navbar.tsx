@@ -1,6 +1,6 @@
 import { Moon, Sun, Brain, ArrowLeft, Database } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { useTheme } from '@/lib/context/ThemeContext';
+import { useTheme } from 'next-themes';
 import { useNavigate, useLocation, Link } from 'react-router-dom';
 import { UserMenu } from '../auth/UserMenu';
 import { useAuth } from '@/lib/context/AuthContext';

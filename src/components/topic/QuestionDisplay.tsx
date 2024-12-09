@@ -9,11 +9,11 @@ interface QuestionDisplayProps {
   onAnswerSelect?: (questionId: number, answerIndex: number) => void;
 }
 
-export function QuestionDisplay({ 
-  question, 
-  selectedAnswer, 
-  isCorrect, 
-  onAnswerSelect 
+export function QuestionDisplay({
+  question,
+  selectedAnswer,
+  isCorrect,
+  onAnswerSelect
 }: QuestionDisplayProps) {
   return (
     <div className="space-y-4">
@@ -22,9 +22,7 @@ export function QuestionDisplay({
         {question.options.map((option, index) => (
           <Button
             key={index}
-            variant={selectedAnswer === index ? 
-              (isCorrect ? 'success' : 'destructive') : 
-              'secondary'}
+            variant={isCorrect ? "default" : selectedAnswer === index ? "destructive" : "secondary"}
             className="justify-start"
             onClick={() => onAnswerSelect?.(question.id, index)}
             disabled={selectedAnswer !== undefined}

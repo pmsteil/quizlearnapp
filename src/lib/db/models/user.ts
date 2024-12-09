@@ -1,82 +1,79 @@
 import { db } from '../client';
-import { generateId } from '../../utils/auth';
-import { hashPassword, verifyPassword } from '../../utils/auth';
-import type { User } from '../../types/database';
+import type { User } from '@/lib/types';
+
+async function hashPassword(password: string): Promise<string> {
+  const encoder = new TextEncoder();
+  const data = encoder.encode(password);
+  const hashBuffer = await crypto.subtle.digest('SHA-256', data);
+  const hashArray = Array.from(new Uint8Array(hashBuffer));
+  return hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
+}
 
 export class UserModel {
   static async create(email: string, password: string, name: string): Promise<User> {
-    const id = generateId();
-    const timestamp = Math.floor(Date.now() / 1000);
     const passwordHash = await hashPassword(password);
+    const now = Math.floor(Date.now() / 1000);
 
-    try {
-      const result = await db.execute({
-        sql: `INSERT INTO users (id, email, name, password_hash, created_at, updated_at) 
-              VALUES (?, ?, ?, ?, ?, ?) 
-              RETURNING *`,
-        args: [id, email, name, passwordHash, timestamp, timestamp]
-      });
+    const result = await db.execute({
+      sql: `INSERT INTO users (id, email, name, password_hash, created_at, updated_at)
+            VALUES (?, ?, ?, ?, ?, ?)`,
+      args: [email, email, name, passwordHash, now, now]
+    });
 
-      if (!result.rows?.[0]) {
-        throw new Error('Failed to create user');
-      }
+    return {
+      id: email,
+      email,
+      name,
+      created_at: now,
+      updated_at: now
+    };
+  }
 
-      return this.mapUser(result.rows[0]);
-    } catch (error: any) {
-      console.error('Error creating user:', error);
-      if (error.message?.includes('UNIQUE constraint failed')) {
-        throw new Error('Email already exists');
-      }
-      throw new Error('Failed to create user');
+  static async findByEmail(email: string): Promise<User | null> {
+    const result = await db.execute({
+      sql: 'SELECT * FROM users WHERE email = ?',
+      args: [email]
+    });
+
+    if (result.rows.length === 0) {
+      return null;
     }
+
+    const user = result.rows[0];
+    return {
+      id: user.id as string,
+      email: user.email as string,
+      name: user.name as string,
+      created_at: user.created_at as number,
+      updated_at: user.updated_at as number
+    };
+  }
+
+  static async verifyPassword(email: string, password: string): Promise<boolean> {
+    const result = await db.execute({
+      sql: 'SELECT password_hash FROM users WHERE email = ?',
+      args: [email]
+    });
+
+    if (result.rows.length === 0) {
+      return false;
+    }
+
+    const passwordHash = await hashPassword(password);
+    return passwordHash === result.rows[0].password_hash;
   }
 
   static async authenticate(email: string, password: string): Promise<User> {
-    try {
-      const result = await db.execute({
-        sql: 'SELECT * FROM users WHERE email = ?',
-        args: [email]
-      });
-      
-      const user = result.rows?.[0];
-      if (!user) {
-        throw new Error('Invalid email or password');
-      }
-
-      const isValid = await verifyPassword(password, user.password_hash);
-      if (!isValid) {
-        throw new Error('Invalid email or password');
-      }
-
-      return this.mapUser(user);
-    } catch (error) {
-      console.error('Authentication error:', error);
-      throw error;
+    const isValid = await this.verifyPassword(email, password);
+    if (!isValid) {
+      throw new Error('Invalid email or password');
     }
-  }
 
-  static async getByEmail(email: string): Promise<User | null> {
-    try {
-      const result = await db.execute({
-        sql: 'SELECT * FROM users WHERE email = ?',
-        args: [email]
-      });
-      
-      const user = result.rows?.[0];
-      return user ? this.mapUser(user) : null;
-    } catch (error) {
-      console.error('Error getting user by email:', error);
-      return null;
+    const user = await this.findByEmail(email);
+    if (!user) {
+      throw new Error('User not found');
     }
-  }
 
-  private static mapUser(row: any): User {
-    return {
-      id: row.id,
-      email: row.email,
-      name: row.name,
-      createdAt: new Date(row.created_at * 1000),
-      updatedAt: new Date(row.updated_at * 1000)
-    };
+    return user;
   }
 }

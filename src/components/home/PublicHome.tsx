@@ -1,25 +1,42 @@
 import { Brain, BookOpen, Users, Star } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { AuthDialog } from '@/components/auth/AuthDialog';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useAuth } from '@/lib/context/AuthContext';
 import { useNavigate } from 'react-router-dom';
+import Navbar from '@/components/navigation/Navbar';
 
 export default function PublicHome() {
+  console.log('PublicHome rendering...');
   const [showAuthDialog, setShowAuthDialog] = useState(false);
-  const { isAuthenticated } = useAuth();
+  const { user } = useAuth();
   const navigate = useNavigate();
 
+  console.log('PublicHome state:', { user, showAuthDialog });
+
+  useEffect(() => {
+    console.log('PublicHome useEffect - user changed:', user);
+    if (user) {
+      console.log('Navigating to dashboard...');
+      navigate('/dashboard');
+    }
+  }, [user, navigate]);
+
   const handleGetStarted = () => {
-    if (isAuthenticated) {
+    console.log('handleGetStarted clicked');
+    if (user) {
+      console.log('User exists, navigating to dashboard...');
       navigate('/dashboard');
     } else {
+      console.log('No user, showing auth dialog...');
       setShowAuthDialog(true);
     }
   };
 
+  console.log('PublicHome rendering UI...');
   return (
     <div className="min-h-screen bg-background">
+      <Navbar />
       {/* Hero Section */}
       <div className="relative overflow-hidden">
         <div className="absolute inset-0 bg-gradient-to-br from-primary/20 to-background z-0" />
@@ -36,7 +53,7 @@ export default function PublicHome() {
               to help you achieve your learning goals.
             </p>
             <Button size="lg" onClick={handleGetStarted}>
-              {isAuthenticated ? 'Go to Dashboard' : 'Start Learning Now'}
+              Start Learning Now
             </Button>
           </div>
         </div>
@@ -82,7 +99,7 @@ export default function PublicHome() {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
           <h2 className="text-3xl font-bold mb-8">Ready to Start Learning?</h2>
           <Button size="lg" onClick={handleGetStarted}>
-            {isAuthenticated ? 'Go to Dashboard' : 'Create Free Account'}
+            Create Free Account
           </Button>
         </div>
       </div>

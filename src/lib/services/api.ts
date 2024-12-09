@@ -1,35 +1,33 @@
-import type { Topic, Question, LearningPlan } from '../types';
+import type { Topic, LessonPlan } from '@/lib/types';
 
-// Simulate API calls with local data for now
-// Can be replaced with real API calls later
-export const api = {
-  async getTopics(): Promise<Topic[]> {
-    return new Promise(resolve => {
-      setTimeout(() => {
-        resolve([
-          // ... topic data
-        ]);
-      }, 500);
-    });
-  },
-
-  async getQuestions(topicId: number): Promise<Question[]> {
-    return new Promise(resolve => {
-      setTimeout(() => {
-        resolve([
-          // ... question data
-        ]);
-      }, 500);
-    });
-  },
-
-  async generateLearningPlan(topic: string, level: string): Promise<LearningPlan> {
-    return new Promise(resolve => {
-      setTimeout(() => {
-        resolve({
-          // ... learning plan data
-        });
-      }, 1000);
-    });
+export class TopicService {
+  static async createTopic(title: string, description: string): Promise<Topic> {
+    // Implementation
+    throw new Error('Not implemented');
   }
-};
+
+  static async getTopic(id: string): Promise<Topic> {
+    // Implementation
+    throw new Error('Not implemented');
+  }
+
+  static async updateTopic(id: string, updates: Partial<Topic>): Promise<Topic> {
+    // Implementation
+    throw new Error('Not implemented');
+  }
+
+  static async deleteTopic(id: string): Promise<void> {
+    // Implementation
+    throw new Error('Not implemented');
+  }
+
+  static async getTopics(): Promise<Topic[]> {
+    // Implementation
+    throw new Error('Not implemented');
+  }
+
+  static async updateLessonPlan(topicId: string, lessonPlan: LessonPlan): Promise<void> {
+    // Implementation
+    throw new Error('Not implemented');
+  }
+}
