@@ -16,9 +16,7 @@ export function DatabaseProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     const testConnection = async () => {
       try {
-        console.log('Testing database connection...');
         await dbClient.execute('SELECT 1');
-        console.log('Database connection successful');
       } catch (error) {
         console.error('Database connection failed:', error);
       }
@@ -26,8 +24,6 @@ export function DatabaseProvider({ children }: { children: ReactNode }) {
 
     testConnection();
   }, []);
-
-  console.log('DatabaseProvider rendering with client:', !!dbClient);
 
   return (
     <DatabaseContext.Provider value={{ client: dbClient }}>

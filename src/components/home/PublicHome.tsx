@@ -53,7 +53,7 @@ export default function PublicHome() {
               to help you achieve your learning goals.
             </p>
             <Button size="lg" onClick={handleGetStarted}>
-              Start Learning Now
+              {user ? "Go to Dashboard" : "Start Learning Now"}
             </Button>
           </div>
         </div>
@@ -99,7 +99,7 @@ export default function PublicHome() {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
           <h2 className="text-3xl font-bold mb-8">Ready to Start Learning?</h2>
           <Button size="lg" onClick={handleGetStarted}>
-            Create Free Account
+            {user ? "Go to Dashboard" : "Create Free Account"}
           </Button>
         </div>
       </div>

@@ -1,8 +1,6 @@
 import { useState } from 'react';
 import { useAuth } from '@/lib/context/AuthContext';
 import {
-  Dialog,
-  DialogContent,
   DialogHeader,
   DialogTitle,
   DialogDescription,
@@ -11,12 +9,7 @@ import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/components/ui/use-toast';
 
-interface LoginDialogProps {
-  open: boolean;
-  onOpenChange: (open: boolean) => void;
-}
-
-export function LoginDialog({ open, onOpenChange }: LoginDialogProps) {
+export function LoginDialog() {
   const { login } = useAuth();
   const { toast } = useToast();
   const [email, setEmail] = useState('');
@@ -29,7 +22,6 @@ export function LoginDialog({ open, onOpenChange }: LoginDialogProps) {
 
     try {
       await login(email, password);
-      onOpenChange(false);
       toast({
         title: "Login Successful",
         description: "Welcome back!",
@@ -47,46 +39,44 @@ export function LoginDialog({ open, onOpenChange }: LoginDialogProps) {
   };
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-[425px]">
-        <DialogHeader>
-          <DialogTitle>Login to QuizLearn</DialogTitle>
-          <DialogDescription>
-            Enter your credentials to access your learning dashboard.
-          </DialogDescription>
-        </DialogHeader>
-        <form onSubmit={handleSubmit} className="space-y-4 mt-4">
-          <div className="space-y-2">
-            <label htmlFor="email" className="text-sm font-medium">
-              Email
-            </label>
-            <Input
-              id="email"
-              type="email"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              placeholder="Enter your email"
-              required
-            />
-          </div>
-          <div className="space-y-2">
-            <label htmlFor="password" className="text-sm font-medium">
-              Password
-            </label>
-            <Input
-              id="password"
-              type="password"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              placeholder="Enter your password"
-              required
-            />
-          </div>
-          <Button type="submit" className="w-full" disabled={isLoading}>
-            {isLoading ? "Logging in..." : "Login"}
-          </Button>
-        </form>
-      </DialogContent>
-    </Dialog>
+    <div>
+      <DialogHeader>
+        <DialogTitle>Login to QuizLearn</DialogTitle>
+        <DialogDescription>
+          Enter your credentials to access your learning dashboard.
+        </DialogDescription>
+      </DialogHeader>
+      <form onSubmit={handleSubmit} className="space-y-4 mt-4">
+        <div className="space-y-2">
+          <label htmlFor="email" className="text-sm font-medium">
+            Email
+          </label>
+          <Input
+            id="email"
+            type="email"
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+            placeholder="Enter your email"
+            required
+          />
+        </div>
+        <div className="space-y-2">
+          <label htmlFor="password" className="text-sm font-medium">
+            Password
+          </label>
+          <Input
+            id="password"
+            type="password"
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+            placeholder="Enter your password"
+            required
+          />
+        </div>
+        <Button type="submit" className="w-full" disabled={isLoading}>
+          {isLoading ? "Logging in..." : "Login"}
+        </Button>
+      </form>
+    </div>
   );
 }

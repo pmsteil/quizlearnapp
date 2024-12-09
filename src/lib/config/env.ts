@@ -1,12 +1,3 @@
-console.log('Loading environment variables...');
-console.log('Environment:', {
-  API_URL: import.meta.env.VITE_API_URL,
-  DATABASE_URL: import.meta.env.VITE_DATABASE_URL,
-  DATABASE_TOKEN: import.meta.env.VITE_DATABASE_TOKEN ? '[REDACTED]' : undefined,
-  MODE: import.meta.env.MODE,
-  PROD: import.meta.env.PROD,
-});
-
 export const ENV = {
   API_URL: import.meta.env.VITE_API_URL || 'http://localhost:3000',
   DATABASE_URL: import.meta.env.VITE_DATABASE_URL || 'file:local.db',
