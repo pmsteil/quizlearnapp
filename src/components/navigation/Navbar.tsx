@@ -77,10 +77,12 @@ export default function Navbar() {
                   <p className="text-sm text-muted-foreground">View and manage database records</p>
                 </>
               ) : isAuthenticated && user ? (
-                <>
-                  <h1 className="text-xl font-bold">Welcome back, {user.name}!</h1>
-                  <p className="text-sm text-muted-foreground">🔥 7 day learning streak | Today's Goal: 2/3 topics</p>
-                </>
+                <div className="min-w-0">
+                  <h1 className="text-xl font-bold truncate">
+                    Welcome back, {user.name.split(' ')[0].charAt(0).toUpperCase() + user.name.split(' ')[0].slice(1).toLowerCase()}!
+                  </h1>
+                  <p className="text-sm text-muted-foreground truncate">🔥 7 day streak | Today's Goal: 2/3</p>
+                </div>
               ) : null}
             </div>
           </div>
@@ -89,7 +91,7 @@ export default function Navbar() {
             <Button
               variant="ghost"
               size="icon"
-              className="h-12 w-12"
+              className="h-12 w-12 hidden sm:flex"
               onClick={() => navigate('/admin')}
             >
               <Database className="h-6 w-6" />
@@ -97,7 +99,7 @@ export default function Navbar() {
             <Button
               variant="ghost"
               size="icon"
-              className="h-12 w-12"
+              className="h-12 w-12 hidden sm:flex"
               onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')}
             >
               {theme === 'dark' ? (
