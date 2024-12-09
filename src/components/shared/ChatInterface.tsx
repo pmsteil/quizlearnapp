@@ -44,7 +44,7 @@ export function ChatInterface({ messages, onSendMessage }: ChatInterfaceProps) {
   };
 
   return (
-    <div className="h-[90%] flex flex-col">
+    <div className="h-[88%] flex flex-col">
       <div className="flex-1 overflow-y-auto min-h-0">
         <div
           ref={messagesContainerRef}
