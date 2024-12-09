@@ -149,7 +149,7 @@ export default function TopicLearning() {
 
   return (
     <PageLayout>
-      <div className="flex flex-col h-[calc(100vh-4rem)]">
+      <div className="flex flex-col h-[calc(100vh-4rem)] overflow-hidden">
         <div className="container mx-auto px-4 py-2">
           <LearningProgress
             topic={topic}
@@ -157,30 +157,32 @@ export default function TopicLearning() {
           />
         </div>
 
-        <div className="flex-1 container mx-auto px-4 grid grid-cols-3 gap-8 overflow-hidden">
-          <div className="col-span-2 relative flex flex-col">
-            <div className="absolute inset-0">
-              <ChatInterface
-                messages={messages}
-                onSendMessage={handleSendMessage}
+        <div className="flex-1 container mx-auto px-4 min-h-0">
+          <div className="grid grid-cols-3 gap-8 h-full">
+            <div className="col-span-2 h-full flex flex-col min-h-0">
+              <div className="flex-1 overflow-hidden">
+                <ChatInterface
+                  messages={messages}
+                  onSendMessage={handleSendMessage}
+                />
+              </div>
+            </div>
+
+            <div className="h-full overflow-y-auto">
+              <LearningTree
+                topics={[{
+                  name: topic.lessonPlan?.mainTopics?.[0]?.name || "Learning Path",
+                  icon: Brain,
+                  subtopics: topic.lessonPlan?.mainTopics?.[0]?.subtopics || [
+                    { name: 'Introduction', status: 'current' },
+                    { name: 'Basic Concepts', status: 'upcoming' },
+                    { name: 'Practice Exercises', status: 'upcoming' },
+                    { name: 'Advanced Topics', status: 'upcoming' },
+                    { name: 'Final Review', status: 'upcoming' }
+                  ]
+                }]}
               />
             </div>
-          </div>
-
-          <div className="overflow-y-auto pr-4">
-            <LearningTree
-              topics={[{
-                name: topic.lessonPlan?.mainTopics?.[0]?.name || "Learning Path",
-                icon: Brain,
-                subtopics: topic.lessonPlan?.mainTopics?.[0]?.subtopics || [
-                  { name: 'Introduction', status: 'current' },
-                  { name: 'Basic Concepts', status: 'upcoming' },
-                  { name: 'Practice Exercises', status: 'upcoming' },
-                  { name: 'Advanced Topics', status: 'upcoming' },
-                  { name: 'Final Review', status: 'upcoming' }
-                ]
-              }]}
-            />
           </div>
         </div>
       </div>
