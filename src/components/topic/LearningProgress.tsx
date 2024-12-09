@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { Progress } from '@/components/ui/progress';
 import { Card } from '@/components/ui/card';
-import { CheckCircle, XCircle, Clock, MoreVertical, Trash2 } from 'lucide-react';
+import { CheckCircle, XCircle, Clock, MoreVertical, Trash2, Square } from 'lucide-react';
 import { TopicService, type TopicProgress } from '@/lib/services/topic';
 import { formatDuration } from '@/lib/utils/learning';
 import type { Topic } from '@/lib/types/database';
@@ -86,18 +86,21 @@ export function LearningProgress({ topic, onDelete }: LearningProgressProps) {
             <div className="flex items-center space-x-2">
               <CheckCircle className="w-5 h-5 text-green-500" />
               <span className="text-green-500 font-medium">
-                {progress.correctAnswers} correct
+                {progress.correctAnswers}
               </span>
             </div>
             <div className="flex items-center space-x-2">
               <XCircle className="w-5 h-5 text-red-500" />
               <span className="text-red-500 font-medium">
-                {progress.incorrectAnswers} incorrect
+                {progress.incorrectAnswers}
               </span>
             </div>
-            <span className="text-muted-foreground">
-              {remainingQuestions} questions remaining
-            </span>
+            <div className="flex items-center space-x-2">
+              <Square className="w-5 h-5 text-muted-foreground" />
+              <span className="text-muted-foreground">
+                {remainingQuestions} remaining
+              </span>
+            </div>
           </div>
         </div>
         <div className="flex items-center space-x-8 text-sm text-muted-foreground">

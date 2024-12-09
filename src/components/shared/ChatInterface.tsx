@@ -2,7 +2,7 @@ import { useState, useRef, useEffect } from 'react';
 import { Card } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
-import { Send } from 'lucide-react';
+import { Send, User, Bot } from 'lucide-react';
 import type { Message } from '@/lib/types';
 
 interface ChatInterfaceProps {
@@ -46,13 +46,18 @@ export function ChatInterface({ messages, onSendMessage }: ChatInterfaceProps) {
               }`}
             >
               <div
-                className={`rounded-lg px-4 py-2 max-w-[80%] ${
+                className={`rounded-lg px-4 py-2 max-w-[80%] flex items-start gap-2 ${
                   message.type === 'user'
                     ? 'bg-primary text-primary-foreground ml-4'
                     : 'bg-muted mr-4'
                 }`}
               >
-                {message.content}
+                {message.type === 'user' ? (
+                  <User className="h-5 w-5 mt-1 shrink-0" />
+                ) : (
+                  <Bot className="h-5 w-5 mt-1 shrink-0" />
+                )}
+                <span>{message.content}</span>
               </div>
             </div>
           ))}
