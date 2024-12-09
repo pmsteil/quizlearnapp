@@ -168,7 +168,7 @@ export default function TopicLearning() {
               </div>
             </div>
 
-            <div className="h-full overflow-y-auto">
+            <div className="overflow-y-auto">
               <LearningTree
                 topics={[{
                   name: topic.lessonPlan?.mainTopics?.[0]?.name || "Learning Path",

@@ -16,12 +16,24 @@ export function ChatInterface({ messages, onSendMessage }: ChatInterfaceProps) {
   const messagesContainerRef = useRef<HTMLDivElement>(null);
 
   const scrollToBottom = () => {
-    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+    messagesEndRef.current?.scrollIntoView({
+      behavior: 'smooth',
+      block: 'end',
+      inline: 'nearest'
+    });
   };
 
   useEffect(() => {
     scrollToBottom();
   }, [messages]);
+
+  // Auto-focus the input on component mount
+  useEffect(() => {
+    const inputElement = document.querySelector<HTMLInputElement>('input[type="text"]');
+    if (inputElement) {
+      inputElement.focus();
+    }
+  }, []);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -32,11 +44,11 @@ export function ChatInterface({ messages, onSendMessage }: ChatInterfaceProps) {
   };
 
   return (
-    <div className="h-full flex flex-col">
-      <div className="flex-1 overflow-y-auto">
+    <div className="h-[90%] flex flex-col">
+      <div className="flex-1 overflow-y-auto min-h-0">
         <div
           ref={messagesContainerRef}
-          className="p-4 space-y-4"
+          className="p-4 space-y-4 pb-0"
         >
           {messages.map((message) => (
             <div
@@ -61,7 +73,7 @@ export function ChatInterface({ messages, onSendMessage }: ChatInterfaceProps) {
               </div>
             </div>
           ))}
-          <div ref={messagesEndRef} />
+          <div ref={messagesEndRef} className="h-0" />
         </div>
       </div>
 
@@ -71,10 +83,12 @@ export function ChatInterface({ messages, onSendMessage }: ChatInterfaceProps) {
           className="flex gap-2 p-4"
         >
           <Input
+            type="text"
             value={input}
             onChange={(e) => setInput(e.target.value)}
             placeholder="Type your message..."
             className="flex-1"
+            autoFocus
           />
           <Button type="submit" size="icon">
             <Send className="h-4 w-4" />

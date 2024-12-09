@@ -1,10 +1,13 @@
 import { useEffect, useState } from 'react';
 import { Progress } from '@/components/ui/progress';
 import { Card } from '@/components/ui/card';
-import { CheckCircle, XCircle, Clock, MoreVertical, Trash2, Square } from 'lucide-react';
+import { CheckCircle, XCircle, Clock, MoreVertical, Trash2, Square, Pencil } from 'lucide-react';
 import { TopicService, type TopicProgress } from '@/lib/services/topic';
 import { formatDuration } from '@/lib/utils/learning';
 import type { Topic } from '@/lib/types/database';
+import { Input } from '@/components/ui/input';
+import { Textarea } from '@/components/ui/textarea';
+import { db } from '@/lib/db/client';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -21,6 +24,10 @@ interface LearningProgressProps {
 export function LearningProgress({ topic, onDelete }: LearningProgressProps) {
   const [progress, setProgress] = useState<TopicProgress | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [isEditingTitle, setIsEditingTitle] = useState(false);
+  const [isEditingDescription, setIsEditingDescription] = useState(false);
+  const [editedTitle, setEditedTitle] = useState(topic.title);
+  const [editedDescription, setEditedDescription] = useState(topic.description);
 
   useEffect(() => {
     const loadProgress = async () => {
@@ -36,6 +43,35 @@ export function LearningProgress({ topic, onDelete }: LearningProgressProps) {
 
     loadProgress();
   }, [topic.id]);
+
+  const handleUpdateTopic = async () => {
+    try {
+      await db.execute({
+        sql: 'UPDATE topics SET title = ?, description = ?, updated_at = ? WHERE id = ?',
+        args: [editedTitle, editedDescription, Math.floor(Date.now() / 1000), topic.id]
+      });
+      setIsEditingTitle(false);
+      setIsEditingDescription(false);
+      // Update the topic in parent component if needed
+    } catch (error) {
+      console.error('Error updating topic:', error);
+    }
+  };
+
+  const handleKeyDown = (e: React.KeyboardEvent, field: 'title' | 'description') => {
+    if (e.key === 'Enter' && !e.shiftKey) {
+      e.preventDefault();
+      handleUpdateTopic();
+    } else if (e.key === 'Escape') {
+      if (field === 'title') {
+        setEditedTitle(topic.title);
+        setIsEditingTitle(false);
+      } else {
+        setEditedDescription(topic.description);
+        setIsEditingDescription(false);
+      }
+    }
+  };
 
   if (isLoading || !progress) {
     return (
@@ -57,9 +93,45 @@ export function LearningProgress({ topic, onDelete }: LearningProgressProps) {
   return (
     <Card className="p-6 mb-8">
       <div className="flex items-center justify-between mb-6">
-        <div>
-          <h1 className="text-3xl font-bold mb-2">{topic.title}</h1>
-          <p className="text-muted-foreground">{topic.description}</p>
+        <div className="flex-1 mr-4">
+          <div className="flex items-start gap-2 mb-2">
+            {isEditingTitle ? (
+              <Input
+                value={editedTitle}
+                onChange={(e) => setEditedTitle(e.target.value)}
+                onBlur={handleUpdateTopic}
+                onKeyDown={(e) => handleKeyDown(e, 'title')}
+                className="text-3xl font-bold h-auto py-1"
+                autoFocus
+              />
+            ) : (
+              <h1
+                className="text-3xl font-bold cursor-pointer hover:text-muted-foreground transition-colors flex items-center gap-2"
+                onClick={() => setIsEditingTitle(true)}
+              >
+                {editedTitle}
+                <Pencil className="h-4 w-4 opacity-0 group-hover:opacity-100" />
+              </h1>
+            )}
+          </div>
+          {isEditingDescription ? (
+            <Textarea
+              value={editedDescription}
+              onChange={(e) => setEditedDescription(e.target.value)}
+              onBlur={handleUpdateTopic}
+              onKeyDown={(e) => handleKeyDown(e, 'description')}
+              className="text-muted-foreground resize-none"
+              autoFocus
+            />
+          ) : (
+            <p
+              className="text-muted-foreground cursor-pointer hover:text-foreground transition-colors flex items-center gap-2"
+              onClick={() => setIsEditingDescription(true)}
+            >
+              {editedDescription}
+              <Pencil className="h-4 w-4 opacity-0 group-hover:opacity-100" />
+            </p>
+          )}
         </div>
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
