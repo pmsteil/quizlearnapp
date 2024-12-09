@@ -103,7 +103,7 @@ export default function TopicLearning() {
           <p className="text-muted-foreground">{topic.description}</p>
         </div>
 
-        <LearningProgress />
+        <LearningProgress topicId={topic.id} />
 
         <div className="grid grid-cols-3 gap-8">
           <div className="col-span-2">

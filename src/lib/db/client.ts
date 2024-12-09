@@ -1,13 +1,14 @@
 import { createClient } from '@libsql/client';
-import { ENV } from '../config/env';
 
-if (!ENV.DATABASE_URL) {
-  throw new Error('DATABASE_URL environment variable is not set');
-}
+const url = import.meta.env.VITE_DATABASE_URL;
+const authToken = import.meta.env.VITE_DATABASE_TOKEN;
+
+if (!url) throw new Error('DATABASE_URL is not set');
+if (!authToken) throw new Error('DATABASE_TOKEN is not set');
 
 export const db = createClient({
-  url: ENV.DATABASE_URL,
-  authToken: ENV.DATABASE_AUTH_TOKEN
+  url,
+  authToken,
 });
 
 // Initialize database schema
@@ -51,10 +52,10 @@ export async function testConnection() {
   try {
     // First test the connection
     await db.execute('SELECT 1');
-    
+
     // Then initialize the schema
     await initializeDatabase();
-    
+
     return true;
   } catch (error) {
     console.error('Database connection test failed:', error);
