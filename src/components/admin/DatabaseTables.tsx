@@ -14,10 +14,14 @@ export function DatabaseTables() {
       try {
         const users = await db.execute('SELECT * FROM users');
         const topics = await db.execute('SELECT * FROM topics');
+        const questions = await db.execute('SELECT * FROM questions');
+        const progress = await db.execute('SELECT * FROM user_progress');
 
         setTables({
           users: users.rows || [],
-          topics: topics.rows || []
+          topics: topics.rows || [],
+          questions: questions.rows || [],
+          user_progress: progress.rows || []
         });
       } catch (error) {
         console.error('Failed to load tables:', error);
@@ -37,6 +41,8 @@ export function DatabaseTables() {
       <TabsList className="mb-4">
         <TabsTrigger value="users">Users</TabsTrigger>
         <TabsTrigger value="topics">Topics</TabsTrigger>
+        <TabsTrigger value="questions">Questions</TabsTrigger>
+        <TabsTrigger value="user_progress">Progress</TabsTrigger>
       </TabsList>
 
       <TabsContent value="users">
@@ -63,8 +69,41 @@ export function DatabaseTables() {
             { key: 'title', label: 'Title' },
             { key: 'description', label: 'Description' },
             { key: 'progress', label: 'Progress' },
+            { key: 'lesson_plan', label: 'Lesson Plan', type: 'json' },
             { key: 'created_at', label: 'Created At', type: 'datetime' },
             { key: 'updated_at', label: 'Updated At', type: 'datetime' }
+          ]}
+        />
+      </TabsContent>
+
+      <TabsContent value="questions">
+        <TableView
+          title="Questions"
+          data={tables.questions || []}
+          columns={[
+            { key: 'id', label: 'ID' },
+            { key: 'topic_id', label: 'Topic ID' },
+            { key: 'text', label: 'Question Text' },
+            { key: 'options', label: 'Options', type: 'json' },
+            { key: 'correct_answer', label: 'Correct Answer' },
+            { key: 'explanation', label: 'Explanation' },
+            { key: 'created_at', label: 'Created At', type: 'datetime' },
+            { key: 'updated_at', label: 'Updated At', type: 'datetime' }
+          ]}
+        />
+      </TabsContent>
+
+      <TabsContent value="user_progress">
+        <TableView
+          title="User Progress"
+          data={tables.user_progress || []}
+          columns={[
+            { key: 'id', label: 'ID' },
+            { key: 'user_id', label: 'User ID' },
+            { key: 'topic_id', label: 'Topic ID' },
+            { key: 'question_id', label: 'Question ID' },
+            { key: 'is_correct', label: 'Correct?' },
+            { key: 'created_at', label: 'Created At', type: 'datetime' }
           ]}
         />
       </TabsContent>
