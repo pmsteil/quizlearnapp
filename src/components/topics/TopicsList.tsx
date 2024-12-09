@@ -132,30 +132,30 @@ export default function TopicsList() {
 
   return (
     <div className="max-w-7xl mx-auto">
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-8">
-        <div className="bg-card p-4 rounded-xl border border-border transition-all hover:border-blue-500">
-          <div className="text-3xl font-bold text-green-500">
+      <div className="grid grid-cols-4 gap-2 sm:gap-4 mb-8">
+        <div className="bg-card p-2 sm:p-4 rounded-xl border border-border transition-all hover:border-blue-500">
+          <div className="text-xl sm:text-3xl font-bold text-green-500">
             {topics.length}
           </div>
-          <div className="text-sm text-muted-foreground">Active Topics</div>
+          <div className="text-xs sm:text-sm text-muted-foreground">Active Topics</div>
         </div>
-        <div className="bg-card p-4 rounded-xl border border-border transition-all hover:border-blue-500">
-          <div className="text-3xl font-bold text-blue-500">
+        <div className="bg-card p-2 sm:p-4 rounded-xl border border-border transition-all hover:border-blue-500">
+          <div className="text-xl sm:text-3xl font-bold text-blue-500">
             {topics.filter(t => t.progress === 100).length}
           </div>
-          <div className="text-sm text-muted-foreground">Completed Topics</div>
+          <div className="text-xs sm:text-sm text-muted-foreground">Completed</div>
         </div>
-        <div className="bg-card p-4 rounded-xl border border-border transition-all hover:border-blue-500">
-          <div className="text-3xl font-bold text-blue-500">
+        <div className="bg-card p-2 sm:p-4 rounded-xl border border-border transition-all hover:border-blue-500">
+          <div className="text-xl sm:text-3xl font-bold text-blue-500">
             {Math.round(topics.reduce((acc, t) => acc + t.progress, 0) / Math.max(topics.length, 1))}%
           </div>
-          <div className="text-sm text-muted-foreground">Average Progress</div>
+          <div className="text-xs sm:text-sm text-muted-foreground">Average</div>
         </div>
-        <div className="bg-card p-4 rounded-xl border border-border transition-all hover:border-blue-500">
-          <div className="text-3xl font-bold text-blue-500">
+        <div className="bg-card p-2 sm:p-4 rounded-xl border border-border transition-all hover:border-blue-500">
+          <div className="text-xl sm:text-3xl font-bold text-blue-500">
             {topics.filter(t => t.progress > 0 && t.progress < 100).length}
           </div>
-          <div className="text-sm text-muted-foreground">In Progress</div>
+          <div className="text-xs sm:text-sm text-muted-foreground">In Progress</div>
         </div>
       </div>
 
