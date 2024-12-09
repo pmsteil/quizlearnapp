@@ -17,11 +17,6 @@ export default function Navbar() {
   const isNotHome = location.pathname !== '/';
   const [currentTopic, setCurrentTopic] = useState<Topic | null>(null);
 
-  const navItems = [
-    { label: 'Dashboard', href: '/dashboard', protected: true },
-    { label: 'Admin', href: '/admin', protected: false },
-  ];
-
   useEffect(() => {
     const loadTopic = async () => {
       const topicMatch = location.pathname.match(/\/topic\/(.+)/);
@@ -52,7 +47,13 @@ export default function Navbar() {
                 variant="ghost"
                 size="icon"
                 className="text-xl font-bold text-primary hover:text-primary/80 transition-colors -ml-2"
-                onClick={() => navigate('/')}
+                onClick={() => {
+                  if (location.pathname.startsWith('/topic/')) {
+                    navigate('/dashboard');
+                  } else {
+                    navigate('/');
+                  }
+                }}
               >
                 <ArrowLeft className="h-8 w-8" />
               </Button>
@@ -63,34 +64,9 @@ export default function Navbar() {
               </Link>
             )}
 
-            {/* Navigation Links */}
-            <div className="hidden md:flex space-x-6">
-              {navItems.map((item) => (
-                (!item.protected || isAuthenticated) && (
-                  <Link
-                    key={item.href}
-                    to={item.href}
-                    className={cn(
-                      "text-sm font-medium transition-colors hover:text-primary",
-                      location.pathname === item.href
-                        ? "text-foreground"
-                        : "text-muted-foreground"
-                    )}
-                  >
-                    {item.label}
-                  </Link>
-                )
-              ))}
-            </div>
-
             {/* Page Title/Info */}
             <div>
-              {currentTopic ? (
-                <>
-                  <h1 className="text-xl font-bold">{currentTopic.title}</h1>
-                  <p className="text-sm text-muted-foreground">{currentTopic.description}</p>
-                </>
-              ) : location.pathname.includes('/new-topic') ? (
+              {location.pathname.includes('/new-topic') ? (
                 <>
                   <h1 className="text-xl font-bold">New Learning Journey</h1>
                   <p className="text-sm text-muted-foreground">Creating your personalized learning path</p>
@@ -110,6 +86,14 @@ export default function Navbar() {
           </div>
 
           <div className="flex items-center space-x-4">
+            <Button
+              variant="ghost"
+              size="icon"
+              className="h-12 w-12"
+              onClick={() => navigate('/admin')}
+            >
+              <Database className="h-6 w-6" />
+            </Button>
             <Button
               variant="ghost"
               size="icon"

@@ -37,7 +37,7 @@ export default function TopicLearning() {
         }
 
         setTopic(loadedTopic);
-        
+
         // Initialize chat with a welcome message
         setMessages([{
           id: 1,
@@ -107,15 +107,14 @@ export default function TopicLearning() {
 
         <div className="grid grid-cols-3 gap-8">
           <div className="col-span-2">
-            <ChatInterface 
+            <ChatInterface
               messages={messages}
               onSendMessage={handleSendMessage}
             />
           </div>
 
           <div className="space-y-6">
-            <LearningTree 
-              title={topic.title}
+            <LearningTree
               topics={[{
                 name: topic.lessonPlan?.mainTopics?.[0]?.name || "Learning Path",
                 icon: Brain,
