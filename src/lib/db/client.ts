@@ -1,14 +1,31 @@
 import { createClient } from '@libsql/client';
+import * as dotenv from 'dotenv';
 
-const url = import.meta.env.VITE_DATABASE_URL;
-const authToken = import.meta.env.VITE_DATABASE_TOKEN;
+// Load environment variables from .env file when running in Node.js
+if (typeof process !== 'undefined') {
+  dotenv.config();
+}
 
-if (!url) throw new Error('DATABASE_URL is not set');
-if (!authToken) throw new Error('DATABASE_TOKEN is not set');
+// Get the database URL and token from either Vite's env or Node's process.env
+const url = typeof process !== 'undefined'
+  ? process.env.VITE_DATABASE_URL
+  : import.meta.env.VITE_DATABASE_URL;
+
+const authToken = typeof process !== 'undefined'
+  ? process.env.VITE_DATABASE_TOKEN
+  : import.meta.env.VITE_DATABASE_TOKEN;
+
+if (!url) {
+  throw new Error('Database URL not found in environment variables');
+}
+
+if (!authToken) {
+  throw new Error('Database token not found in environment variables');
+}
 
 export const db = createClient({
-  url,
-  authToken,
+  url: url,
+  authToken: authToken
 });
 
 // Initialize database schema
