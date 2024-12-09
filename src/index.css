@@ -1,0 +1,156 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --background: 220 25% 95%;
+    --foreground: 220 25% 20%;
+    --card: 220 25% 98%;
+    --card-foreground: 220 25% 20%;
+    --popover: 220 25% 98%;
+    --popover-foreground: 220 25% 20%;
+    --primary: 217 91% 60%;
+    --primary-foreground: 0 0% 98%;
+    --secondary: 220 25% 92%;
+    --secondary-foreground: 220 25% 20%;
+    --muted: 220 25% 92%;
+    --muted-foreground: 220 25% 40%;
+    --accent: 220 25% 92%;
+    --accent-foreground: 220 25% 20%;
+    --destructive: 0 84.2% 60.2%;
+    --destructive-foreground: 0 0% 98%;
+    --border: 220 25% 85%;
+    --input: 220 25% 85%;
+    --ring: 217 91% 60%;
+    --radius: 0.5rem;
+    --success: 142 76% 36%;
+    --success-foreground: 0 0% 98%;
+  }
+
+  .dark {
+    --background: 222 47% 11%;
+    --foreground: 0 0% 98%;
+    --card: 223 47% 14%;
+    --card-foreground: 0 0% 98%;
+    --popover: 223 47% 14%;
+    --popover-foreground: 0 0% 98%;
+    --primary: 217 91% 60%;
+    --primary-foreground: 0 0% 98%;
+    --secondary: 223 47% 18%;
+    --secondary-foreground: 0 0% 98%;
+    --muted: 223 47% 18%;
+    --muted-foreground: 215 20.2% 65.1%;
+    --accent: 223 47% 18%;
+    --accent-foreground: 0 0% 98%;
+    --destructive: 0 62.8% 30.6%;
+    --destructive-foreground: 0 0% 98%;
+    --border: 223 47% 18%;
+    --input: 223 47% 18%;
+    --ring: 217 91% 60%;
+    --success: 142 76% 36%;
+    --success-foreground: 0 0% 98%;
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+  body {
+    @apply bg-background text-foreground;
+  }
+}
+
+/* Remove default focus styles */
+:focus {
+  outline: none;
+}
+
+/* Custom focus styles */
+.focus-visible\:ring-1:focus-visible {
+  --tw-ring-offset-width: 0px;
+  --tw-ring-color: hsl(var(--ring));
+  box-shadow: 0 0 0 var(--tw-ring-offset-width) var(--tw-ring-offset-color), 0 0 0 1px var(--tw-ring-color);
+}
+
+.chat-container {
+  height: calc(100vh - 13rem);
+}
+
+.chat-messages {
+  height: calc(100% - 4rem);
+  overflow-y: auto;
+}
+
+.chat-bubble {
+  @apply bg-card border-border;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  max-width: 80%;
+  font-size: 0.9rem;
+}
+
+.chat-bubble.bot {
+  border-top-left-radius: 0;
+}
+
+.chat-bubble.user {
+  border-top-right-radius: 0;
+  @apply bg-secondary;
+}
+
+.chat-bubble.question {
+  @apply bg-card;
+  border-top-left-radius: 0;
+}
+
+.code-block {
+  @apply bg-muted border-border;
+  border-radius: 0.5rem;
+  font-size: 0.85rem;
+}
+
+.progress-bar {
+  background: linear-gradient(90deg, rgba(59,130,246,0.3) 0%, rgba(59,130,246,0.6) 100%);
+}
+
+.chat-input:focus {
+  outline: none;
+  @apply border-primary ring-1 ring-primary;
+}
+
+.lesson-item {
+  transition: all 0.2s ease;
+}
+
+.lesson-item.current {
+  @apply bg-secondary rounded-lg;
+}
+
+.topic-card {
+  @apply bg-card border-border;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.topic-card:hover {
+  transform: translateY(-4px);
+  @apply border-primary shadow-lg;
+}
+
+.topic-card:active {
+  transform: scale(0.98);
+}
+
+.chevron-right {
+  transition: transform 0.3s ease;
+}
+
+.topic-card:hover .chevron-right {
+  transform: translateX(4px);
+}
+
+.goal-text {
+  @apply text-muted-foreground;
+  border-left: 2px solid hsl(var(--primary));
+  padding-left: 0.75rem;
+}

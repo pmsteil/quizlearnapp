@@ -1,0 +1,58 @@
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
+import { Button } from '@/components/ui/button';
+import { useAuth } from '@/lib/context/AuthContext';
+import { useState } from 'react';
+import { AuthDialog } from './AuthDialog';
+
+export function UserMenu() {
+  const { user, logout, isAuthenticated } = useAuth();
+  const [showAuthDialog, setShowAuthDialog] = useState(false);
+
+  if (!isAuthenticated) {
+    return (
+      <>
+        <Button
+          variant="ghost"
+          size="icon"
+          className="w-12 h-12 rounded-full"
+          onClick={() => setShowAuthDialog(true)}
+        >
+          <span className="text-lg">?</span>
+        </Button>
+        <AuthDialog 
+          open={showAuthDialog} 
+          onOpenChange={setShowAuthDialog} 
+        />
+      </>
+    );
+  }
+
+  return (
+    <DropdownMenu>
+      <DropdownMenuTrigger asChild>
+        <Button
+          variant="ghost"
+          size="icon"
+          className="w-12 h-12 rounded-full bg-secondary"
+        >
+          <span className="text-lg">
+            {user?.name.split(' ').map(n => n[0]).join('')}
+          </span>
+        </Button>
+      </DropdownMenuTrigger>
+      <DropdownMenuContent align="end" className="w-48">
+        <DropdownMenuItem className="font-medium">
+          {user?.name}
+        </DropdownMenuItem>
+        <DropdownMenuItem onClick={logout}>
+          Logout
+        </DropdownMenuItem>
+      </DropdownMenuContent>
+    </DropdownMenu>
+  );
+}
