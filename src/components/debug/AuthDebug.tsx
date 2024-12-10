@@ -14,7 +14,7 @@ export function AuthDebug() {
           auth: {
             user: user ? {
               email: user.email,
-              role: user.role
+              roles: user.roles
             } : null
           }
         }, null, 2)}
