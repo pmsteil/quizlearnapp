@@ -1,24 +1,27 @@
 import { createContext, useContext, useState, useEffect } from 'react';
-import { UserModel } from '../db/models/user';
-import type { User } from '../types/database';
-import { debug } from '../utils/debug';
+import { User } from '@/types/user';
+import { AuthService } from '@/lib/services/auth';
 
-interface AuthContextType {
+export interface AuthContextType {
   user: User | null;
+  signup: (email: string, password: string, name: string) => Promise<void>;
   login: (email: string, password: string) => Promise<void>;
-  logout: () => void;
+  logout: () => Promise<void>;
+  isAuthenticated: boolean;
 }
 
-const AuthContext = createContext<AuthContextType | undefined>(undefined);
+const AuthContext = createContext<AuthContextType | null>(null);
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<User | null>(() => {
+    // Initialize from localStorage to persist auth state
     const savedUser = localStorage.getItem('user');
     return savedUser ? JSON.parse(savedUser) : null;
   });
+  const [isAuthenticated, setIsAuthenticated] = useState(() => !!localStorage.getItem('user'));
 
   useEffect(() => {
-    debug.log('Auth state changed:', user ? { email: user.email, role: user.role } : 'logged out');
+    // Persist auth state
     if (user) {
       localStorage.setItem('user', JSON.stringify(user));
     } else {
@@ -26,28 +29,37 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   }, [user]);
 
-  const login = async (email: string, password: string) => {
-    const authenticatedUser = await UserModel.authenticate(email, password);
-    debug.log('Login successful:', { email: authenticatedUser?.email, role: authenticatedUser?.role });
-    setUser(authenticatedUser);
+  const signup = async (email: string, password: string, name: string) => {
+    const newUser = await AuthService.register(email, password, name);
+    setUser(newUser);
+    setIsAuthenticated(true);
   };
 
-  const logout = () => {
-    debug.log('Logging out user');
+  const login = async (email: string, password: string) => {
+    const loggedInUser = await AuthService.login(email, password);
+    if (loggedInUser) {
+      setUser(loggedInUser);
+      setIsAuthenticated(true);
+    }
+  };
+
+  const logout = async () => {
+    localStorage.removeItem('user');
     setUser(null);
+    setIsAuthenticated(false);
   };
 
   return (
-    <AuthContext.Provider value={{ user, login, logout }}>
+    <AuthContext.Provider value={{ user, signup, login, logout, isAuthenticated }}>
       {children}
     </AuthContext.Provider>
   );
 }
 
-export const useAuth = () => {
+export function useAuth() {
   const context = useContext(AuthContext);
-  if (context === undefined) {
+  if (!context) {
     throw new Error('useAuth must be used within an AuthProvider');
   }
   return context;
-};
+}

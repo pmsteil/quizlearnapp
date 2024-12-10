@@ -1,3 +1,5 @@
+import { User } from '@/types/user';
+
 export async function hashPassword(password: string): Promise<string> {
   const encoder = new TextEncoder();
   const data = encoder.encode(password);
@@ -25,8 +27,8 @@ export function validatePassword(password: string): boolean {
 }
 
 export const hasRole = (user: User | null, requiredRole: string): boolean => {
-  if (!user) return false;
-  return user.role === requiredRole;
+  if (!user || !user.roles) return false;
+  return user.roles.includes(requiredRole);
 };
 
 export const isAdmin = (user: User | null): boolean => {

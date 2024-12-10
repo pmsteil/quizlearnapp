@@ -1,7 +1,7 @@
 import { PageLayout } from '../shared/PageLayout';
 import { DatabaseTables } from './DatabaseTables';
 
-export default function AdminPage() {
+export function AdminPage() {
   return (
     <PageLayout>
       <div className="container mx-auto py-6">
@@ -11,3 +11,5 @@ export default function AdminPage() {
     </PageLayout>
   );
 }
+
+export default AdminPage;

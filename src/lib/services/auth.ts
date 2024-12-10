@@ -1,15 +1,21 @@
 import { UserModel } from '../db/models/user';
-import type { User } from '../types/database';
+import { User } from '@/types/user';
 
 export class AuthService {
-  static async login(email: string, password: string): Promise<User> {
+  static async login(email: string, password: string): Promise<User | null> {
     if (!email || !password) {
       throw new Error('Email and password are required');
     }
 
     try {
       const user = await UserModel.authenticate(email, password);
-      return user;
+      if (user) {
+        return {
+          ...user,
+          roles: user.roles || ['role_user']
+        };
+      }
+      return null;
     } catch (error) {
       console.error('Login error:', error);
       throw error;
@@ -22,7 +28,11 @@ export class AuthService {
     }
 
     try {
-      return await UserModel.create(email, password, name);
+      const user = await UserModel.create(email, password, name);
+      return {
+        ...user,
+        roles: user.roles || ['role_user']
+      };
     } catch (error) {
       console.error('Registration error:', error);
       throw error;
@@ -30,15 +40,24 @@ export class AuthService {
   }
 
   static async verify(email: string): Promise<User | null> {
-    if (!email) {
-      return null;
-    }
+    if (!email) return null;
 
     try {
-      return await UserModel.getByEmail(email);
+      const user = await UserModel.getByEmail(email);
+      if (user) {
+        return {
+          ...user,
+          roles: user.roles || ['role_user']
+        };
+      }
+      return null;
     } catch (error) {
       console.error('Verification error:', error);
       return null;
     }
+  }
+
+  static async getUser(): Promise<User | null> {
+    return null;
   }
 }

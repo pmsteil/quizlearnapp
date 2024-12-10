@@ -1,6 +1,5 @@
 import { useState, useEffect, useCallback, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { TopicService } from '@/lib/services/topic';
 import type { Topic } from '@/lib/types';
@@ -22,7 +21,6 @@ export default function TopicsList() {
   const [topics, setTopics] = useState<Topic[]>([]);
   const navigate = useNavigate();
   const { user } = useAuth();
-  const [newTopic, setNewTopic] = useState('');
   const [sortBy, setSort] = useState('recent');
   const [isLoading, setIsLoading] = useState(true);
   const [isCreating, setIsCreating] = useState(false);

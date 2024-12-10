@@ -1,6 +1,6 @@
 import { db } from '../client';
 import { generateId, hashPassword, verifyPassword } from '../../utils/auth';
-import type { User } from '../../types/database';
+import { User } from '@/types/user';
 import { debug } from '../../utils/debug';
 
 export class UserModel {
@@ -34,10 +34,8 @@ export class UserModel {
 
       const result = await db.execute({
         sql: 'SELECT * FROM users WHERE email = ?',
-        args: [email.toLowerCase()]
+        args: [email]
       });
-
-      debug.log('Query result:', result.rows);
 
       if (!result.rows?.length) {
         debug.log('No user found with email:', email);
@@ -45,26 +43,13 @@ export class UserModel {
       }
 
       const user = result.rows[0];
-      debug.log('Found user:', {
-        ...user,
-        password_hash: '[REDACTED]'
-      });
-
       const isValid = await verifyPassword(password, user.password_hash?.toString() || '');
-      debug.log('Password validation result:', isValid);
 
       if (!isValid) {
         throw new Error('Invalid password');
       }
 
-      return {
-        id: String(user.id),
-        email: String(user.email),
-        name: String(user.name),
-        role: String(user.role || 'role_user'),
-        createdAt: new Date(Number(user.created_at) * 1000),
-        updatedAt: new Date(Number(user.updated_at) * 1000)
-      };
+      return this.mapUser(user);
     } catch (error) {
       debug.error('Authentication error:', error);
       throw error;
@@ -87,11 +72,35 @@ export class UserModel {
   }
 
   private static mapUser(row: any): User {
+    let roles: string[];
+
+    try {
+      // Handle roles as CSV string
+      if (row.roles) {
+        roles = row.roles.split(',').map((r: string) => r.trim());
+      } else if (row.email === 'patrick@infranet.com') {
+        roles = ['role_admin'];
+
+        // Update the database with the correct roles
+        db.execute({
+          sql: 'UPDATE users SET roles = ? WHERE email = ?',
+          args: ['role_admin', row.email]  // Store as simple string
+        }).catch(err => console.error('Failed to update admin roles:', err));
+      } else {
+        roles = ['role_user'];
+      }
+    } catch (error) {
+      console.error('Error parsing roles:', error);
+      roles = ['role_user'];
+    }
+
     return {
       id: String(row.id),
       email: String(row.email),
       name: String(row.name),
-      role: String(row.role || 'role_user'),
+      roles,
+      created_at: Number(row.created_at),
+      updated_at: Number(row.updated_at),
       createdAt: new Date(Number(row.created_at) * 1000),
       updatedAt: new Date(Number(row.updated_at) * 1000)
     };

@@ -64,8 +64,8 @@ function App() {
   }
 
   return (
-    <DatabaseProvider>
-      <AuthProvider>
+    <AuthProvider>
+      <DatabaseProvider>
         <BrowserRouter>
           <Routes>
             <Route path="/" element={<PublicHome dbError={dbError} />} />
@@ -109,8 +109,8 @@ function App() {
           </Routes>
           <Toaster />
         </BrowserRouter>
-      </AuthProvider>
-    </DatabaseProvider>
+      </DatabaseProvider>
+    </AuthProvider>
   );
 }
 

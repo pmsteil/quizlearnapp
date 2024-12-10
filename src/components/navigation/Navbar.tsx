@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useLocation, useNavigate, Link } from 'react-router-dom';
-import { Brain, Database } from 'lucide-react';
+import { Brain, LayoutDashboard, ShieldCheck } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useAuth } from '@/lib/context/AuthContext';
 import { TopicService } from '@/lib/services/topic';
@@ -8,6 +8,12 @@ import type { Topic } from '@/lib/types';
 import { toast } from '@/components/ui/use-toast';
 import { UserMenu } from '../auth/UserMenu';
 import { ModeToggle } from '@/components/theme/mode-toggle';
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 
 export default function Navbar() {
   const location = useLocation();
@@ -15,6 +21,7 @@ export default function Navbar() {
   const { user } = useAuth();
   const isNotHome = location.pathname !== '/';
   const [topic, setTopic] = useState<Topic | null>(null);
+  const isAdmin = user?.roles?.includes('role_admin');
 
   useEffect(() => {
     const loadTopic = async () => {
@@ -102,12 +109,40 @@ export default function Navbar() {
 
           <div className="flex items-center space-x-4">
             {isNotHome && (
-              <Button
-                variant="ghost"
-                onClick={() => navigate('/dashboard')}
-              >
-                Dashboard
-              </Button>
+              <TooltipProvider>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      onClick={() => navigate('/dashboard')}
+                    >
+                      <LayoutDashboard className="h-5 w-5" />
+                    </Button>
+                  </TooltipTrigger>
+                  <TooltipContent>
+                    <p>Dashboard</p>
+                  </TooltipContent>
+                </Tooltip>
+              </TooltipProvider>
+            )}
+            {isAdmin && (
+              <TooltipProvider>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      onClick={() => navigate('/admin')}
+                    >
+                      <ShieldCheck className="h-5 w-5" />
+                    </Button>
+                  </TooltipTrigger>
+                  <TooltipContent>
+                    <p>Admin</p>
+                  </TooltipContent>
+                </Tooltip>
+              </TooltipProvider>
             )}
             <ModeToggle />
             <UserMenu />

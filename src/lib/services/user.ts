@@ -1,8 +1,8 @@
 import { UserModel } from '../db/models/user';
-import type { User } from '../types/database';
+import { User } from '@/types/user';
 
 export class UserService {
-  static async login(email: string, password: string): Promise<User> {
+  static async login(email: string, password: string): Promise<User | null> {
     return UserModel.authenticate(email, password);
   }
 

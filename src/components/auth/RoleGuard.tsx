@@ -1,5 +1,6 @@
-import { useAuth } from '@/lib/context/AuthContext';
+import { useEffect } from 'react';
 import { Navigate } from 'react-router-dom';
+import { useAuth } from '@/lib/context/AuthContext';
 import { debug } from '@/lib/utils/debug';
 
 interface RoleGuardProps {
@@ -8,32 +9,36 @@ interface RoleGuardProps {
 }
 
 export function RoleGuard({ children, allowedRoles }: RoleGuardProps) {
-  const { user } = useAuth();
+  const { user, isAuthenticated } = useAuth();
 
-  debug.log('RoleGuard Check:', {
-    user: user ? {
-      email: user.email,
-      role: user.role,
-      // Log the full user object in development
-      _debug_full_user: process.env.NODE_ENV === 'development' ? user : undefined
-    } : null,
-    allowedRoles,
-    hasAccess: user && allowedRoles.includes(user.role),
-    roleMatch: user ? {
-      userRole: user.role,
-      expectedRole: allowedRoles[0],
-      matches: allowedRoles.includes(user.role),
-      exactComparison: `'${user.role}' === '${allowedRoles[0]}'`
-    } : null
-  });
+  useEffect(() => {
+    debug.log('RoleGuard check:', {
+      user: user?.email,
+      roles: user?.roles,
+      allowedRoles,
+      hasAccess: user && user.roles?.some(role => allowedRoles.includes(role)),
+      details: {
+        userRoles: user?.roles,
+        requiredRoles: allowedRoles,
+        matches: user?.roles?.filter(role => allowedRoles.includes(role)),
+        exactComparison: `[${user?.roles?.join(', ')}] overlaps with [${allowedRoles.join(', ')}]`
+      }
+    });
+  }, [user, allowedRoles]);
 
-  if (!user || !allowedRoles.includes(user.role)) {
-    debug.log('Access denied, redirecting to home', {
-      reason: !user ? 'No user' : 'Role mismatch',
-      userRole: user?.role,
+  // First check if user is authenticated
+  if (!isAuthenticated) {
+    return <Navigate to="/" replace />;
+  }
+
+  // Then check role access
+  if (!user?.roles?.some(role => allowedRoles.includes(role))) {
+    debug.log('Access denied - insufficient permissions:', {
+      userEmail: user?.email,
+      userRoles: user?.roles,
       requiredRoles: allowedRoles
     });
-    return <Navigate to="/" replace />;
+    return <Navigate to="/dashboard" replace />;
   }
 
   return <>{children}</>;
