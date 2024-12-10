@@ -16,6 +16,7 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { ErrorMessage } from '@/components/ui/error-message';
 import { validateConfig } from '@/lib/config/validator';
+import { NewTopicForm } from './NewTopicForm';
 
 export default function TopicsList() {
   const [topics, setTopics] = useState<Topic[]>([]);
@@ -90,9 +91,8 @@ export default function TopicsList() {
     loadTopics();
   }, [loadTopics]);
 
-  const handleStartNewTopic = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!newTopic.trim() || !user?.id || isCreating) return;
+  const handleCreateTopic = async (topicTitle: string) => {
+    if (!user?.id) return;
 
     setIsCreating(true);
     try {
@@ -113,7 +113,7 @@ export default function TopicsList() {
 
       const topic = await TopicService.createTopic(
         user.id,
-        newTopic,
+        topicTitle,
         'Start your learning journey with personalized guidance',
         defaultLessonPlan
       );
@@ -141,7 +141,6 @@ export default function TopicsList() {
       };
 
       setTopics(prevTopics => [...prevTopics, uiTopic]);
-      setNewTopic('');
       navigate(`/topic/${uiTopic.id}`);
     } catch (error) {
       console.error('Failed to create topic:', error);
@@ -168,30 +167,6 @@ export default function TopicsList() {
       }
     });
   }, [topics, sortBy]);
-
-  // Debounce input changes
-  const handleInputChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
-    setNewTopic(e.target.value);
-  }, []);
-
-  // Memoize the form to prevent re-renders
-  const topicForm = useMemo(() => (
-    <form onSubmit={handleStartNewTopic} className="flex flex-col sm:flex-row gap-4">
-      <Input
-        className="flex-1"
-        placeholder="Enter a topic to start learning..."
-        value={newTopic}
-        onChange={handleInputChange}
-      />
-      <Button
-        type="submit"
-        className="w-full sm:w-auto whitespace-nowrap"
-        disabled={isCreating || !newTopic.trim()}
-      >
-        Start Learning
-      </Button>
-    </form>
-  ), [newTopic, isCreating, handleStartNewTopic]);
 
   if (configError) {
     console.log('TopicsList: Rendering config error:', configError);
@@ -259,7 +234,10 @@ export default function TopicsList() {
           </DropdownMenu>
         </div>
 
-        {topicForm}
+        <NewTopicForm
+          onSubmit={handleCreateTopic}
+          isCreating={isCreating}
+        />
 
         {topics.length === 0 ? (
           <div className="text-center py-12">

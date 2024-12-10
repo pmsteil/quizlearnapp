@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef, useCallback, useLayoutEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { Brain } from 'lucide-react';
 import { PageLayout } from '../shared/PageLayout';
@@ -31,6 +31,7 @@ function convertSubtopics(subtopics: any[]): Subtopic[] {
 }
 
 export default function TopicLearning() {
+  console.log('RENDER - TopicLearning component');
   const { id } = useParams();
   const navigate = useNavigate();
   const { toast } = useToast();
@@ -38,6 +39,14 @@ export default function TopicLearning() {
   const [topic, setTopic] = useState<Topic | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
+  const [isEditingDescription, setIsEditingDescription] = useState(false);
+  const [editedDescription, setEditedDescription] = useState('');
+  const [cursorPosition, setCursorPosition] = useState<number | null>(null);
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
+
+  useEffect(() => {
+    console.log('EFFECT - Topic changed:', topic?.description);
+  }, [topic]);
 
   useEffect(() => {
     const loadTopic = async () => {
@@ -50,14 +59,11 @@ export default function TopicLearning() {
           return;
         }
         setTopic(loadedTopic);
-
-        // Initialize chat with a welcome message
         setMessages([{
           id: 1,
           type: 'ai',
           content: `Welcome to ${loadedTopic.title}! I'm here to help you learn. What would you like to know about this topic?`
         }]);
-
       } catch (error) {
         console.error('Error loading topic:', error);
         toast({
@@ -73,6 +79,56 @@ export default function TopicLearning() {
 
     loadTopic();
   }, [id, navigate, toast]);
+
+  // Effect to handle cursor position
+  useEffect(() => {
+    if (isEditingDescription && textareaRef.current && cursorPosition !== null) {
+      textareaRef.current.focus();
+      textareaRef.current.setSelectionRange(cursorPosition, cursorPosition);
+    }
+  }, [isEditingDescription, cursorPosition]);
+
+  const startEditingDescription = () => {
+    if (!topic) return;
+    const newValue = topic.description;
+    setEditedDescription(newValue);
+    setIsEditingDescription(true);
+    setCursorPosition(newValue.length);
+  };
+
+  const handleDescriptionChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
+    const newValue = e.target.value;
+    setEditedDescription(newValue);
+    setCursorPosition(e.target.selectionStart);
+  };
+
+  const handleDescriptionSave = async () => {
+    if (!topic) return;
+
+    try {
+      await db.execute({
+        sql: 'UPDATE topics SET description = ? WHERE id = ?',
+        args: [editedDescription, topic.id]
+      });
+
+      setTopic(prev => prev ? { ...prev, description: editedDescription } : null);
+      setIsEditingDescription(false);
+      setCursorPosition(null);
+    } catch (error) {
+      console.error('Error updating topic description:', error);
+    }
+  };
+
+  const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
+    if (e.key === 'Enter' && !e.shiftKey) {
+      e.preventDefault();
+      handleDescriptionSave();
+    } else if (e.key === 'Escape') {
+      setEditedDescription(topic?.description || '');
+      setIsEditingDescription(false);
+      setCursorPosition(null);
+    }
+  };
 
   const handleSendMessage = async (content: string) => {
     const newMessage: Message = {
@@ -208,6 +264,29 @@ export default function TopicLearning() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      {isEditingDescription ? (
+        <textarea
+          ref={textareaRef}
+          name="description"
+          className="w-full p-2 text-sm bg-background border rounded-md"
+          value={editedDescription}
+          onChange={handleDescriptionChange}
+          onBlur={handleDescriptionSave}
+          onKeyDown={handleKeyDown}
+          onSelect={(e) => {
+            const target = e.target as HTMLTextAreaElement;
+            setCursorPosition(target.selectionStart);
+          }}
+        />
+      ) : (
+        <p
+          className="text-sm text-muted-foreground cursor-pointer hover:text-foreground"
+          onClick={startEditingDescription}
+        >
+          {topic?.description}
+        </p>
+      )}
     </PageLayout>
   );
 }
