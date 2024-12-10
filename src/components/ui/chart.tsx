@@ -10,6 +10,8 @@ interface ChartConfig {
       dark?: string;
     };
     color?: string;
+    label?: string;
+    icon?: React.ComponentType;
   };
 }
 
@@ -342,6 +344,11 @@ function getPayloadConfigFromPayload(
     ? config[configLabelKey]
     : config[key as keyof typeof config];
 }
+
+const THEMES = {
+  light: '',
+  dark: '[data-theme="dark"]',
+} as const;
 
 export {
   ChartContainer,
