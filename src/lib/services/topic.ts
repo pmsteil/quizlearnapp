@@ -1,6 +1,6 @@
 import { TopicModel } from '../db/models/topic';
 import type { Topic, LessonPlan } from '../types/database';
-import { db } from '../db/client';
+import { dbClient } from '../db/client';
 import { QuestionService } from './question';
 
 export interface TopicProgress {
@@ -51,7 +51,7 @@ export class TopicService {
 
   static async getTopicProgress(topicId: string): Promise<TopicProgress> {
     try {
-      const result = await db.execute({
+      const result = await dbClient.execute({
         sql: `
           SELECT
             (SELECT COUNT(*) FROM user_progress WHERE topic_id = ? AND is_correct = 1) as correct_answers,
