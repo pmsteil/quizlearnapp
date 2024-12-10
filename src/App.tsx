@@ -10,6 +10,7 @@ import TopicLearning from '@/components/topic/TopicLearning';
 import NewTopicSetup from '@/components/topics/NewTopicSetup';
 import PublicHome from '@/components/home/PublicHome';
 import AdminPage from '@/components/admin/AdminPage';
+import { RoleGuard } from '@/components/auth/RoleGuard';
 
 function App() {
   const [dbError, setDbError] = useState<{title: string; message: string} | null>(null);
@@ -94,7 +95,14 @@ function App() {
                     </ProtectedRoute>
                   }
                 />
-                <Route path="/admin" element={<AdminPage />} />
+                <Route
+                  path="/admin"
+                  element={
+                    <RoleGuard allowedRoles={['role_admin']}>
+                      <AdminPage />
+                    </RoleGuard>
+                  }
+                />
               </>
             )}
             <Route path="*" element={<Navigate to="/" replace />} />

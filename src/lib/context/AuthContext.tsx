@@ -1,74 +1,53 @@
-import { createContext, useContext, useEffect, useState } from 'react';
+import { createContext, useContext, useState, useEffect } from 'react';
+import { UserModel } from '../db/models/user';
 import type { User } from '../types/database';
-import { UserService } from '../services/user';
+import { debug } from '../utils/debug';
 
 interface AuthContextType {
   user: User | null;
   login: (email: string, password: string) => Promise<void>;
-  signup: (email: string, password: string, name: string) => Promise<void>;
   logout: () => void;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
-  const [user, setUser] = useState<User | null>(null);
+  const [user, setUser] = useState<User | null>(() => {
+    const savedUser = localStorage.getItem('user');
+    return savedUser ? JSON.parse(savedUser) : null;
+  });
 
   useEffect(() => {
-    const checkAuth = async () => {
-      try {
-        const storedUser = localStorage.getItem('user');
-        if (storedUser) {
-          const parsedUser = JSON.parse(storedUser);
-          setUser({
-            ...parsedUser,
-            createdAt: new Date(parsedUser.createdAt),
-            updatedAt: new Date(parsedUser.updatedAt)
-          });
-        }
-      } catch (error) {
-        console.error('Error checking auth:', error);
-      }
-    };
-    checkAuth();
-  }, []);
+    debug.log('Auth state changed:', user ? { email: user.email, role: user.role } : 'logged out');
+    if (user) {
+      localStorage.setItem('user', JSON.stringify(user));
+    } else {
+      localStorage.removeItem('user');
+    }
+  }, [user]);
 
   const login = async (email: string, password: string) => {
-    const authenticatedUser = await UserService.login(email, password);
-    setUser({
-      ...authenticatedUser,
-      createdAt: new Date(authenticatedUser.createdAt),
-      updatedAt: new Date(authenticatedUser.updatedAt)
-    });
-    localStorage.setItem('user', JSON.stringify(authenticatedUser));
-  };
-
-  const signup = async (email: string, password: string, name: string) => {
-    const newUser = await UserService.signup(email, password, name);
-    setUser({
-      ...newUser,
-      createdAt: new Date(newUser.createdAt),
-      updatedAt: new Date(newUser.updatedAt)
-    });
-    localStorage.setItem('user', JSON.stringify(newUser));
+    const authenticatedUser = await UserModel.authenticate(email, password);
+    debug.log('Login successful:', { email: authenticatedUser?.email, role: authenticatedUser?.role });
+    setUser(authenticatedUser);
   };
 
   const logout = () => {
+    debug.log('Logging out user');
     setUser(null);
-    localStorage.removeItem('user');
   };
 
   return (
-    <AuthContext.Provider value={{ user, login, signup, logout }}>
+    <AuthContext.Provider value={{ user, login, logout }}>
       {children}
     </AuthContext.Provider>
   );
 }
 
-export function useAuth() {
+export const useAuth = () => {
   const context = useContext(AuthContext);
   if (context === undefined) {
     throw new Error('useAuth must be used within an AuthProvider');
   }
   return context;
-}
+};

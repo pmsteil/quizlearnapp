@@ -169,6 +169,30 @@ export default function TopicsList() {
     });
   }, [topics, sortBy]);
 
+  // Debounce input changes
+  const handleInputChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
+    setNewTopic(e.target.value);
+  }, []);
+
+  // Memoize the form to prevent re-renders
+  const topicForm = useMemo(() => (
+    <form onSubmit={handleStartNewTopic} className="flex flex-col sm:flex-row gap-4">
+      <Input
+        className="flex-1"
+        placeholder="Enter a topic to start learning..."
+        value={newTopic}
+        onChange={handleInputChange}
+      />
+      <Button
+        type="submit"
+        className="w-full sm:w-auto whitespace-nowrap"
+        disabled={isCreating || !newTopic.trim()}
+      >
+        Start Learning
+      </Button>
+    </form>
+  ), [newTopic, isCreating, handleStartNewTopic]);
+
   if (configError) {
     console.log('TopicsList: Rendering config error:', configError);
     return (
@@ -235,21 +259,7 @@ export default function TopicsList() {
           </DropdownMenu>
         </div>
 
-        <form onSubmit={handleStartNewTopic} className="flex flex-col sm:flex-row gap-4">
-          <Input
-            className="flex-1"
-            placeholder="Enter a topic to start learning..."
-            value={newTopic}
-            onChange={(e) => setNewTopic(e.target.value)}
-          />
-          <Button
-            type="submit"
-            className="w-full sm:w-auto whitespace-nowrap"
-            disabled={isCreating || !newTopic.trim()}
-          >
-            Start Learning
-          </Button>
-        </form>
+        {topicForm}
 
         {topics.length === 0 ? (
           <div className="text-center py-12">

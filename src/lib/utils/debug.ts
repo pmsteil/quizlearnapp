@@ -1,4 +1,6 @@
-const isDev = import.meta.env.DEV;
+const isDev = typeof process !== 'undefined'
+  ? process.env.NODE_ENV !== 'production'
+  : import.meta.env.DEV;
 
 export const debug = {
   log: (...args: any[]) => {

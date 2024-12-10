@@ -61,6 +61,7 @@ export class UserModel {
         id: String(user.id),
         email: String(user.email),
         name: String(user.name),
+        role: String(user.role || 'role_user'),
         createdAt: new Date(Number(user.created_at) * 1000),
         updatedAt: new Date(Number(user.updated_at) * 1000)
       };
@@ -87,11 +88,12 @@ export class UserModel {
 
   private static mapUser(row: any): User {
     return {
-      id: row.id,
-      email: row.email,
-      name: row.name,
-      createdAt: new Date(row.created_at * 1000),
-      updatedAt: new Date(row.updated_at * 1000)
+      id: String(row.id),
+      email: String(row.email),
+      name: String(row.name),
+      role: String(row.role || 'role_user'),
+      createdAt: new Date(Number(row.created_at) * 1000),
+      updatedAt: new Date(Number(row.updated_at) * 1000)
     };
   }
 }

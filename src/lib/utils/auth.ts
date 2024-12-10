@@ -23,3 +23,12 @@ export function validateEmail(email: string): boolean {
 export function validatePassword(password: string): boolean {
   return password.length >= 6;
 }
+
+export const hasRole = (user: User | null, requiredRole: string): boolean => {
+  if (!user) return false;
+  return user.role === requiredRole;
+};
+
+export const isAdmin = (user: User | null): boolean => {
+  return hasRole(user, 'role_admin');
+};

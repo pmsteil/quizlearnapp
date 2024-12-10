@@ -8,7 +8,8 @@
     "build": "tsc -b && vite build",
     "lint": "eslint .",
     "preview": "vite preview",
-    "populate-test-data": "tsx scripts/populate_test_topics.ts"
+    "populate-test-data": "tsx scripts/populate_test_topics.ts",
+    "migrate": "tsx src/scripts/migrate_db.ts"
   },
   "dependencies": {
     "@hookform/resolvers": "^3.9.0",
