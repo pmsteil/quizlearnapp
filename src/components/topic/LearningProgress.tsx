@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { Progress } from '@/components/ui/progress';
 import { Card } from '@/components/ui/card';
-import { CheckCircle, XCircle, Clock, MoreVertical, Trash2, Square, Pencil } from 'lucide-react';
+import { CheckCircle, XCircle, MoreVertical, Trash2, Square, Pencil } from 'lucide-react';
 import { TopicService, type TopicProgress } from '@/lib/services/topic';
 import { formatDuration } from '@/lib/utils/learning';
 import type { Topic } from '@/lib/types/database';

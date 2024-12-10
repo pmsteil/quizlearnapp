@@ -7,33 +7,24 @@ import { useNavigate } from 'react-router-dom';
 import Navbar from '@/components/navigation/Navbar';
 
 export default function PublicHome() {
-  console.log('PublicHome rendering...');
   const [showAuthDialog, setShowAuthDialog] = useState(false);
   const { user } = useAuth();
   const navigate = useNavigate();
 
-  console.log('PublicHome state:', { user, showAuthDialog });
-
   useEffect(() => {
-    console.log('PublicHome useEffect - user changed:', user);
     if (user) {
-      console.log('Navigating to dashboard...');
       navigate('/dashboard');
     }
   }, [user, navigate]);
 
   const handleGetStarted = () => {
-    console.log('handleGetStarted clicked');
     if (user) {
-      console.log('User exists, navigating to dashboard...');
       navigate('/dashboard');
     } else {
-      console.log('No user, showing auth dialog...');
       setShowAuthDialog(true);
     }
   };
 
-  console.log('PublicHome rendering UI...');
   return (
     <div className="min-h-screen bg-background">
       <Navbar />

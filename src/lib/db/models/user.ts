@@ -29,7 +29,7 @@ export class UserModel {
     };
   }
 
-  static async findByEmail(email: string): Promise<User | null> {
+  static async getByEmail(email: string): Promise<User | null> {
     const result = await db.execute({
       sql: 'SELECT * FROM users WHERE email = ?',
       args: [email]
@@ -47,6 +47,10 @@ export class UserModel {
       created_at: user.created_at as number,
       updated_at: user.updated_at as number
     };
+  }
+
+  static async findByEmail(email: string): Promise<User | null> {
+    return this.getByEmail(email);
   }
 
   static async verifyPassword(email: string, password: string): Promise<boolean> {
@@ -69,7 +73,7 @@ export class UserModel {
       throw new Error('Invalid email or password');
     }
 
-    const user = await this.findByEmail(email);
+    const user = await this.getByEmail(email);
     if (!user) {
       throw new Error('User not found');
     }

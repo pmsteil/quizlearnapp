@@ -36,18 +36,10 @@ export default function TopicLearning() {
 
       try {
         const loadedTopic = await TopicService.getTopic(id);
-        console.log('Loaded topic:', loadedTopic); // Debug log
-
         if (!loadedTopic) {
-          toast({
-            title: "Topic Not Found",
-            description: "The requested topic could not be found.",
-            variant: "destructive"
-          });
           navigate('/dashboard');
           return;
         }
-
         setTopic(loadedTopic);
 
         // Initialize chat with a welcome message

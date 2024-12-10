@@ -30,7 +30,6 @@ export default function TopicsList() {
 
     try {
       const userTopics = await TopicService.getUserTopics(user.id);
-      console.log('Loaded topics:', userTopics); // Debug log
       setTopics(userTopics);
     } catch (error) {
       console.error('Failed to load topics:', error);
@@ -80,7 +79,8 @@ export default function TopicsList() {
         defaultLessonPlan
       );
 
-      console.log('Created topic:', topic); // Debug log
+      setTopics(prevTopics => [...prevTopics, topic]);
+      setIsCreating(false);
 
       // Reload topics to ensure we have the latest data
       await loadTopics();

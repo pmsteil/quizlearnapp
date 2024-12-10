@@ -4,10 +4,9 @@ import { useTheme } from 'next-themes';
 import { useNavigate, useLocation, Link } from 'react-router-dom';
 import { UserMenu } from '../auth/UserMenu';
 import { useAuth } from '@/lib/context/AuthContext';
-import { cn } from '@/lib/utils';
 import { useEffect, useState } from 'react';
 import { TopicService } from '@/lib/services/topic';
-import type { Topic } from '@/lib/types/database';
+import type { Topic } from '@/lib/types';
 
 export default function Navbar() {
   const { theme, setTheme } = useTheme();
@@ -15,7 +14,7 @@ export default function Navbar() {
   const navigate = useNavigate();
   const location = useLocation();
   const isNotHome = location.pathname !== '/';
-  const [currentTopic, setCurrentTopic] = useState<Topic | null>(null);
+  const [topic, setTopic] = useState<Topic | null>(null);
 
   useEffect(() => {
     const loadTopic = async () => {
@@ -23,14 +22,18 @@ export default function Navbar() {
       if (topicMatch) {
         const topicId = topicMatch[1];
         try {
-          const topic = await TopicService.getTopic(topicId);
-          setCurrentTopic(topic);
+          const loadedTopic = await TopicService.getTopic(topicId);
+          if (loadedTopic) {
+            setTopic(loadedTopic);
+          } else {
+            setTopic(null);
+          }
         } catch (error) {
           console.error('Error loading topic:', error);
-          setCurrentTopic(null);
+          setTopic(null);
         }
       } else {
-        setCurrentTopic(null);
+        setTopic(null);
       }
     };
 
@@ -79,7 +82,7 @@ export default function Navbar() {
               ) : isAuthenticated && user ? (
                 <div className="min-w-0">
                   <h1 className="text-xl font-bold truncate">
-                    Welcome back, {user.name.split(' ')[0].charAt(0).toUpperCase() + user.name.split(' ')[0].slice(1).toLowerCase()}!
+                    {topic ? topic.title : `Welcome back, ${user.name.split(' ')[0].charAt(0).toUpperCase() + user.name.split(' ')[0].slice(1).toLowerCase()}!`}
                   </h1>
                   <p className="text-sm text-muted-foreground truncate">🔥 7 day streak | Today's Goal: 2/3</p>
                 </div>

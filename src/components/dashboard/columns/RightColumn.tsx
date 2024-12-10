@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { Card } from '@/components/ui/card';
 import { Progress } from '@/components/ui/progress';
 import { Calendar } from '@/components/ui/calendar';
-import { Brain, Clock, Trophy } from 'lucide-react';
+import { Clock, Trophy } from 'lucide-react';
 
 export default function RightColumn() {
   const [date, setDate] = useState<Date | undefined>(new Date());
@@ -19,7 +19,7 @@ export default function RightColumn() {
             </div>
             <Progress value={85} className="h-2" />
           </div>
-          
+
           <div className="grid grid-cols-2 gap-4">
             <div className="flex items-center gap-2">
               <Trophy className="w-4 h-4 text-yellow-500" />

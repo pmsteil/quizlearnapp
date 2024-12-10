@@ -33,7 +33,6 @@ export class TopicService {
   static async getUserTopics(userId: string): Promise<Topic[]> {
     try {
       const topics = await TopicModel.getByUserId(userId);
-      console.log('Retrieved topics:', topics); // Debug log
       return topics;
     } catch (error) {
       console.error('Error getting user topics:', error);

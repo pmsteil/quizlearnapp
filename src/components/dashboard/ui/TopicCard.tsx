@@ -1,26 +1,26 @@
-import { Card } from '@/components/ui/card';
-import { Progress } from '@/components/ui/progress';
-import { Badge } from '@/components/ui/badge';
-import { Clock } from 'lucide-react';
-import type { Topic } from '@/lib/types';
+import { cn } from "@/lib/utils";
+import type { Topic } from "@/lib/types";
+import { formatDistanceToNow } from "date-fns";
 
 interface TopicCardProps {
   topic: Topic;
+  className?: string;
 }
 
-export function TopicCard({ topic }: TopicCardProps) {
+export function TopicCard({ topic, className }: TopicCardProps) {
   return (
-    <div className="space-y-2">
-      <div className="flex justify-between items-center">
-        <span className="font-medium">{topic.name}</span>
-        <Badge variant={topic.status === 'behind' ? 'destructive' : 'default'}>
-          {topic.status}
-        </Badge>
+    <div className={cn("p-4 border rounded-lg", className)}>
+      <div className="flex justify-between items-start mb-2">
+        <div>
+          <h3 className="font-medium">{topic.title}</h3>
+          <p className="text-sm text-muted-foreground">{topic.description}</p>
+        </div>
+        <div className="text-sm font-medium">
+          {topic.progress}% Complete
+        </div>
       </div>
-      <Progress value={topic.progress} className="h-2" />
-      <div className="flex items-center text-sm text-muted-foreground">
-        <Clock className="w-4 h-4 mr-1" />
-        <span>{topic.lastActivity}</span>
+      <div className="text-xs text-muted-foreground">
+        Last updated: {formatDistanceToNow(new Date(topic.updated_at * 1000), { addSuffix: true })}
       </div>
     </div>
   );

@@ -1,4 +1,3 @@
-import { Card } from '@/components/ui/card';
 import LeftColumn from './columns/LeftColumn';
 import CenterColumn from './columns/CenterColumn';
 import RightColumn from './columns/RightColumn';
