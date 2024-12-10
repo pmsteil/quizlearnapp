@@ -6,14 +6,14 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { Button } from '@/components/ui/button';
 import { useAuth } from '@/lib/context/AuthContext';
-import { useState } from 'react';
 import { AuthDialog } from './AuthDialog';
+import { useState } from 'react';
 
 export function UserMenu() {
-  const { user, logout, isAuthenticated } = useAuth();
+  const { user, logout } = useAuth();
   const [showAuthDialog, setShowAuthDialog] = useState(false);
 
-  if (!isAuthenticated) {
+  if (!user) {
     return (
       <>
         <Button
@@ -24,10 +24,7 @@ export function UserMenu() {
         >
           <span className="text-lg">?</span>
         </Button>
-        <AuthDialog 
-          open={showAuthDialog} 
-          onOpenChange={setShowAuthDialog} 
-        />
+        <AuthDialog open={showAuthDialog} onOpenChange={setShowAuthDialog} />
       </>
     );
   }
@@ -41,13 +38,13 @@ export function UserMenu() {
           className="w-12 h-12 rounded-full bg-secondary"
         >
           <span className="text-lg">
-            {user?.name.split(' ').map(n => n[0]).join('')}
+            {user.name.split(' ').map(n => n[0]).join('')}
           </span>
         </Button>
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end" className="w-48">
         <DropdownMenuItem className="font-medium">
-          {user?.name}
+          {user.name}
         </DropdownMenuItem>
         <DropdownMenuItem onClick={logout}>
           Logout
