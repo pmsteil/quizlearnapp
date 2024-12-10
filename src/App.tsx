@@ -1,6 +1,5 @@
 import { useEffect, useState } from 'react';
 import { initializeApp } from './lib/init';
-import { ErrorMessage } from './components/ui/error-message';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { Toaster } from '@/components/ui/toaster';
 import { DatabaseProvider } from '@/lib/context/DatabaseContext';

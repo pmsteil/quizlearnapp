@@ -109,14 +109,6 @@ export default function Navbar() {
                 Dashboard
               </Button>
             )}
-            <Button
-              variant="ghost"
-              size="icon"
-              className="h-12 w-12 hidden sm:flex"
-              onClick={() => navigate('/admin')}
-            >
-              <Database className="h-6 w-6" />
-            </Button>
             <ModeToggle />
             <UserMenu />
           </div>

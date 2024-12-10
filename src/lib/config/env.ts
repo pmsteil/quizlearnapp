@@ -1,11 +1,13 @@
 interface Env {
   LIBSQL_DB_URL: string;
   LIBSQL_DB_AUTH_TOKEN: string;
+  IS_PRODUCTION: boolean;
 }
 
 export const env: Env = {
   LIBSQL_DB_URL: import.meta.env.VITE_LIBSQL_DB_URL || '',
   LIBSQL_DB_AUTH_TOKEN: import.meta.env.VITE_LIBSQL_DB_AUTH_TOKEN || '',
+  IS_PRODUCTION: import.meta.env.PROD || false,
 };
 
 // Validate required env vars

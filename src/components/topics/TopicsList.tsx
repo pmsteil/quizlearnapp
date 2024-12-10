@@ -14,7 +14,6 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
-import { handleDbError } from '@/lib/db/client';
 import { ErrorMessage } from '@/components/ui/error-message';
 import { validateConfig } from '@/lib/config/validator';
 

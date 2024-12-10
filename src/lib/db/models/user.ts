@@ -10,7 +10,7 @@ export class UserModel {
 
     try {
       const result = await db.execute({
-        sql: `INSERT INTO users (id, email, password, name, created_at, updated_at)
+        sql: `INSERT INTO users (id, email, password_hash, name, created_at, updated_at)
               VALUES (?, ?, ?, ?, ?, ?)
               RETURNING *`,
         args: [id, email, hashedPassword, name, timestamp, timestamp]
@@ -27,26 +27,44 @@ export class UserModel {
     }
   }
 
-  static async authenticate(email: string, password: string): Promise<User> {
+  static async authenticate(email: string, password: string): Promise<User | null> {
     try {
+      console.log('Attempting to authenticate user:', email);
+
       const result = await db.execute({
         sql: 'SELECT * FROM users WHERE email = ?',
-        args: [email]
+        args: [email.toLowerCase()]
       });
 
-      const user = result.rows?.[0];
-      if (!user || !user.password) {
+      console.log('Query result:', result.rows);
+
+      if (!result.rows?.length) {
+        console.log('No user found with email:', email);
         throw new Error('User not found');
       }
 
-      const isValid = await verifyPassword(password, user.password.toString());
+      const user = result.rows[0];
+      console.log('Found user:', {
+        ...user,
+        password_hash: '[REDACTED]'
+      });
+
+      const isValid = await verifyPassword(password, user.password_hash?.toString() || '');
+      console.log('Password validation result:', isValid);
+
       if (!isValid) {
         throw new Error('Invalid password');
       }
 
-      return this.mapUser(user);
+      return {
+        id: String(user.id),
+        email: String(user.email),
+        name: String(user.name),
+        createdAt: new Date(Number(user.created_at) * 1000),
+        updatedAt: new Date(Number(user.updated_at) * 1000)
+      };
     } catch (error) {
-      console.error('Error authenticating user:', error);
+      console.error('Authentication error:', error);
       throw error;
     }
   }
