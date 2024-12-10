@@ -13,7 +13,7 @@ interface MetricCardProps {
 
 export function MetricCard({ title, value, description, className, metric }: MetricCardProps) {
   if (metric) {
-    const Icon: LucideIcon | undefined = metric.icon;
+    const Icon = metric.icon as LucideIcon;
     return (
       <Card className={cn("", className)}>
         <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">

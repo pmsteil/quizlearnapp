@@ -10,6 +10,7 @@ import { useToast } from '@/hooks/use-toast';
 import { db } from '@/lib/db/client';
 import type { Message } from '@/lib/types';
 import type { Topic } from '@/lib/types/database';
+import type { Subtopic } from '@/lib/types';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -20,6 +21,14 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
+
+// Add this type conversion helper
+function convertSubtopics(subtopics: any[]): Subtopic[] {
+  return subtopics.map(s => ({
+    name: s.name,
+    status: s.status || 'upcoming'
+  }));
+}
 
 export default function TopicLearning() {
   const { id } = useParams();
@@ -165,13 +174,13 @@ export default function TopicLearning() {
                 topics={[{
                   name: topic.lessonPlan?.mainTopics?.[0]?.name || "Learning Path",
                   icon: Brain,
-                  subtopics: topic.lessonPlan?.mainTopics?.[0]?.subtopics || [
+                  subtopics: convertSubtopics(topic.lessonPlan?.mainTopics?.[0]?.subtopics || [
                     { name: 'Introduction', status: 'current' },
                     { name: 'Basic Concepts', status: 'upcoming' },
                     { name: 'Practice Exercises', status: 'upcoming' },
                     { name: 'Advanced Topics', status: 'upcoming' },
                     { name: 'Final Review', status: 'upcoming' }
-                  ]
+                  ])
                 }]}
               />
             </div>

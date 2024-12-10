@@ -1,22 +1,22 @@
 import type { Topic, LessonPlan } from '@/lib/types';
 
 export class TopicService {
-  static async createTopic(title: string, description: string): Promise<Topic> {
+  static async createTopic(): Promise<Topic> {
     // Implementation
     throw new Error('Not implemented');
   }
 
-  static async getTopic(id: string): Promise<Topic> {
+  static async getTopic(): Promise<Topic> {
     // Implementation
     throw new Error('Not implemented');
   }
 
-  static async updateTopic(id: string, updates: Partial<Topic>): Promise<Topic> {
+  static async updateTopic(): Promise<Topic> {
     // Implementation
     throw new Error('Not implemented');
   }
 
-  static async deleteTopic(id: string): Promise<void> {
+  static async deleteTopic(): Promise<void> {
     // Implementation
     throw new Error('Not implemented');
   }
@@ -26,7 +26,7 @@ export class TopicService {
     throw new Error('Not implemented');
   }
 
-  static async updateLessonPlan(topicId: string, lessonPlan: LessonPlan): Promise<void> {
+  static async updateLessonPlan(): Promise<void> {
     // Implementation
     throw new Error('Not implemented');
   }

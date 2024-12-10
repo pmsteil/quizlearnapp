@@ -1,9 +1,8 @@
-import { Card } from '@/components/ui/card';
 import { Progress } from '@/components/ui/progress';
 import { Badge } from '@/components/ui/badge';
 import { Clock } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
-import type { Topic } from '@/lib/types/database';
+import type { Topic } from '@/lib/types';
 
 interface TopicItemProps {
   topic: Topic;
@@ -18,7 +17,8 @@ export function TopicItem({ topic }: TopicItemProps) {
     return 'in-progress';
   };
 
-  const formatDate = (date: Date) => {
+  const formatDate = (timestamp: number) => {
+    const date = new Date(timestamp * 1000);
     const now = new Date();
     const diff = now.getTime() - date.getTime();
     const days = Math.floor(diff / (1000 * 60 * 60 * 24));
@@ -55,7 +55,7 @@ export function TopicItem({ topic }: TopicItemProps) {
       <div className="flex items-center justify-between text-sm text-muted-foreground">
         <div className="flex items-center space-x-2">
           <Clock className="w-4 h-4" />
-          <span>Last updated: {formatDate(topic.updatedAt)}</span>
+          <span>Last updated: {formatDate(topic.updated_at)}</span>
         </div>
         <span>{topic.progress}% Complete</span>
       </div>

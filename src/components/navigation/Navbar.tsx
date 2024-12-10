@@ -1,96 +1,114 @@
-import { Moon, Sun, Brain, ArrowLeft, Database } from 'lucide-react';
+import { useState, useEffect } from 'react';
+import { useLocation, useNavigate, Link } from 'react-router-dom';
+import { Brain, Database } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { useTheme } from 'next-themes';
-import { useNavigate, useLocation, Link } from 'react-router-dom';
-import { UserMenu } from '../auth/UserMenu';
 import { useAuth } from '@/lib/context/AuthContext';
-import { useEffect, useState } from 'react';
 import { TopicService } from '@/lib/services/topic';
 import type { Topic } from '@/lib/types';
+import { toast } from '@/components/ui/use-toast';
+import { UserMenu } from '../auth/UserMenu';
+import { ModeToggle } from '@/components/theme/mode-toggle';
 
 export default function Navbar() {
-  const { theme, setTheme } = useTheme();
-  const { isAuthenticated, user } = useAuth();
-  const navigate = useNavigate();
   const location = useLocation();
+  const navigate = useNavigate();
+  const { user } = useAuth();
   const isNotHome = location.pathname !== '/';
   const [topic, setTopic] = useState<Topic | null>(null);
 
   useEffect(() => {
     const loadTopic = async () => {
       const topicMatch = location.pathname.match(/\/topic\/(.+)/);
-      if (topicMatch) {
-        const topicId = topicMatch[1];
-        try {
-          const loadedTopic = await TopicService.getTopic(topicId);
-          if (loadedTopic) {
-            setTopic(loadedTopic);
-          } else {
-            setTopic(null);
-          }
-        } catch (error) {
-          console.error('Error loading topic:', error);
-          setTopic(null);
-        }
-      } else {
+      if (!topicMatch) {
         setTopic(null);
+        return;
+      }
+
+      try {
+        const loadedTopic = await TopicService.getTopic(topicMatch[1]);
+        if (!loadedTopic) {
+          navigate('/dashboard');
+          return;
+        }
+
+        // Convert database topic to UI topic
+        setTopic({
+          ...loadedTopic,
+          user_id: loadedTopic.userId,
+          lesson_plan: {
+            ...loadedTopic.lessonPlan,
+            mainTopics: loadedTopic.lessonPlan.mainTopics.map(topic => ({
+              ...topic,
+              subtopics: topic.subtopics.map(subtopic => ({
+                ...subtopic,
+                icon: undefined // Remove icon since it's incompatible
+              }))
+            }))
+          },
+          created_at: Math.floor(loadedTopic.createdAt.getTime() / 1000),
+          updated_at: Math.floor(loadedTopic.updatedAt.getTime() / 1000)
+        });
+
+      } catch (error) {
+        console.error('Error loading topic:', error);
+        toast({
+          title: "Error",
+          description: "Failed to load the topic. Please try again.",
+          variant: "destructive"
+        });
+        navigate('/dashboard');
       }
     };
 
     loadTopic();
-  }, [location.pathname]);
+  }, [location.pathname, navigate]);
+
+  const getWelcomeMessage = () => {
+    if (!user) return null;
+    const firstName = user.name.split(' ')[0];
+    const capitalizedName = firstName.charAt(0).toUpperCase() + firstName.slice(1).toLowerCase();
+    return `Welcome back, ${capitalizedName}!`;
+  };
+
+  const getDescription = () => {
+    if (topic) {
+      return topic.title;
+    }
+    return '🔥 7 day streak | Today\'s Goal: 2/3';
+  };
 
   return (
     <nav className="bg-card border-b border-border">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex items-center justify-between h-20">
           <div className="flex items-center space-x-8">
-            {isNotHome ? (
-              <Button
-                variant="ghost"
-                size="icon"
-                className="text-xl font-bold text-primary hover:text-primary/80 transition-colors -ml-2"
-                onClick={() => {
-                  if (location.pathname.startsWith('/topic/')) {
-                    navigate('/dashboard');
-                  } else {
-                    navigate('/');
-                  }
-                }}
-              >
-                <ArrowLeft className="h-8 w-8" />
-              </Button>
-            ) : (
-              <Link to="/" className="flex items-center gap-2 text-xl font-bold text-primary hover:text-primary/80 transition-colors">
-                <Brain className="h-8 w-8" />
-                QuizLearn
-              </Link>
-            )}
+            <Link to="/" className="flex items-center gap-2 text-xl font-bold text-primary hover:text-primary/80 transition-colors">
+              <Brain className="h-8 w-8" />
+              QuizLearn
+            </Link>
 
             {/* Page Title/Info */}
-            <div>
-              {location.pathname.includes('/new-topic') ? (
-                <>
-                  <h1 className="text-xl font-bold">New Learning Journey</h1>
-                  <p className="text-sm text-muted-foreground">Creating your personalized learning path</p>
-                </>
-              ) : location.pathname === '/admin' ? (
-                <>
-                  <h1 className="text-xl font-bold">Database Administration</h1>
-                  <p className="text-sm text-muted-foreground">View and manage database records</p>
-                </>
-              ) : isAuthenticated && user ? (
-                <div className="min-w-0">
-                  <h1 className="text-xl font-bold truncate">
-                    {topic ? topic.title : `Welcome back, ${user.name.split(' ')[0].charAt(0).toUpperCase() + user.name.split(' ')[0].slice(1).toLowerCase()}!`}
-                  </h1>
-                  <p className="text-sm text-muted-foreground truncate">🔥 7 day streak | Today's Goal: 2/3</p>
-                </div>
-              ) : null}
-            </div>
+            {user && (
+              <div className="min-w-0">
+                <h1 className="text-xl font-bold truncate">
+                  {getWelcomeMessage()}
+                </h1>
+                <p className="text-sm text-muted-foreground truncate">
+                  {getDescription()}
+                </p>
+              </div>
+            )}
           </div>
 
           <div className="flex items-center space-x-4">
+            {isNotHome && (
+              <Button
+                variant="ghost"
+                onClick={() => navigate('/dashboard')}
+              >
+                Dashboard
+              </Button>
+            )}
             <Button
               variant="ghost"
               size="icon"
@@ -99,19 +117,8 @@ export default function Navbar() {
             >
               <Database className="h-6 w-6" />
             </Button>
-            <Button
-              variant="ghost"
-              size="icon"
-              className="h-12 w-12 hidden sm:flex"
-              onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')}
-            >
-              {theme === 'dark' ? (
-                <Sun className="h-8 w-8" />
-              ) : (
-                <Moon className="h-8 w-8" />
-              )}
-            </Button>
-            {location.pathname !== '/admin' && <UserMenu />}
+            <ModeToggle />
+            <UserMenu />
           </div>
         </div>
       </div>

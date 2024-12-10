@@ -1,15 +1,52 @@
-import { 
-  Guitar, Music, Mic2, BookOpen, Settings, Users, 
-  Headphones, Hash, Pencil, Clock,
-  GanttChartSquare, ArrowRightLeft, Play, Music2,
-  Repeat, NotebookPen, MusicIcon, Heart, Star
+import {
+  Guitar, Music, BookOpen, Settings, Users,
+  Headphones, Music2, Hash, Clock
 } from 'lucide-react';
-import type { Topic } from '../types';
+import type { Topic } from '@/lib/types';
 
 export const ACTIVE_TOPICS: Topic[] = [
-  { id: 1, name: 'Python Basics', progress: 75, status: 'on-track', lastActivity: '2h ago' },
-  { id: 2, name: 'JavaScript ES6+', progress: 45, status: 'behind', lastActivity: '1d ago' },
-  { id: 3, name: 'React Hooks', progress: 90, status: 'ahead', lastActivity: '3h ago' },
+  {
+    id: "1",
+    title: 'Python Basics',
+    description: 'Learn Python fundamentals',
+    progress: 75,
+    user_id: "1",
+    lesson_plan: {
+      mainTopics: [],
+      currentTopic: '',
+      completedTopics: []
+    },
+    created_at: Math.floor(Date.now() / 1000),
+    updated_at: Math.floor(Date.now() / 1000)
+  },
+  {
+    id: "2",
+    title: 'JavaScript ES6+',
+    description: 'Master modern JavaScript',
+    progress: 45,
+    user_id: "1",
+    lesson_plan: {
+      mainTopics: [],
+      currentTopic: '',
+      completedTopics: []
+    },
+    created_at: Math.floor(Date.now() / 1000),
+    updated_at: Math.floor(Date.now() / 1000)
+  },
+  {
+    id: "3",
+    title: 'React Hooks',
+    description: 'Learn React hooks in depth',
+    progress: 90,
+    user_id: "1",
+    lesson_plan: {
+      mainTopics: [],
+      currentTopic: '',
+      completedTopics: []
+    },
+    created_at: Math.floor(Date.now() / 1000),
+    updated_at: Math.floor(Date.now() / 1000)
+  },
 ];
 
 export const GUITAR_LEARNING_PLAN = {
@@ -29,7 +66,6 @@ export const GUITAR_LEARNING_PLAN = {
         { name: "Sound Production", icon: Hash },
         { name: "Practice Routine", icon: Clock }
       ]
-    },
-    // ... rest of the topics
+    }
   ]
 };

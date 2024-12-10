@@ -1,8 +1,8 @@
-import { 
-  Guitar, Music, Mic2, BookOpen, Settings, Users, 
+import {
+  Guitar, Music, Mic2, BookOpen, Settings, Users,
   Headphones, Radio, Pencil, Clock,
   GanttChartSquare, ArrowRightLeft, Play, Music2,
-  Repeat, NotebookPen, MusicIcon, Heart, Star,
+  Repeat, MusicIcon, Heart, Star,
   Hash // Replacing Radio4 with Hash
 } from 'lucide-react';
 import type { Message } from '@/lib/types';

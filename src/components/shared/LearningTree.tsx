@@ -1,4 +1,3 @@
-import { Card } from '@/components/ui/card';
 import { LucideIcon } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import type { Subtopic } from '@/lib/types';

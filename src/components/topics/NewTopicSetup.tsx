@@ -1,9 +1,8 @@
 import { useState } from 'react';
-import { Card } from '@/components/ui/card';
 import { PageLayout } from '../shared/PageLayout';
 import { ChatInterface } from '../shared/ChatInterface';
 import { LearningTree } from '../shared/LearningTree';
-import type { Message } from '@/lib/types';
+import type { Message, SubtopicStatus } from '@/lib/types';
 import { INITIAL_SETUP_MESSAGES, GUITAR_LEARNING_PLAN } from './constants';
 
 export default function NewTopicSetup() {
@@ -29,21 +28,26 @@ export default function NewTopicSetup() {
     }, 1000);
   };
 
+  const topicsWithStatus = GUITAR_LEARNING_PLAN.mainTopics.map(topic => ({
+    ...topic,
+    subtopics: topic.subtopics.map(subtopic => ({
+      ...subtopic,
+      status: 'upcoming' as SubtopicStatus
+    }))
+  }));
+
   return (
     <PageLayout>
       <div className="grid grid-cols-3 gap-6">
         <div className="col-span-2">
-          <ChatInterface 
+          <ChatInterface
             messages={messages}
             onSendMessage={handleSendMessage}
           />
         </div>
 
         <div className="space-y-6">
-          <LearningTree 
-            title="Playing the Guitar"
-            topics={GUITAR_LEARNING_PLAN.mainTopics}
-          />
+          <LearningTree topics={topicsWithStatus} />
         </div>
       </div>
     </PageLayout>
