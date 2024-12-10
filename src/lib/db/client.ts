@@ -1,5 +1,6 @@
 import { createClient, LibsqlError } from '@libsql/client';
 import { env } from '../config/env';
+import { debug } from '../utils/debug';
 
 let dbClient: ReturnType<typeof createClient> | null = null;
 
@@ -60,9 +61,9 @@ export const getDb = () => {
 };
 
 export const initializeDb = async () => {
-  console.log('=== Initializing Database ===');
-  console.log('DB URL:', env.LIBSQL_DB_URL);
-  console.log('Auth Token Set:', !!env.LIBSQL_DB_AUTH_TOKEN);
+  debug.log('=== Initializing Database ===');
+  debug.log('DB URL:', env.LIBSQL_DB_URL);
+  debug.log('Auth Token Set:', !!env.LIBSQL_DB_AUTH_TOKEN);
 
   if (!env.LIBSQL_DB_URL || !env.LIBSQL_DB_AUTH_TOKEN) {
     const error = new DatabaseError(

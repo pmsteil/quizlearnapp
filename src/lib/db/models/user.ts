@@ -1,6 +1,7 @@
 import { db } from '../client';
 import { generateId, hashPassword, verifyPassword } from '../../utils/auth';
 import type { User } from '../../types/database';
+import { debug } from '../../utils/debug';
 
 export class UserModel {
   static async create(email: string, password: string, name: string): Promise<User> {
@@ -29,28 +30,28 @@ export class UserModel {
 
   static async authenticate(email: string, password: string): Promise<User | null> {
     try {
-      console.log('Attempting to authenticate user:', email);
+      debug.log('Attempting to authenticate user:', email);
 
       const result = await db.execute({
         sql: 'SELECT * FROM users WHERE email = ?',
         args: [email.toLowerCase()]
       });
 
-      console.log('Query result:', result.rows);
+      debug.log('Query result:', result.rows);
 
       if (!result.rows?.length) {
-        console.log('No user found with email:', email);
+        debug.log('No user found with email:', email);
         throw new Error('User not found');
       }
 
       const user = result.rows[0];
-      console.log('Found user:', {
+      debug.log('Found user:', {
         ...user,
         password_hash: '[REDACTED]'
       });
 
       const isValid = await verifyPassword(password, user.password_hash?.toString() || '');
-      console.log('Password validation result:', isValid);
+      debug.log('Password validation result:', isValid);
 
       if (!isValid) {
         throw new Error('Invalid password');
@@ -64,7 +65,7 @@ export class UserModel {
         updatedAt: new Date(Number(user.updated_at) * 1000)
       };
     } catch (error) {
-      console.error('Authentication error:', error);
+      debug.error('Authentication error:', error);
       throw error;
     }
   }
