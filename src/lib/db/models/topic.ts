@@ -1,4 +1,4 @@
-import { db } from '../client';
+import { dbClient } from '../client';
 import { generateId } from '../../utils/auth';
 import type { Topic, LessonPlan } from '../../types/database';
 
@@ -13,9 +13,9 @@ export class TopicModel {
     const timestamp = Math.floor(Date.now() / 1000);
 
     try {
-      const result = await db.execute({
-        sql: `INSERT INTO topics (id, user_id, title, description, lesson_plan, created_at, updated_at) 
-              VALUES (?, ?, ?, ?, ?, ?, ?) 
+      const result = await dbClient.execute({
+        sql: `INSERT INTO topics (id, user_id, title, description, lesson_plan, created_at, updated_at)
+              VALUES (?, ?, ?, ?, ?, ?, ?)
               RETURNING *`,
         args: [id, userId, title, description, JSON.stringify(lessonPlan), timestamp, timestamp]
       });
@@ -33,7 +33,7 @@ export class TopicModel {
 
   static async getByUserId(userId: string): Promise<Topic[]> {
     try {
-      const result = await db.execute({
+      const result = await dbClient.execute({
         sql: 'SELECT * FROM topics WHERE user_id = ? ORDER BY created_at DESC',
         args: [userId]
       });
@@ -47,7 +47,7 @@ export class TopicModel {
 
   static async getById(id: string): Promise<Topic | null> {
     try {
-      const result = await db.execute({
+      const result = await dbClient.execute({
         sql: 'SELECT * FROM topics WHERE id = ?',
         args: [id]
       });

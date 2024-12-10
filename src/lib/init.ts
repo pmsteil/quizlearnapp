@@ -1,5 +1,5 @@
 import { validateConfig } from './config/validator';
-import { initializeDb, db, DatabaseError } from './db/client';
+import { initializeDb, dbClient, DatabaseError } from './db/client';
 
 export async function initializeApp() {
   console.log('=== Starting App Initialization ===');
@@ -18,7 +18,7 @@ export async function initializeApp() {
     console.log('Database initialized successfully');
 
     return {
-      db,
+      dbClient,
     };
   } catch (error) {
     console.error('=== Initialization Failed ===');

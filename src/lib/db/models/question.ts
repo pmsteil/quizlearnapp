@@ -1,4 +1,4 @@
-import { db } from '../client';
+import { dbClient } from '../client';
 import { generateId } from '../../utils/auth';
 
 export interface Question {
@@ -24,7 +24,7 @@ export class QuestionModel {
     const timestamp = Math.floor(Date.now() / 1000);
 
     try {
-      const result = await db.execute({
+      const result = await dbClient.execute({
         sql: `INSERT INTO questions (id, topic_id, text, options, correct_answer, explanation, created_at, updated_at)
               VALUES (?, ?, ?, ?, ?, ?, ?, ?)
               RETURNING *`,
@@ -44,7 +44,7 @@ export class QuestionModel {
 
   static async getByTopicId(topicId: string): Promise<Question[]> {
     try {
-      const result = await db.execute({
+      const result = await dbClient.execute({
         sql: 'SELECT * FROM questions WHERE topic_id = ? ORDER BY created_at ASC',
         args: [topicId]
       });

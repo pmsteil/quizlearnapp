@@ -1,4 +1,4 @@
-import { db } from '../client';
+import { dbClient } from '../client';
 import { generateId } from '../../utils/auth';
 
 export interface Progress {
@@ -21,7 +21,7 @@ export class ProgressModel {
     const timestamp = Math.floor(Date.now() / 1000);
 
     try {
-      const result = await db.execute({
+      const result = await dbClient.execute({
         sql: `INSERT INTO user_progress (id, user_id, topic_id, question_id, is_correct, created_at)
               VALUES (?, ?, ?, ?, ?, ?)
               RETURNING *`,
@@ -41,7 +41,7 @@ export class ProgressModel {
 
   static async getByTopicId(userId: string, topicId: string): Promise<Progress[]> {
     try {
-      const result = await db.execute({
+      const result = await dbClient.execute({
         sql: 'SELECT * FROM user_progress WHERE user_id = ? AND topic_id = ? ORDER BY created_at DESC',
         args: [userId, topicId]
       });

@@ -11,10 +11,75 @@ export class DatabaseError extends Error {
   }
 }
 
+// Validate URL format before creating client
+function validateDbUrl(url: string | undefined) {
+  console.log('Validating DB URL:', url?.substring(0, 8) + '...');
+
+  if (!url) {
+    throw new DatabaseError(
+      'Database Configuration Error',
+      'Database URL is missing. Please check your environment variables.',
+      { url }
+    );
+  }
+
+  if (!url.startsWith('https://')) {
+    throw new DatabaseError(
+      'Database Configuration Error',
+      'Database URL must start with https://',
+      { url: url.substring(0, 8) + '...' }
+    );
+  }
+}
+
+let dbInstance: ReturnType<typeof createClient> | null = null;
+
+function getDbClient() {
+  if (!dbInstance) {
+    const url = import.meta.env.VITE_LIBSQL_DB_URL;
+    const authToken = import.meta.env.VITE_LIBSQL_DB_AUTH_TOKEN;
+
+    validateDbUrl(url);
+
+    if (!authToken) {
+      throw new DatabaseError(
+        'Database Configuration Error',
+        'Database auth token is missing. Please check your environment variables.'
+      );
+    }
+
+    dbInstance = createClient({
+      url,
+      authToken
+    });
+  }
+  return dbInstance;
+}
+
+// Wrap the client methods to handle errors consistently
+export const dbClient = {
+  execute: async (...args: Parameters<ReturnType<typeof createClient>['execute']>) => {
+    try {
+      const client = getDbClient();
+      return await client.execute(...args);
+    } catch (error) {
+      throw handleDbError(error);
+    }
+  },
+  batch: async (...args: Parameters<ReturnType<typeof createClient>['batch']>) => {
+    try {
+      const client = getDbClient();
+      return await client.batch(...args);
+    } catch (error) {
+      throw handleDbError(error);
+    }
+  }
+};
+
 export const handleDbError = (error: unknown) => {
   console.error('=== Database Error Details ===');
   console.error('Error:', error);
-  console.error('Current DB URL:', import.meta.env.VITE_LIBSQL_DB_URL);
+  console.error('Current DB URL:', import.meta.env.VITE_LIBSQL_DB_URL?.substring(0, 8) + '...');
   console.error('Auth Token Set:', !!import.meta.env.VITE_LIBSQL_DB_AUTH_TOKEN);
   console.error('===========================');
 
@@ -22,10 +87,14 @@ export const handleDbError = (error: unknown) => {
     if (error.code === 'URL_INVALID') {
       throw new DatabaseError(
         'Database Configuration Error',
-        'The database URL is not in the correct format.',
+        'The database URL is not in the correct format. It should start with "https://".',
         error
       );
     }
+  }
+
+  if (error instanceof DatabaseError) {
+    throw error;
   }
 
   throw new DatabaseError(
@@ -33,30 +102,6 @@ export const handleDbError = (error: unknown) => {
     'An unexpected error occurred while connecting to the database.',
     error
   );
-};
-
-// Create a single client instance with build-time environment variables
-export const db = createClient({
-  url: import.meta.env.VITE_LIBSQL_DB_URL,
-  authToken: import.meta.env.VITE_LIBSQL_DB_AUTH_TOKEN
-});
-
-// Wrap the client methods to handle errors consistently
-export const dbClient = {
-  execute: async (...args: Parameters<typeof db.execute>) => {
-    try {
-      return await db.execute(...args);
-    } catch (error) {
-      throw handleDbError(error);
-    }
-  },
-  batch: async (...args: Parameters<typeof db.batch>) => {
-    try {
-      return await db.batch(...args);
-    } catch (error) {
-      throw handleDbError(error);
-    }
-  }
 };
 
 // Initialize database connection
@@ -70,3 +115,6 @@ export const initializeDb = async () => {
     throw handleDbError(error);
   }
 };
+
+// For backward compatibility
+export const db = dbClient;
