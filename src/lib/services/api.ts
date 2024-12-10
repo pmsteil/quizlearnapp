@@ -1,4 +1,4 @@
-import type { Topic, LessonPlan } from '@/lib/types';
+import type { Topic } from '../types';
 
 export class TopicService {
   static async createTopic(): Promise<Topic> {

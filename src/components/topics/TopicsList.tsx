@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
@@ -24,51 +24,54 @@ export default function TopicsList() {
   const [isLoading, setIsLoading] = useState(true);
   const [isCreating, setIsCreating] = useState(false);
 
-  useEffect(() => {
-    const loadTopics = async () => {
-      if (!user?.id) return;
+  const loadTopics = useCallback(async () => {
+    if (!user?.id) {
+      setIsLoading(false);
+      return;
+    }
 
-      try {
-        const loadedTopics = await TopicService.getUserTopics(user.id);
-        // Convert database topics to UI topics
-        const convertedTopics: Topic[] = loadedTopics.map(topic => ({
-          id: topic.id,
-          title: topic.title,
-          description: topic.description,
-          progress: topic.progress || 0,
-          user_id: topic.userId,
-          lesson_plan: {
-            mainTopics: topic.lessonPlan.mainTopics.map(mainTopic => ({
-              name: mainTopic.name,
-              subtopics: mainTopic.subtopics.map(subtopic => ({
-                name: subtopic.name,
-                status: subtopic.status,
-                icon: undefined
-              }))
-            })),
-            currentTopic: topic.lessonPlan.currentTopic,
-            completedTopics: topic.lessonPlan.completedTopics
-          },
-          created_at: Math.floor(new Date(topic.createdAt).getTime() / 1000),
-          updated_at: Math.floor(new Date(topic.updatedAt).getTime() / 1000)
-        }));
-        setTopics(convertedTopics);
-      } catch (error) {
-        console.error('Error loading topics:', error);
-        toast({
-          title: "Error",
-          description: "Failed to load your topics. Please try again.",
-          variant: "destructive"
-        });
-      } finally {
-        setIsLoading(false);
-      }
-    };
-
-    loadTopics();
+    try {
+      const loadedTopics = await TopicService.getUserTopics(user.id);
+      const convertedTopics: Topic[] = loadedTopics.map(topic => ({
+        id: topic.id,
+        title: topic.title,
+        description: topic.description,
+        progress: topic.progress || 0,
+        user_id: topic.userId,
+        lesson_plan: {
+          mainTopics: topic.lessonPlan.mainTopics.map(mainTopic => ({
+            name: mainTopic.name,
+            subtopics: mainTopic.subtopics.map(subtopic => ({
+              name: subtopic.name,
+              status: subtopic.status,
+              icon: undefined
+            }))
+          })),
+          currentTopic: topic.lessonPlan.currentTopic,
+          completedTopics: topic.lessonPlan.completedTopics
+        },
+        created_at: Math.floor(new Date(topic.createdAt).getTime() / 1000),
+        updated_at: Math.floor(new Date(topic.updatedAt).getTime() / 1000)
+      }));
+      setTopics(convertedTopics);
+    } catch (error) {
+      console.error('Error loading topics:', error);
+      toast({
+        title: "Error",
+        description: "Failed to load your topics. Please try again.",
+        variant: "destructive"
+      });
+    } finally {
+      setIsLoading(false);
+    }
   }, [user?.id]);
 
-  const handleStartNewTopic = async () => {
+  useEffect(() => {
+    loadTopics();
+  }, [loadTopics]);
+
+  const handleStartNewTopic = async (e: React.FormEvent) => {
+    e.preventDefault();
     if (!newTopic.trim() || !user?.id || isCreating) return;
 
     setIsCreating(true);
@@ -88,11 +91,6 @@ export default function TopicsList() {
         completedTopics: []
       };
 
-      toast({
-        title: "Creating Topic",
-        description: "Setting up your new learning journey...",
-      });
-
       const topic = await TopicService.createTopic(
         user.id,
         newTopic,
@@ -100,7 +98,6 @@ export default function TopicsList() {
         defaultLessonPlan
       );
 
-      // Convert database topic to UI topic
       const uiTopic: Topic = {
         id: topic.id,
         title: topic.title,
@@ -125,11 +122,6 @@ export default function TopicsList() {
 
       setTopics(prevTopics => [...prevTopics, uiTopic]);
       setNewTopic('');
-      toast({
-        title: "Topic Created",
-        description: "Your new topic has been created successfully!",
-      });
-
       navigate(`/topic/${uiTopic.id}`);
     } catch (error) {
       console.error('Failed to create topic:', error);
@@ -143,17 +135,27 @@ export default function TopicsList() {
     }
   };
 
-  const sortedTopics = [...topics].sort((a, b) => {
-    switch (sortBy) {
-      case 'progress':
-        return b.progress - a.progress;
-      case 'name':
-        return a.title.localeCompare(b.title);
-      case 'recent':
-      default:
-        return b.updated_at - a.updated_at;
-    }
-  });
+  const sortedTopics = useMemo(() => {
+    return [...topics].sort((a, b) => {
+      switch (sortBy) {
+        case 'progress':
+          return b.progress - a.progress;
+        case 'name':
+          return a.title.localeCompare(b.title);
+        case 'recent':
+        default:
+          return b.updated_at - a.updated_at;
+      }
+    });
+  }, [topics, sortBy]);
+
+  if (isLoading) {
+    return (
+      <div className="container mx-auto px-4 py-8">
+        <div className="text-center">Loading topics...</div>
+      </div>
+    );
+  }
 
   return (
     <div className="container mx-auto px-4 py-8">
@@ -178,34 +180,33 @@ export default function TopicsList() {
           </DropdownMenu>
         </div>
 
-        <div className="flex flex-col sm:flex-row gap-4">
+        <form onSubmit={handleStartNewTopic} className="flex flex-col sm:flex-row gap-4">
           <Input
             className="flex-1"
             placeholder="Enter a topic to start learning..."
             value={newTopic}
             onChange={(e) => setNewTopic(e.target.value)}
-            onKeyDown={(e) => e.key === 'Enter' && handleStartNewTopic()}
           />
           <Button
+            type="submit"
             className="w-full sm:w-auto whitespace-nowrap"
-            onClick={handleStartNewTopic}
             disabled={isCreating || !newTopic.trim()}
           >
             Start Learning
           </Button>
-        </div>
+        </form>
 
-        <div className="grid grid-cols-1 gap-4">
-          {sortedTopics.map((topic) => (
-            <TopicItem key={topic.id} topic={topic} />
-          ))}
-        </div>
-
-        {topics.length === 0 && !isLoading && (
+        {topics.length === 0 ? (
           <div className="text-center py-12">
             <h3 className="text-lg font-medium text-muted-foreground">
               No topics yet. Start your first learning journey!
             </h3>
+          </div>
+        ) : (
+          <div className="grid grid-cols-1 gap-4">
+            {sortedTopics.map((topic) => (
+              <TopicItem key={topic.id} topic={topic} />
+            ))}
           </div>
         )}
       </div>

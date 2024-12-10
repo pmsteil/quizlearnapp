@@ -1,58 +1,56 @@
-import { createContext, useContext, useEffect, type ReactNode } from 'react';
-import { AuthService } from '../services/auth';
-import { useLocalStorage } from '../hooks/useLocalStorage';
-import type { User } from '../types';
+import { createContext, useContext, useEffect, useState } from 'react';
+import type { User } from '../types/database';
+import { UserService } from '../services/user';
 
 interface AuthContextType {
   user: User | null;
   login: (email: string, password: string) => Promise<void>;
   signup: (email: string, password: string, name: string) => Promise<void>;
   logout: () => void;
-  isAuthenticated: boolean;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
-export function AuthProvider({ children }: { children: ReactNode }) {
-  const [user, setUser] = useLocalStorage<User | null>('user', null);
+export function AuthProvider({ children }: { children: React.ReactNode }) {
+  const [user, setUser] = useState<User | null>(null);
 
-  // Verify stored user on mount
   useEffect(() => {
-    const verifyUser = async () => {
-      if (user?.email) {
-        try {
-          const verifiedUser = await AuthService.verify(user.email);
-          if (!verifiedUser) {
-            setUser(null);
-          }
-        } catch (error) {
-          console.error('User verification failed:', error);
-          setUser(null);
+    const checkAuth = async () => {
+      try {
+        const storedUser = localStorage.getItem('user');
+        if (storedUser) {
+          const parsedUser = JSON.parse(storedUser);
+          setUser({
+            ...parsedUser,
+            createdAt: new Date(parsedUser.createdAt),
+            updatedAt: new Date(parsedUser.updatedAt)
+          });
         }
+      } catch (error) {
+        console.error('Error checking auth:', error);
       }
     };
-
-    verifyUser();
+    checkAuth();
   }, []);
 
   const login = async (email: string, password: string) => {
-    try {
-      const authenticatedUser = await AuthService.login(email, password);
-      setUser(authenticatedUser);
-    } catch (error) {
-      console.error('Login failed:', error);
-      throw error;
-    }
+    const authenticatedUser = await UserService.login(email, password);
+    setUser({
+      ...authenticatedUser,
+      createdAt: new Date(authenticatedUser.createdAt),
+      updatedAt: new Date(authenticatedUser.updatedAt)
+    });
+    localStorage.setItem('user', JSON.stringify(authenticatedUser));
   };
 
   const signup = async (email: string, password: string, name: string) => {
-    try {
-      const newUser = await AuthService.register(email, password, name);
-      setUser(newUser);
-    } catch (error) {
-      console.error('Signup failed:', error);
-      throw error;
-    }
+    const newUser = await UserService.signup(email, password, name);
+    setUser({
+      ...newUser,
+      createdAt: new Date(newUser.createdAt),
+      updatedAt: new Date(newUser.updatedAt)
+    });
+    localStorage.setItem('user', JSON.stringify(newUser));
   };
 
   const logout = () => {
@@ -60,16 +58,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     localStorage.removeItem('user');
   };
 
-  const contextValue = {
-    user,
-    login,
-    signup,
-    logout,
-    isAuthenticated: !!user
-  };
-
   return (
-    <AuthContext.Provider value={contextValue}>
+    <AuthContext.Provider value={{ user, login, signup, logout }}>
       {children}
     </AuthContext.Provider>
   );
@@ -77,7 +67,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
 export function useAuth() {
   const context = useContext(AuthContext);
-  if (!context) {
+  if (context === undefined) {
     throw new Error('useAuth must be used within an AuthProvider');
   }
   return context;

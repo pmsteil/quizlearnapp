@@ -1,6 +1,7 @@
-import { db } from '../db/core';
-import type { DatabaseConfig } from '../types/database';
+import { db } from '../db/client';
+import type { Topic, User } from '../types/database';
 import { logError } from '../utils/security';
+import { query, transaction } from '../db/core';
 
 export class DatabaseService {
   constructor(private config: DatabaseConfig) {}
@@ -16,8 +17,7 @@ export class DatabaseService {
 
   async query(sql: string, args?: any[]) {
     try {
-      const result = await db.execute(sql, args);
-      return result.rows;
+      return await query(sql, args || []);
     } catch (error) {
       logError(error, 'DatabaseService.query');
       throw error;
@@ -26,7 +26,7 @@ export class DatabaseService {
 
   async transaction<T>(callback: () => Promise<T>): Promise<T> {
     try {
-      return await db.transaction(callback);
+      return await transaction(callback);
     } catch (error) {
       logError(error, 'DatabaseService.transaction');
       throw error;
