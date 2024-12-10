@@ -1,18 +1,18 @@
-export const ENV = {
-  API_URL: import.meta.env.VITE_API_URL || 'http://localhost:3000',
-  DATABASE_URL: import.meta.env.VITE_DATABASE_URL || 'file:local.db',
-  DATABASE_AUTH_TOKEN: import.meta.env.VITE_DATABASE_TOKEN,
-  ENVIRONMENT: import.meta.env.MODE,
-  IS_PRODUCTION: import.meta.env.PROD,
-} as const;
+interface Env {
+  LIBSQL_DB_URL: string;
+  LIBSQL_DB_AUTH_TOKEN: string;
+}
 
-// Validate required environment variables in production
-const requiredEnvVars = ['DATABASE_URL', 'DATABASE_AUTH_TOKEN'];
+export const env: Env = {
+  LIBSQL_DB_URL: import.meta.env.VITE_LIBSQL_DB_URL || '',
+  LIBSQL_DB_AUTH_TOKEN: import.meta.env.VITE_LIBSQL_DB_AUTH_TOKEN || '',
+};
 
-if (ENV.IS_PRODUCTION) {
-  requiredEnvVars.forEach(envVar => {
-    if (!import.meta.env[envVar]) {
-      throw new Error(`Missing required environment variable: ${envVar}`);
-    }
-  });
+// Validate required env vars
+const requiredEnvVars: (keyof Env)[] = ['LIBSQL_DB_URL', 'LIBSQL_DB_AUTH_TOKEN'];
+
+for (const envVar of requiredEnvVars) {
+  if (!env[envVar]) {
+    console.error(`Missing required environment variable: ${envVar}`);
+  }
 }

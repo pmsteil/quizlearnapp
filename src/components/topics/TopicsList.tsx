@@ -14,6 +14,9 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
+import { handleDbError } from '@/lib/db/client';
+import { ErrorMessage } from '@/components/ui/error-message';
+import { validateConfig } from '@/lib/config/validator';
 
 export default function TopicsList() {
   const [topics, setTopics] = useState<Topic[]>([]);
@@ -23,6 +26,8 @@ export default function TopicsList() {
   const [sortBy, setSort] = useState('recent');
   const [isLoading, setIsLoading] = useState(true);
   const [isCreating, setIsCreating] = useState(false);
+  const [error, setError] = useState<{ title: string; message: string } | null>(null);
+  const [configError, setConfigError] = useState<{title: string; message: string} | null>(null);
 
   const loadTopics = useCallback(async () => {
     if (!user?.id) {
@@ -54,19 +59,35 @@ export default function TopicsList() {
         updated_at: Math.floor(new Date(topic.updatedAt).getTime() / 1000)
       }));
       setTopics(convertedTopics);
+      setError(null);
     } catch (error) {
       console.error('Error loading topics:', error);
-      toast({
-        title: "Error",
-        description: "Failed to load your topics. Please try again.",
-        variant: "destructive"
-      });
+      if (error instanceof Error && 'details' in error) {
+        setError((error as any).details);
+      } else {
+        setError({
+          title: 'Error Loading Topics',
+          message: 'Unable to load your topics. Please try again later.'
+        });
+      }
     } finally {
       setIsLoading(false);
     }
   }, [user?.id]);
 
   useEffect(() => {
+    console.log('TopicsList: Running config validation');
+    const config = validateConfig();
+    console.log('TopicsList: Config validation result:', config);
+
+    if (!config.isValid && config.error) {
+      console.log('TopicsList: Setting config error:', config.error);
+      setConfigError({
+        title: config.error.title,
+        message: `${config.error.message}\n\nMissing: ${config.error.details}`
+      });
+      return;
+    }
     loadTopics();
   }, [loadTopics]);
 
@@ -148,6 +169,41 @@ export default function TopicsList() {
       }
     });
   }, [topics, sortBy]);
+
+  if (configError) {
+    console.log('TopicsList: Rendering config error:', configError);
+    return (
+      <div className="container mx-auto p-4">
+        <div className="max-w-2xl mx-auto space-y-4">
+          <h2 className="text-3xl font-bold">Setup Required</h2>
+          <ErrorMessage
+            title={configError.title}
+            message={configError.message}
+            className="mt-4"
+          />
+          <div className="mt-4 text-sm text-muted-foreground">
+            Please check the console for configuration details.
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  if (error) {
+    console.log('TopicsList: Rendering error:', error);
+    return (
+      <div className="container mx-auto p-4">
+        <div className="max-w-2xl mx-auto space-y-4">
+          <h2 className="text-3xl font-bold">Your Topics</h2>
+          <ErrorMessage
+            title={error.title}
+            message={error.message}
+            className="mt-4"
+          />
+        </div>
+      </div>
+    );
+  }
 
   if (isLoading) {
     return (

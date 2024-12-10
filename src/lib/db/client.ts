@@ -1,81 +1,109 @@
-import { createClient } from '@libsql/client';
-import * as dotenv from 'dotenv';
+import { createClient, LibsqlError } from '@libsql/client';
+import { env } from '../config/env';
 
-// Load environment variables from .env file when running in Node.js
-if (typeof process !== 'undefined') {
-  dotenv.config();
+let dbClient: ReturnType<typeof createClient> | null = null;
+
+export class DatabaseError extends Error {
+  constructor(
+    public title: string,
+    message: string,
+    public details?: unknown
+  ) {
+    super(message);
+    this.name = 'DatabaseError';
+  }
 }
 
-// Get the database URL and token from either Vite's env or Node's process.env
-const url = typeof process !== 'undefined'
-  ? process.env.VITE_DATABASE_URL
-  : import.meta.env.VITE_DATABASE_URL;
+export const handleDbError = (error: unknown) => {
+  console.error('=== Database Error Details ===');
+  console.error('Error:', error);
+  console.error('Current DB URL:', env.LIBSQL_DB_URL);
+  console.error('Auth Token Set:', !!env.LIBSQL_DB_AUTH_TOKEN);
+  console.error('===========================');
 
-const authToken = typeof process !== 'undefined'
-  ? process.env.VITE_DATABASE_TOKEN
-  : import.meta.env.VITE_DATABASE_TOKEN;
+  if (error instanceof LibsqlError) {
+    console.error('LibSQL Specific Error:', {
+      code: error.code,
+      message: error.message,
+      url: env.LIBSQL_DB_URL
+    });
 
-if (!url) {
-  throw new Error('Database URL not found in environment variables');
-}
-
-if (!authToken) {
-  throw new Error('Database token not found in environment variables');
-}
-
-export const db = createClient({
-  url: url,
-  authToken: authToken
-});
-
-// Initialize database schema
-export async function initializeDatabase() {
-  const schema = [
-    `CREATE TABLE IF NOT EXISTS users (
-      id TEXT PRIMARY KEY,
-      email TEXT UNIQUE NOT NULL,
-      name TEXT NOT NULL,
-      password_hash TEXT NOT NULL,
-      created_at INTEGER DEFAULT (unixepoch()),
-      updated_at INTEGER DEFAULT (unixepoch())
-    )`,
-    `CREATE TABLE IF NOT EXISTS topics (
-      id TEXT PRIMARY KEY,
-      user_id TEXT NOT NULL,
-      title TEXT NOT NULL,
-      description TEXT,
-      progress INTEGER DEFAULT 0,
-      lesson_plan TEXT,
-      created_at INTEGER DEFAULT (unixepoch()),
-      updated_at INTEGER DEFAULT (unixepoch()),
-      FOREIGN KEY (user_id) REFERENCES users(id)
-    )`
-  ];
-
-  try {
-    // Execute each statement separately
-    for (const sql of schema) {
-      await db.execute(sql);
+    if (error.code === 'URL_INVALID') {
+      const dbError = new DatabaseError(
+        'Database Configuration Error',
+        'The database URL is not in the correct format. It should start with "libsql://" or "https://".',
+        error
+      );
+      console.error('Throwing formatted error:', dbError);
+      throw dbError;
     }
-    console.log('Database schema initialized successfully');
-  } catch (error) {
-    console.error('Failed to initialize database schema:', error);
+  }
+
+  const dbError = new DatabaseError(
+    'Database Error',
+    'An unexpected error occurred while connecting to the database. Please try again later.',
+    error
+  );
+  console.error('Throwing generic error:', dbError);
+  throw dbError;
+};
+
+export const getDb = () => {
+  console.log('Getting DB client. Initialized:', !!dbClient);
+  if (!dbClient) {
+    throw new DatabaseError(
+      'Database Not Initialized',
+      'Database connection has not been established'
+    );
+  }
+  return dbClient;
+};
+
+export const initializeDb = async () => {
+  console.log('=== Initializing Database ===');
+  console.log('DB URL:', env.LIBSQL_DB_URL);
+  console.log('Auth Token Set:', !!env.LIBSQL_DB_AUTH_TOKEN);
+
+  if (!env.LIBSQL_DB_URL || !env.LIBSQL_DB_AUTH_TOKEN) {
+    const error = new DatabaseError(
+      'Configuration Error',
+      'Database configuration is missing. Please check your environment variables.'
+    );
+    console.error('Configuration error:', error);
     throw error;
   }
-}
 
-// Test the database connection and create schema if needed
-export async function testConnection() {
   try {
-    // First test the connection
-    await db.execute('SELECT 1');
+    console.log('Creating client...');
+    dbClient = createClient({
+      url: env.LIBSQL_DB_URL,
+      authToken: env.LIBSQL_DB_AUTH_TOKEN,
+    });
 
-    // Then initialize the schema
-    await initializeDatabase();
+    console.log('Testing connection...');
+    await dbClient.execute('SELECT 1');
+    console.log('Connection test successful');
 
-    return true;
+    return dbClient;
   } catch (error) {
-    console.error('Database connection test failed:', error);
-    return false;
+    console.error('Database initialization failed:', error);
+    throw handleDbError(error);
   }
-}
+};
+
+export const db = {
+  execute: async (...args: Parameters<ReturnType<typeof createClient>['execute']>) => {
+    try {
+      return await getDb().execute(...args);
+    } catch (error) {
+      throw handleDbError(error);
+    }
+  },
+  batch: async (...args: Parameters<ReturnType<typeof createClient>['batch']>) => {
+    try {
+      return await getDb().batch(...args);
+    } catch (error) {
+      throw handleDbError(error);
+    }
+  }
+};

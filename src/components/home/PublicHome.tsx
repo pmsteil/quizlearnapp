@@ -5,20 +5,25 @@ import { useState, useEffect } from 'react';
 import { useAuth } from '@/lib/context/AuthContext';
 import { useNavigate } from 'react-router-dom';
 import Navbar from '@/components/navigation/Navbar';
+import { ErrorMessage } from '@/components/ui/error-message';
 
-export default function PublicHome() {
+interface PublicHomeProps {
+  dbError?: { title: string; message: string } | null;
+}
+
+export default function PublicHome({ dbError }: PublicHomeProps) {
   const [showAuthDialog, setShowAuthDialog] = useState(false);
   const { user } = useAuth();
   const navigate = useNavigate();
 
   useEffect(() => {
-    if (user) {
+    if (user && !dbError) {
       navigate('/dashboard');
     }
-  }, [user, navigate]);
+  }, [user, navigate, dbError]);
 
   const handleGetStarted = () => {
-    if (user) {
+    if (user && !dbError) {
       navigate('/dashboard');
     } else {
       setShowAuthDialog(true);
@@ -28,6 +33,34 @@ export default function PublicHome() {
   return (
     <div className="min-h-screen bg-background">
       <Navbar />
+
+      {/* Database Error Alert */}
+      {dbError && (
+        <div className="bg-muted">
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
+            <ErrorMessage
+              title="Setup Required"
+              message="QuizLearn needs to be configured before all features are available."
+              className="mb-2"
+            />
+            <div className="flex items-center gap-2 text-sm text-muted-foreground">
+              <p>
+                ⚠️ Some features are currently limited. Please contact the administrator.
+              </p>
+              {process.env.NODE_ENV === 'development' && (
+                <Button
+                  variant="link"
+                  className="text-xs"
+                  onClick={() => console.log('Missing env vars:', dbError.message)}
+                >
+                  Show Details
+                </Button>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Hero Section */}
       <div className="relative overflow-hidden">
         <div className="absolute inset-0 bg-gradient-to-br from-primary/20 to-background z-0" />

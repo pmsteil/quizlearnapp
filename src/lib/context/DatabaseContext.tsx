@@ -1,41 +1,23 @@
-import { createContext, useContext, ReactNode, useEffect } from 'react';
-import { createClient } from '@libsql/client';
-
-const dbClient = createClient({
-  url: import.meta.env.VITE_DATABASE_URL as string,
-  authToken: import.meta.env.VITE_DATABASE_TOKEN as string,
-});
+import { createContext, useContext, ReactNode } from 'react';
+import { db } from '../db/client';
 
 interface DatabaseContextType {
-  client: typeof dbClient;
+  db: typeof db;
+  error: Error | null;
 }
 
-const DatabaseContext = createContext<DatabaseContextType | undefined>(undefined);
+const DatabaseContext = createContext<DatabaseContextType>({
+  db,
+  error: null
+});
 
 export function DatabaseProvider({ children }: { children: ReactNode }) {
-  useEffect(() => {
-    const testConnection = async () => {
-      try {
-        await dbClient.execute('SELECT 1');
-      } catch (error) {
-        console.error('Database connection failed:', error);
-      }
-    };
-
-    testConnection();
-  }, []);
-
+  // Always render children, let individual components handle db errors
   return (
-    <DatabaseContext.Provider value={{ client: dbClient }}>
+    <DatabaseContext.Provider value={{ db, error: null }}>
       {children}
     </DatabaseContext.Provider>
   );
 }
 
-export function useDatabase() {
-  const context = useContext(DatabaseContext);
-  if (context === undefined) {
-    throw new Error('useDatabase must be used within a DatabaseProvider');
-  }
-  return context;
-}
+export const useDatabase = () => useContext(DatabaseContext);
