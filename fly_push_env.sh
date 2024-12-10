@@ -1,5 +1,14 @@
+#!/bin/bash
 
-appname=quizlearnapp
-flyctl secrets delete VITE_DATABASE_URL
-flyctl secrets delete VITE_DATABASE_TOKEN
-flyctl secrets set VITE_LIBSQL_DB_URL=$(grep VITE_LIBSQL_DB_URL .env | cut -d '=' -f2) VITE_LIBSQL_DB_AUTH_TOKEN=$(grep VITE_LIBSQL_DB_AUTH_TOKEN .env | cut -d '=' -f2) --app $appname
+# Load environment variables from .env file
+if [ -f .env ]; then
+    source .env
+fi
+
+# Set the VITE_ prefixed environment variables
+fly secrets set \
+    VITE_LIBSQL_DB_URL="$VITE_LIBSQL_DB_URL" \
+    VITE_LIBSQL_DB_AUTH_TOKEN="$VITE_LIBSQL_DB_AUTH_TOKEN"
+
+# Set any other environment variables your app needs
+
