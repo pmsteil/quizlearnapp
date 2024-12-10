@@ -1,4 +1,3 @@
-import { db } from '../db/client';
 import { logError } from '../utils/security';
 import { query, transaction } from '../db/core';
 
