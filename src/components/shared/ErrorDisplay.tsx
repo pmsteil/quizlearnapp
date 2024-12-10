@@ -44,8 +44,8 @@ export function ErrorDisplay({ error }: ErrorDisplayProps) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-background text-foreground p-4">
         <div className="max-w-md w-full space-y-4">
-          <h1 className="text-2xl font-bold text-center">Configuration Required</h1>
-          <p className="text-center">The application requires configuration to run.</p>
+          <h1 className="text-2xl font-bold text-center">Setup Required</h1>
+          <p className="text-center">The application requires further configuration.</p>
           {error.details && error.details.length > 0 && (
             <div className="bg-muted p-4 rounded-lg">
               <p className="text-sm font-medium mb-2">Missing Environment Variables:</p>
@@ -55,7 +55,7 @@ export function ErrorDisplay({ error }: ErrorDisplayProps) {
                 ))}
               </ul>
               <p className="mt-4 text-sm">
-                Please check your .env file and ensure these variables are set.
+                Please verify these variables are set in your ENV variables.
               </p>
             </div>
           )}
