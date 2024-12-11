@@ -18,6 +18,9 @@ email-validator = "*"
 requests = "*"
 
 [dev-packages]
+pytest = "*"
+pytest-asyncio = "*"
+httpx = "*"
 
 [requires]
 python_version = "3.13"
@@ -25,4 +28,4 @@ python_version = "3.13"
 [scripts]
 migrate = "python src/lib/db/migrate.py"
 server = "python -m uvicorn src.lib.app:app --host 0.0.0.0 --port 8001 --reload"
-test-auth = "python scripts/test_auth.py"
+test-auth = "pytest src/lib/auth/test_auth.py -v"

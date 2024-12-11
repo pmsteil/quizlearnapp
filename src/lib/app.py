@@ -1,9 +1,11 @@
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
-from libsql_client import create_client
+from libsql_client import create_client_sync
 from dotenv import load_dotenv
 import os
 from src.lib.auth.routes import router as auth_router
+from src.lib.auth.service import AuthService
+from src.lib.db import get_db, get_test_db
 
 # Load environment variables
 load_dotenv()
@@ -24,18 +26,10 @@ app.add_middleware(
 @app.middleware("http")
 async def db_session_middleware(request: Request, call_next):
     if not hasattr(request.app.state, "db"):
-        # Get Turso credentials from environment
-        db_url = os.getenv('VITE_LIBSQL_DB_URL')
-        auth_token = os.getenv('VITE_LIBSQL_DB_AUTH_TOKEN')
-
-        if not db_url or not auth_token:
-            raise ValueError("Database URL and auth token must be set in environment variables")
-
-        # Create database client
-        request.app.state.db = create_client(
-            url=db_url,
-            auth_token=auth_token
-        )
+        # Use test database if it's set in dependency overrides
+        db_func = app.dependency_overrides.get(get_db, get_db)
+        request.app.state.db = db_func()
+        request.app.state.auth_service = AuthService(request.app.state.db)
 
     response = await call_next(request)
     return response
