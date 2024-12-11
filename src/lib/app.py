@@ -4,6 +4,7 @@ from libsql_client import create_client_sync
 from dotenv import load_dotenv
 import os
 from src.lib.auth.routes import router as auth_router
+from src.lib.users.routes import router as users_router
 from src.lib.auth.service import AuthService
 from src.lib.db import get_db, get_test_db
 
@@ -36,6 +37,7 @@ async def db_session_middleware(request: Request, call_next):
 
 # Include routers
 app.include_router(auth_router)
+app.include_router(users_router)
 
 # Health check endpoint
 @app.get("/health")

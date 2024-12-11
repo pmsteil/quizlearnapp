@@ -176,3 +176,25 @@ class AuthService:
             if "User already exists" in str(e):
                 raise AuthenticationError("User already exists", "USER_EXISTS")
             raise AuthenticationError("Internal server error", "INTERNAL_ERROR")
+
+    def list_users(self) -> list:
+        """List all users."""
+        try:
+            result = self.db.execute("SELECT * FROM users")
+            users = [row_to_dict(row) for row in result.rows]
+
+            # Convert to API format
+            return [{
+                "id": user["id"],
+                "email": user["email"],
+                "name": user["name"],
+                "roles": user["roles"].split(","),
+                "created_at": user["created_at"],
+                "updated_at": user["updated_at"]
+            } for user in users]
+        except LibsqlError as e:
+            print(f"Database error in list_users: {str(e)}")
+            raise AuthenticationError("Failed to list users", "DATABASE_ERROR")
+        except Exception as e:
+            print(f"Unexpected error in list_users: {str(e)}")
+            raise AuthenticationError("Internal server error", "INTERNAL_ERROR")

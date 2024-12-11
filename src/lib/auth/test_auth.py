@@ -26,6 +26,49 @@ def test_user_data():
         "name": "Test User"
     }
 
+@pytest.fixture
+def admin_user_data():
+    """Get admin user data."""
+    return {
+        "email": "admin@example.com",
+        "password": "adminpass123",
+        "name": "Admin User"
+    }
+
+def create_admin_user(client, admin_user_data):
+    """Helper to create an admin user and return token."""
+    # Register admin user
+    response = client.post(
+        "/auth/register",
+        data={
+            "email": admin_user_data["email"],
+            "password": admin_user_data["password"],
+            "name": admin_user_data["name"]
+        }
+    )
+    assert response.status_code == 200
+
+    # Get database connection
+    db = get_test_db()
+
+    # Update user to have admin role
+    db.execute(
+        "UPDATE users SET roles = ? WHERE email = ?",
+        ["role_user,role_admin", admin_user_data["email"]]
+    )
+
+    # Login again to get new token with admin role
+    login_response = client.post(
+        "/auth/login",
+        data={
+            "username": admin_user_data["email"],
+            "password": admin_user_data["password"]
+        }
+    )
+    assert login_response.status_code == 200
+
+    return login_response.json()["access_token"]
+
 def test_register_user(client, test_user_data):
     """Test user registration."""
     response = client.post(
@@ -162,3 +205,70 @@ def test_me_endpoint(client, test_user_data):
     assert data["email"] == test_user_data["email"]
     assert data["name"] == test_user_data["name"]
     assert "session_id" in data
+
+def test_logout(client, test_user_data):
+    """Test user logout."""
+    # First register a user
+    register_response = client.post(
+        "/auth/register",
+        data={
+            "email": test_user_data["email"],
+            "password": test_user_data["password"],
+            "name": test_user_data["name"]
+        }
+    )
+    assert register_response.status_code == 200
+    token = register_response.json()["access_token"]
+
+    # Then logout
+    response = client.post(
+        "/auth/logout",
+        headers={"Authorization": f"Bearer {token}"}
+    )
+    print(f"Logout response: {response.status_code}")
+    print(f"Response body: {response.text}")
+
+    assert response.status_code == 200
+
+    # Try to access /me endpoint with the same token
+    me_response = client.get(
+        "/auth/me",
+        headers={"Authorization": f"Bearer {token}"}
+    )
+    assert me_response.status_code == 401
+    assert me_response.json()["detail"] == "Session expired"
+
+def test_list_users(client, admin_user_data, test_user_data):
+    """Test listing users (admin only)."""
+    # Create admin user
+    admin_token = create_admin_user(client, admin_user_data)
+
+    # Create regular user
+    client.post(
+        "/auth/register",
+        data={
+            "email": test_user_data["email"],
+            "password": test_user_data["password"],
+            "name": test_user_data["name"]
+        }
+    )
+
+    # List users as admin
+    response = client.get(
+        "/users",
+        headers={"Authorization": f"Bearer {admin_token}"}
+    )
+    print(f"List users response: {response.status_code}")
+    print(f"Response body: {response.text}")
+
+    assert response.status_code == 200
+    data = response.json()
+    assert len(data) >= 2  # At least admin and test user
+
+    # Verify user data
+    users = {user["email"]: user for user in data}
+    assert admin_user_data["email"] in users
+    assert test_user_data["email"] in users
+    assert "role_admin" in users[admin_user_data["email"]]["roles"]
+    assert "role_user" in users[test_user_data["email"]]["roles"]
+    assert "role_admin" not in users[test_user_data["email"]]["roles"]
