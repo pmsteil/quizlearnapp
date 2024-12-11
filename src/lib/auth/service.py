@@ -166,9 +166,13 @@ class AuthService:
 
             # Create session and return token
             return self._create_session(user)
+        except AuthenticationError:
+            raise
         except LibsqlError as e:
             print(f"Database error in register_user: {str(e)}")
             raise AuthenticationError("Failed to register user", "REGISTRATION_ERROR")
         except Exception as e:
             print(f"Unexpected error in register_user: {str(e)}")
+            if "User already exists" in str(e):
+                raise AuthenticationError("User already exists", "USER_EXISTS")
             raise AuthenticationError("Internal server error", "INTERNAL_ERROR")

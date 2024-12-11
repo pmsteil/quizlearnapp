@@ -134,3 +134,31 @@ def test_register_duplicate_email(client, test_user_data):
     data = response.json()
     assert data["detail"]["error_code"] == "USER_EXISTS"
     assert data["detail"]["message"] == "User already exists"
+
+def test_me_endpoint(client, test_user_data):
+    """Test /me endpoint."""
+    # Register and login
+    register_response = client.post(
+        "/auth/register",
+        data={
+            "email": test_user_data["email"],
+            "password": test_user_data["password"],
+            "name": test_user_data["name"]
+        }
+    )
+    assert register_response.status_code == 200
+    token = register_response.json()["access_token"]
+
+    # Access /me endpoint
+    response = client.get(
+        "/auth/me",
+        headers={"Authorization": f"Bearer {token}"}
+    )
+    print(f"Me endpoint response: {response.status_code}")
+    print(f"Response body: {response.text}")
+
+    assert response.status_code == 200
+    data = response.json()
+    assert data["email"] == test_user_data["email"]
+    assert data["name"] == test_user_data["name"]
+    assert "session_id" in data
