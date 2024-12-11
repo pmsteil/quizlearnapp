@@ -4,17 +4,17 @@ Status Legend:
 ✅ Done | 🚧 In Progress | ⌛ Not Started | ❌ Blocked
 
 ## Phase 1: Database Updates
-Status: ⌛ Not Started
-1. Add missing indexes:
+Status: ✅ Done
+1. Add missing indexes ✅
    - Index on topics(user_id)
-2. Rename users.role column to users.roles
-3. Document roles:
+2. Rename users.role column to users.roles ✅
+3. Document roles ✅
    - role_user: Default role for all users
    - role_admin: Required for /admin access
 4. Verify all needed cascade deletes are in place ✅
 
 ## Phase 2: Authentication Setup
-Status: ⌛ Not Started
+Status: 🚧 In Progress
 1. Implement JWT authentication
 2. Add user management
 3. Set up auth middleware

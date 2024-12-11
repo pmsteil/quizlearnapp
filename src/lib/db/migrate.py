@@ -1,19 +1,34 @@
 import os
-import sqlite3
+import time
+import asyncio
 from pathlib import Path
+from libsql_client import Client, create_client
+from dotenv import load_dotenv
 
-def run_migration(cursor: sqlite3.Cursor, sql: str):
+async def run_migration(client: Client, sql: str):
     # Split on semicolons but ignore semicolons inside quotes
     statements = []
     current_statement = []
     in_quotes = False
     quote_char = None
+    escaped = False
 
     for char in sql:
-        if char in ["'", '"'] and (not quote_char or char == quote_char):
-            in_quotes = not in_quotes
+        if escaped:
+            current_statement.append(char)
+            escaped = False
+            continue
+
+        if char == '\\':
+            escaped = True
+            current_statement.append(char)
+            continue
+
+        if char in ["'", '"']:
+            in_quotes = not in_quotes if not quote_char or char == quote_char else in_quotes
             quote_char = char if in_quotes else None
-        elif char == ';' and not in_quotes:
+
+        if char == ';' and not in_quotes:
             current_statement.append(char)
             stmt = ''.join(current_statement).strip()
             if stmt:
@@ -30,39 +45,62 @@ def run_migration(cursor: sqlite3.Cursor, sql: str):
     # Execute each statement
     for statement in statements:
         if statement.strip():
-            cursor.execute(statement)
+            # Replace timestamp placeholders with current Unix timestamp
+            current_time = int(time.time())
+            statement = statement.replace('CURRENT_TIMESTAMP', str(current_time))
+            print(f"\nExecuting SQL statement:\n{statement}\n")
+            try:
+                await client.execute(statement)
+                print("Statement executed successfully")
+            except Exception as e:
+                print(f"Error executing statement: {e}")
+                raise
 
-def migrate():
+async def migrate():
+    # Load environment variables
+    load_dotenv()
+
+    # Get Turso credentials from environment
+    db_url = os.getenv('VITE_LIBSQL_DB_URL')
+    auth_token = os.getenv('VITE_LIBSQL_DB_AUTH_TOKEN')
+
+    if not db_url or not auth_token:
+        raise ValueError("Database URL and auth token must be set in environment variables")
+
     # Get the directory containing this script
     current_dir = Path(__file__).parent
     migrations_dir = current_dir / 'migrations'
-    db_path = current_dir / 'database.sqlite'
 
     print('Running migrations...')
 
-    # Connect to the database
-    conn = sqlite3.connect(db_path)
-    cursor = conn.cursor()
+    # Connect to Turso using the correct create_client function
+    client = create_client(
+        url=db_url,
+        auth_token=auth_token
+    )
 
     try:
         # Get all .sql files and sort them
         migration_files = sorted([f for f in os.listdir(migrations_dir) if f.endswith('.sql')])
 
         for file in migration_files:
-            print(f'Running migration: {file}')
-            with open(migrations_dir / file, 'r') as f:
-                sql = f.read()
-                run_migration(cursor, sql)
+            print(f'\nRunning migration: {file}')
+            try:
+                with open(migrations_dir / file, 'r') as f:
+                    sql = f.read()
+                    await run_migration(client, sql)
+                print(f"Migration {file} completed successfully")
+            except Exception as e:
+                print(f"Error in migration {file}: {e}")
+                break
 
-        conn.commit()
-        print('Migrations complete!')
+        print('\nMigrations complete!')
 
     except Exception as e:
-        conn.rollback()
-        print(f'Error running migrations: {e}')
+        print(f'\nError running migrations: {e}')
         raise
     finally:
-        conn.close()
+        await client.close()
 
 if __name__ == '__main__':
-    migrate()
+    asyncio.run(migrate())

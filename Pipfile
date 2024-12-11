@@ -5,6 +5,14 @@ name = "pypi"
 
 [packages]
 tsx = "*"
+python-dotenv = "*"
+libsql-client = "*"
+fastapi = "*"
+pyjwt = "*"
+passlib = "*"
+bcrypt = "*"
+python-jose = {extras = ["cryptography"], version = "*"}
+python-multipart = "*"
 
 [dev-packages]
 
