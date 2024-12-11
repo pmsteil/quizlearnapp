@@ -13,6 +13,9 @@ passlib = "*"
 bcrypt = "*"
 python-jose = {extras = ["cryptography"], version = "*"}
 python-multipart = "*"
+uvicorn = "*"
+email-validator = "*"
+requests = "*"
 
 [dev-packages]
 
@@ -21,3 +24,5 @@ python_version = "3.13"
 
 [scripts]
 migrate = "python src/lib/db/migrate.py"
+server = "python -m uvicorn src.lib.app:app --host 0.0.0.0 --port 8001 --reload"
+test-auth = "python scripts/test_auth.py"
