@@ -1,5 +1,3 @@
-import { env } from '../config/env';
-
 export function sanitizeInput(input: string): string {
   return input.replace(/<[^>]*>/g, '');
 }
@@ -10,7 +8,7 @@ export function getErrorMessage(error: unknown): string {
 }
 
 export function logError(error: unknown, context: string) {
-  if (env.IS_PRODUCTION) {
+  if (import.meta.env.PROD) {
     // In production, send to error tracking service
     console.error(`[${context}]`, getErrorMessage(error));
   } else {

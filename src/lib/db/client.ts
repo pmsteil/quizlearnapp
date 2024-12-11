@@ -36,6 +36,7 @@ let dbInstance: ReturnType<typeof createClient> | null = null;
 
 function getDbClient() {
   if (!dbInstance) {
+    // Try runtime config first, fall back to build-time env vars
     const url = import.meta.env.VITE_LIBSQL_DB_URL;
     const authToken = import.meta.env.VITE_LIBSQL_DB_AUTH_TOKEN;
 

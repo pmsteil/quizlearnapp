@@ -42,3 +42,6 @@ next-env.d.ts
 .vscode/*
 !.vscode/extensions.json
 !.vscode/settings.json
+
+# temporary files
+dist/index.html.bak

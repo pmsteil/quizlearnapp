@@ -40,16 +40,16 @@ FROM nginx
 # Copy built application
 COPY --from=build /app/dist /usr/share/nginx/html
 
-# Start the server by default, this can be overwritten at runtime
+# Basic nginx config inline
+RUN echo 'server { \n\
+    listen 80; \n\
+    root /usr/share/nginx/html; \n\
+    index index.html; \n\
+    location / { \n\
+        try_files $uri $uri/ /index.html; \n\
+    } \n\
+}' > /etc/nginx/conf.d/default.conf
+
 EXPOSE 80
 
-# Add this near the end of your Dockerfile, before the CMD
-RUN echo '#!/bin/sh' > /docker-entrypoint.sh && \
-    echo 'echo "=== Full Environment Variables ===" >> /proc/1/fd/1' >> /docker-entrypoint.sh && \
-    echo 'env | sort >> /proc/1/fd/1' >> /docker-entrypoint.sh && \
-    echo 'echo "=== End Environment Variables ===" >> /proc/1/fd/1' >> /docker-entrypoint.sh && \
-    echo 'exec "$@"' >> /docker-entrypoint.sh && \
-    chmod +x /docker-entrypoint.sh
-
-ENTRYPOINT ["/docker-entrypoint.sh"]
 CMD ["nginx", "-g", "daemon off;"]
