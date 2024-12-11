@@ -67,11 +67,11 @@ API Base Path: /api/v1
 Auth:
 - POST   /auth/register     - Register new user ✅
 - POST   /auth/login        - Login user ✅
-- POST   /auth/logout       - Logout user ⌛
+- POST   /auth/logout       - Logout user ✅
 - GET    /auth/me           - Get current user ✅
 
 Users (Admin):
-- GET    /users            - List users ⌛
+- GET    /users            - List users ✅
 - PUT    /users/:id        - Update user ⌛
 - DELETE /users/:id        - Delete user ⌛
 
