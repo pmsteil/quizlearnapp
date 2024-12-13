@@ -5,6 +5,7 @@ import App from './App';
 import './index.css';
 import { InitializationWrapper } from './components/app/InitializationWrapper';
 import { RootErrorBoundary } from './components/app/RootErrorBoundary';
+import { ToastProvider } from './lib/contexts/toast.context';
 
 // Add global error handler
 window.onerror = (message, source, lineno, colno, error) => {
@@ -28,13 +29,15 @@ try {
 
   root.render(
     <React.StrictMode>
-      <RootErrorBoundary>
-        <ThemeProvider attribute="class" defaultTheme="dark">
-          <InitializationWrapper>
-            <App />
-          </InitializationWrapper>
-        </ThemeProvider>
-      </RootErrorBoundary>
+      <ThemeProvider attribute="class" defaultTheme="dark">
+        <RootErrorBoundary>
+          <ToastProvider>
+            <InitializationWrapper>
+              <App />
+            </InitializationWrapper>
+          </ToastProvider>
+        </RootErrorBoundary>
+      </ThemeProvider>
     </React.StrictMode>
   );
 } catch (error) {

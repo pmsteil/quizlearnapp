@@ -1,10 +1,10 @@
-import { useEffect } from 'react';
-import { Navigate } from 'react-router-dom';
-import { useAuth } from '@/lib/context/AuthContext';
+import { Navigate, useLocation } from 'react-router-dom';
+import type { ReactNode } from 'react';
+import { useAuth } from '@/lib/contexts/auth.context';
 import { debug } from '@/lib/utils/debug';
 
 interface RoleGuardProps {
-  children: React.ReactNode;
+  children: ReactNode;
   allowedRoles: string[];
 }
 

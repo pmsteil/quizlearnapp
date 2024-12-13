@@ -1,9 +1,9 @@
 import { Brain, BookOpen, Users, Star } from 'lucide-react';
+import { useEffect, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { AuthDialog } from '@/components/auth/AuthDialog';
-import { useState, useEffect } from 'react';
-import { useAuth } from '@/lib/context/AuthContext';
-import { useNavigate } from 'react-router-dom';
+import { useAuth } from '@/lib/contexts/auth.context';
 import Navbar from '@/components/navigation/Navbar';
 import { ErrorMessage } from '@/components/ui/error-message';
 

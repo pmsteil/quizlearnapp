@@ -1,68 +1,67 @@
 from fastapi import APIRouter, Depends, HTTPException
 from typing import List
 from src.lib.auth.service import get_current_user, require_admin
-from src.lib.topics.service import TopicService
+from src.lib.topics.service import TopicService, TopicCreate, TopicUpdate, LessonPlan
 from pydantic import BaseModel
 
 router = APIRouter(prefix="/topics", tags=["topics"])
 
-class TopicCreate(BaseModel):
-    title: str
-    description: str
-
-class TopicUpdate(BaseModel):
-    title: str
-    description: str
-
 class TopicResponse(BaseModel):
-    id: int
+    id: str
+    userId: str
     title: str
     description: str
-    user_id: int
-    created_at: str
-    updated_at: str
+    lessonPlan: LessonPlan
+    createdAt: int
+    updatedAt: int
 
-@router.get("", response_model=List[TopicResponse])
-async def get_topics(current_user = Depends(get_current_user)):
-    topics = await TopicService.get_topics()
+@router.get("/user/{user_id}", response_model=List[TopicResponse])
+async def get_user_topics(user_id: str, current_user = Depends(get_current_user)):
+    """Get all topics for a specific user."""
+    if current_user["id"] != user_id and "role_admin" not in current_user.get("roles", []):
+        raise HTTPException(status_code=403, detail="Not authorized to view these topics")
+    topics = await TopicService.get_user_topics(user_id)
     return topics
 
 @router.get("/{topic_id}", response_model=TopicResponse)
-async def get_topic(topic_id: int, current_user = Depends(get_current_user)):
+async def get_topic(topic_id: str, current_user = Depends(get_current_user)):
+    """Get a specific topic by ID."""
     topic = await TopicService.get_topic_by_id(topic_id)
     if not topic:
         raise HTTPException(status_code=404, detail="Topic not found")
+    if topic["user_id"] != current_user["id"] and "role_admin" not in current_user.get("roles", []):
+        raise HTTPException(status_code=403, detail="Not authorized to view this topic")
     return topic
 
 @router.post("", response_model=TopicResponse)
-async def create_topic(
-    topic: TopicCreate,
-    current_user = Depends(require_admin)
-):
-    return await TopicService.create_topic(
-        title=topic.title,
-        description=topic.description,
-        user_id=current_user["id"]
-    )
+async def create_topic(topic: TopicCreate, current_user = Depends(get_current_user)):
+    """Create a new topic."""
+    if topic.userId != current_user["id"] and "role_admin" not in current_user.get("roles", []):
+        raise HTTPException(status_code=403, detail="Not authorized to create topic for this user")
+    return await TopicService.create_topic(topic)
 
 @router.put("/{topic_id}", response_model=TopicResponse)
-async def update_topic(
-    topic_id: int,
-    topic: TopicUpdate,
-    current_user = Depends(require_admin)
-):
-    updated_topic = await TopicService.update_topic(
-        topic_id=topic_id,
-        title=topic.title,
-        description=topic.description
-    )
-    if not updated_topic:
+async def update_topic(topic_id: str, topic: TopicUpdate, current_user = Depends(get_current_user)):
+    """Update a topic."""
+    existing_topic = await TopicService.get_topic_by_id(topic_id)
+    if not existing_topic:
         raise HTTPException(status_code=404, detail="Topic not found")
+    if existing_topic["user_id"] != current_user["id"] and "role_admin" not in current_user.get("roles", []):
+        raise HTTPException(status_code=403, detail="Not authorized to update this topic")
+    
+    updated_topic = await TopicService.update_topic(topic_id, topic)
+    if not updated_topic:
+        raise HTTPException(status_code=400, detail="No fields to update")
     return updated_topic
 
 @router.delete("/{topic_id}")
-async def delete_topic(topic_id: int, current_user = Depends(require_admin)):
-    success = await TopicService.delete_topic(topic_id)
-    if not success:
+async def delete_topic(topic_id: str, current_user = Depends(get_current_user)):
+    """Delete a topic."""
+    existing_topic = await TopicService.get_topic_by_id(topic_id)
+    if not existing_topic:
         raise HTTPException(status_code=404, detail="Topic not found")
+    if existing_topic["user_id"] != current_user["id"] and "role_admin" not in current_user.get("roles", []):
+        raise HTTPException(status_code=403, detail="Not authorized to delete this topic")
+    
+    await TopicService.delete_topic(topic_id)
     return {"message": "Topic deleted successfully"}

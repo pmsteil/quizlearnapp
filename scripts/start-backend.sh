@@ -15,4 +15,4 @@ fi
 
 # Start the backend server
 echo "Starting backend server..."
-pipenv run uvicorn src.lib.app:app --reload --port 3000
+pipenv run uvicorn src.lib.app:app --reload --port 3000 --host 0.0.0.0

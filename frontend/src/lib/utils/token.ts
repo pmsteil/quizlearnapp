@@ -1,51 +1,37 @@
 interface TokenData {
-  token: string;
-  refreshToken?: string;
-  expiresAt: number;
+  access_token: string;
+  refresh_token: string;
+  expires_in: number;
+  token_type: string;
+  user: any;
 }
 
 export class TokenManager {
-  private static TOKEN_KEY = 'auth_token';
-  private static REFRESH_TOKEN_KEY = 'refresh_token';
-  private static EXPIRES_AT_KEY = 'token_expires_at';
+  private static TOKEN_KEY = 'auth_token_data';
 
-  static setTokens(token: string, refreshToken?: string, expiresIn?: number) {
-    const expiresAt = expiresIn ? Date.now() + expiresIn * 1000 : undefined;
-
-    localStorage.setItem(this.TOKEN_KEY, token);
-    if (refreshToken) {
-      localStorage.setItem(this.REFRESH_TOKEN_KEY, refreshToken);
-    }
-    if (expiresAt) {
-      localStorage.setItem(this.EXPIRES_AT_KEY, expiresAt.toString());
-    }
+  static setTokenData(data: TokenData) {
+    localStorage.setItem(this.TOKEN_KEY, JSON.stringify(data));
   }
 
   static getTokenData(): TokenData | null {
-    const token = localStorage.getItem(this.TOKEN_KEY);
-    const refreshToken = localStorage.getItem(this.REFRESH_TOKEN_KEY);
-    const expiresAt = Number(localStorage.getItem(this.EXPIRES_AT_KEY));
+    const data = localStorage.getItem(this.TOKEN_KEY);
+    return data ? JSON.parse(data) : null;
+  }
 
-    if (!token) return null;
-
-    return {
-      token,
-      refreshToken: refreshToken || undefined,
-      expiresAt: expiresAt || 0,
-    };
+  static getAccessToken(): string | null {
+    const data = this.getTokenData();
+    return data ? data.access_token : null;
   }
 
   static clearTokens() {
     localStorage.removeItem(this.TOKEN_KEY);
-    localStorage.removeItem(this.REFRESH_TOKEN_KEY);
-    localStorage.removeItem(this.EXPIRES_AT_KEY);
   }
 
   static isTokenExpired(): boolean {
-    const expiresAt = Number(localStorage.getItem(this.EXPIRES_AT_KEY));
-    if (!expiresAt) return false;
-
-    // Add 10-second buffer
-    return Date.now() > expiresAt - 10000;
+    const data = this.getTokenData();
+    if (!data || !data.expires_in) return true;
+    
+    const expirationTime = new Date(data.expires_in * 1000);
+    return new Date() > expirationTime;
   }
 }

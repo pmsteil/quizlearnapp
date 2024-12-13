@@ -1,18 +1,22 @@
 import React, { createContext, useContext, useState, useCallback } from 'react';
 import { ToastContainer } from '../../components/Toast';
 
-type ToastType = 'success' | 'error' | 'info' | 'warning';
+type ToastVariant = 'default' | 'destructive';
 
-interface Toast {
-  id: string;
-  message: string;
-  type: ToastType;
+interface ToastData {
+  title: string;
+  description: string;
+  variant?: ToastVariant;
   duration?: number;
+}
+
+interface Toast extends ToastData {
+  id: string;
 }
 
 interface ToastContextType {
   toasts: Toast[];
-  showToast: (message: string, type?: ToastType, duration?: number) => void;
+  showToast: (data: ToastData) => void;
   removeToast: (id: string) => void;
 }
 
@@ -25,9 +29,10 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
     setToasts(prev => prev.filter(toast => toast.id !== id));
   }, []);
 
-  const showToast = useCallback((message: string, type: ToastType = 'info', duration = 5000) => {
+  const showToast = useCallback((data: ToastData) => {
     const id = Math.random().toString(36).substr(2, 9);
-    const toast: Toast = { id, message, type, duration };
+    const toast: Toast = { ...data, id };
+    const duration = data.duration ?? 5000;
 
     setToasts(prev => [...prev, toast]);
 

@@ -102,105 +102,64 @@ export default function TopicsList() {
   );
 
   useEffect(() => {
-    if (!user?.id) return;
-
-    const config = validateConfig();
-    if (!config.isValid && config.error) {
-      setConfigError({
-        title: config.error.title,
-        message: `${config.error.message}\n\nMissing: ${config.error.details}`
-      });
-      return;
+    if (user?.id) {
+      fetchTopics();
     }
-
-    fetchTopics();
-  }, [user?.id, fetchTopics]);
-
-  const handleCreateTopic = useCallback(async (title: string) => {
-    await createTopic(
-      title,
-      'Start your learning journey with personalized guidance'
-    );
-  }, [createTopic]);
+  }, [user?.id]);
 
   const sortedTopics = useMemo(() => {
-    return [...topics].sort((a, b) => {
-      switch (sortBy) {
-        case 'progress':
-          return b.progress - a.progress;
-        case 'name':
-          return a.title.localeCompare(b.title);
-        case 'recent':
-        default:
-          return b.updated_at - a.updated_at;
-      }
-    });
+    if (!topics) return [];
+    
+    const topicsCopy = [...topics];
+    switch (sortBy) {
+      case 'recent':
+        return topicsCopy.sort((a, b) => b.createdAt - a.createdAt);
+      case 'name':
+        return topicsCopy.sort((a, b) => a.title.localeCompare(b.title));
+      default:
+        return topicsCopy;
+    }
   }, [topics, sortBy]);
+
+  const handleCreateTopic = async (data: { title: string; description: string }) => {
+    await createTopic(data.title, data.description);
+  };
 
   if (configError) {
     return (
-      <div className="container mx-auto p-4">
-        <div className="max-w-2xl mx-auto space-y-4">
-          <h2 className="text-3xl font-bold">Setup Required</h2>
-          <ErrorMessage
-            title={configError.title}
-            message={configError.message}
-            className="mt-4"
-          />
-          <div className="mt-4 text-sm text-muted-foreground">
-            Please check the console for configuration details.
-          </div>
-        </div>
-      </div>
-    );
-  }
-
-  if (topicsError) {
-    return (
-      <div className="container mx-auto p-4">
-        <div className="max-w-2xl mx-auto space-y-4">
-          <h2 className="text-3xl font-bold">Your Topics</h2>
-          <ErrorMessage
-            title="Error Loading Topics"
-            message={topicsError.message}
-            className="mt-4"
-          />
-          <Button
-            onClick={() => fetchTopics()}
-            className="mt-4"
-            variant="outline"
-          >
-            <RefreshCcw className="w-4 h-4 mr-2" />
-            Try Again
-          </Button>
-        </div>
-      </div>
+      <ErrorMessage
+        title={configError.title}
+        message={configError.message}
+      />
     );
   }
 
   if (isLoading) {
-    return (
-      <div className="container mx-auto px-4 py-8">
-        <TopicSkeleton />
-      </div>
-    );
+    return <TopicSkeleton />;
   }
 
   return (
-    <div className="container mx-auto px-4 py-8">
-      <div className="space-y-6">
-        <div className="flex items-center justify-between">
-          <h2 className="text-3xl font-bold">Your Topics</h2>
+    <div className="space-y-6">
+      <div className="flex items-center justify-between">
+        <h2 className="text-3xl font-bold tracking-tight">Your Topics</h2>
+        <div className="flex items-center gap-4">
+          <Button
+            size="icon"
+            variant="outline"
+            onClick={() => fetchTopics()}
+            disabled={isLoading}
+          >
+            <RefreshCcw className="h-4 w-4" />
+          </Button>
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
-              <Button variant="outline">Sort by</Button>
+              <Button variant="outline">
+                Sort by: {sortBy}
+              </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end">
               <DropdownMenuItem onClick={() => setSort('recent')}>
-                Recent
-              </DropdownMenuItem>
-              <DropdownMenuItem onClick={() => setSort('progress')}>
-                Progress
+                Most Recent
               </DropdownMenuItem>
               <DropdownMenuItem onClick={() => setSort('name')}>
                 Name
@@ -208,26 +167,30 @@ export default function TopicsList() {
             </DropdownMenuContent>
           </DropdownMenu>
         </div>
-
-        <NewTopicForm
-          onSubmit={handleCreateTopic}
-          isCreating={isCreating}
-        />
-
-        {topics.length === 0 ? (
-          <div className="text-center py-12">
-            <h3 className="text-lg font-medium text-muted-foreground">
-              No topics yet. Start your first learning journey!
-            </h3>
-          </div>
-        ) : (
-          <div className="grid grid-cols-1 gap-4">
-            {sortedTopics.map((topic) => (
-              <TopicItem key={topic.id} topic={topic} />
-            ))}
-          </div>
-        )}
       </div>
+
+      {topicsError ? (
+        <ErrorMessage
+          title="Failed to load topics"
+          message={topicsError.message}
+        />
+      ) : sortedTopics.length === 0 ? (
+        <div className="text-center py-12">
+          <p className="text-muted-foreground">No topics yet. Create your first topic to get started!</p>
+          <NewTopicForm onSubmit={handleCreateTopic} isLoading={isCreating} />
+        </div>
+      ) : (
+        <div className="grid gap-4">
+          {sortedTopics.map((topic) => (
+            <TopicItem
+              key={topic.id}
+              topic={topic}
+              onClick={() => navigate(`/topic/${topic.id}`)}
+            />
+          ))}
+          <NewTopicForm onSubmit={handleCreateTopic} isLoading={isCreating} />
+        </div>
+      )}
     </div>
   );
 }

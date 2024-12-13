@@ -8,7 +8,7 @@ interface AuthContextType {
   user: User | null;
   loading: boolean;
   error: string | null;
-  login: (email: string, password: string) => Promise<void>;
+  login: (email: string, password: string) => Promise<any>;
   register: (name: string, email: string, password: string) => Promise<void>;
   logout: () => Promise<void>;
 }
@@ -47,16 +47,17 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const login = async (email: string, password: string) => {
     try {
-      const { token, user } = await authService.login({ email, password });
-      TokenManager.setTokens(token);
-      setUser(user);
-      setError(null);
-      showToast('Successfully logged in', 'success');
-    } catch (err) {
-      const message = getErrorMessage(err);
-      setError(message);
-      showToast(message, 'error');
-      throw err;
+      const response = await authService.login({ email, password });
+      setUser(response.user);
+      return response;
+    } catch (error) {
+      console.error('Login error in context:', error);
+      if (error instanceof Error) {
+        setError(error.message);
+      } else {
+        setError('An unexpected error occurred');
+      }
+      throw error;
     }
   };
 
@@ -66,11 +67,19 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       TokenManager.setTokens(token);
       setUser(user);
       setError(null);
-      showToast('Registration successful', 'success');
+      showToast({
+        title: "Success",
+        description: "Your account has been created successfully!",
+        variant: "default"
+      });
     } catch (err) {
-      const message = getErrorMessage(err);
+      const message = err instanceof Error ? err.message : 'Registration failed';
       setError(message);
-      showToast(message, 'error');
+      showToast({
+        title: "Registration Error",
+        description: message,
+        variant: "destructive"
+      });
       throw err;
     }
   };

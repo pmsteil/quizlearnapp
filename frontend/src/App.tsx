@@ -5,12 +5,15 @@ import { Toaster } from '@/components/ui/toaster';
 import { DatabaseProvider } from '@/lib/context/DatabaseContext';
 import { AuthProvider } from '@/lib/contexts/auth.context';
 import { ProtectedRoute } from '@/components/auth/ProtectedRoute';
-import Dashboard from '@/components/dashboard/Dashboard';
+import { ToastProvider } from '@/lib/contexts/toast.context';
+import { LoadingProvider } from '@/lib/contexts/loading.context';
 import TopicLearning from '@/components/topic/TopicLearning';
 import NewTopicSetup from '@/components/topics/NewTopicSetup';
 import PublicHome from '@/components/home/PublicHome';
 import AdminPage from '@/components/admin/AdminPage';
 import { RoleGuard } from '@/components/auth/RoleGuard';
+import Dashboard from '@/components/dashboard/Dashboard';
+import ErrorBoundary from '@/components/error/ErrorBoundary';
 
 function App() {
   const [dbError, setDbError] = useState<{title: string; message: string} | null>(null);
@@ -64,53 +67,59 @@ function App() {
   }
 
   return (
-    <DatabaseProvider>
-      <AuthProvider>
-        <BrowserRouter>
-          <Routes>
-            <Route path="/" element={<PublicHome dbError={dbError} />} />
-            {!dbError && (
-              <>
-                <Route
-                  path="/dashboard"
-                  element={
-                    <ProtectedRoute>
-                      <Dashboard />
-                    </ProtectedRoute>
-                  }
-                />
-                <Route
-                  path="/topic/:id"
-                  element={
-                    <ProtectedRoute>
-                      <TopicLearning />
-                    </ProtectedRoute>
-                  }
-                />
-                <Route
-                  path="/new-topic"
-                  element={
-                    <ProtectedRoute>
-                      <NewTopicSetup />
-                    </ProtectedRoute>
-                  }
-                />
-                <Route
-                  path="/admin"
-                  element={
-                    <RoleGuard allowedRoles={['role_admin']}>
-                      <AdminPage />
-                    </RoleGuard>
-                  }
-                />
-              </>
-            )}
-            <Route path="*" element={<Navigate to="/" replace />} />
-          </Routes>
-          <Toaster />
-        </BrowserRouter>
-      </AuthProvider>
-    </DatabaseProvider>
+    <ErrorBoundary>
+      <BrowserRouter>
+        <DatabaseProvider>
+          <AuthProvider>
+            <ToastProvider>
+              <LoadingProvider>
+                <Routes>
+                  <Route path="/" element={<PublicHome dbError={dbError} />} />
+                  {!dbError && (
+                    <>
+                      <Route
+                        path="/dashboard"
+                        element={
+                          <ProtectedRoute>
+                            <Dashboard />
+                          </ProtectedRoute>
+                        }
+                      />
+                      <Route
+                        path="/topic/:id"
+                        element={
+                          <ProtectedRoute>
+                            <TopicLearning />
+                          </ProtectedRoute>
+                        }
+                      />
+                      <Route
+                        path="/new-topic"
+                        element={
+                          <ProtectedRoute>
+                            <NewTopicSetup />
+                          </ProtectedRoute>
+                        }
+                      />
+                      <Route
+                        path="/admin"
+                        element={
+                          <RoleGuard allowedRoles={['role_admin']}>
+                            <AdminPage />
+                          </RoleGuard>
+                        }
+                      />
+                    </>
+                  )}
+                  <Route path="*" element={<Navigate to="/" replace />} />
+                </Routes>
+                <Toaster />
+              </LoadingProvider>
+            </ToastProvider>
+          </AuthProvider>
+        </DatabaseProvider>
+      </BrowserRouter>
+    </ErrorBoundary>
   );
 }
 

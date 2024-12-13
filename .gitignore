@@ -45,3 +45,8 @@ next-env.d.ts
 
 # temporary files
 dist/index.html.bak
+
+*.log
+*.log*
+backend/*.log
+frontend/*.log

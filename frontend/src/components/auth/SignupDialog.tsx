@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { useAuth } from '@/lib/context/AuthContext';
+import { useAuth } from '@/lib/contexts/auth.context';
 import {
   DialogHeader,
   DialogTitle,
@@ -10,7 +10,7 @@ import { Button } from '@/components/ui/button';
 import { useToast } from '@/components/ui/use-toast';
 
 export function SignupDialog() {
-  const { signup } = useAuth();
+  const { register } = useAuth();
   const { toast } = useToast();
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
@@ -22,7 +22,7 @@ export function SignupDialog() {
     setIsLoading(true);
 
     try {
-      await signup(email, password, name);
+      await register(name, email, password);
       toast({
         title: "Account Created",
         description: "Welcome to QuizLearn!",

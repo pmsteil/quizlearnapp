@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { useLocation, useNavigate, Link } from 'react-router-dom';
 import { Brain, LayoutDashboard, ShieldCheck } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { useAuth } from '@/lib/context/AuthContext';
+import { useAuth } from '@/lib/contexts/auth.context';
 import { topicsService } from '@/lib/services/topics.service';
 import type { Topic } from '@/lib/types';
 import { toast } from '@/components/ui/use-toast';

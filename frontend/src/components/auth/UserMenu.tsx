@@ -5,7 +5,7 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { Button } from '@/components/ui/button';
-import { useAuth } from '@/lib/context/AuthContext';
+import { useAuth } from '@/lib/contexts/auth.context';
 import { AuthDialog } from './AuthDialog';
 import { useState } from 'react';
 

@@ -7,6 +7,9 @@ import uuid
 import time
 from functools import wraps
 from fastapi import HTTPException, Request, Depends
+import logging
+
+logger = logging.getLogger(__name__)
 
 class AuthenticationError(Exception):
     """Custom exception for authentication errors"""
@@ -87,21 +90,25 @@ class AuthService:
         self.db = db_client
         self.session_timeout = timedelta(hours=24)  # Default session timeout
 
-    async def authenticate_user(self, email: str, password: str) -> Dict[str, Any]:
-        """Authenticate a user with email and password."""
+    async def authenticate_user(self, username: str, password: str) -> Dict[str, Any]:
+        """Authenticate a user with username and password."""
         try:
+            logger.info(f"Authenticating user: {username}")
             # Get user from database
             result = self.db.execute(
-                "SELECT * FROM users WHERE email = ?",
-                [email]
+                "SELECT id, email, name, password_hash, roles FROM users WHERE email = ?",  # We use email as username
+                [username]
             )
             if not result.rows:
+                logger.warning(f"User not found: {username}")
                 raise AuthenticationError("Invalid credentials", "INVALID_CREDENTIALS")
 
             user = row_to_dict(result.rows[0])
+            logger.info(f"Found user: {user['email']}, verifying password")
 
             # Verify password
             if not verify_password(password, user["password_hash"]):
+                logger.warning(f"Invalid password for user: {username}")
                 # Update failed attempts
                 current_time = int(time.time())
                 self.db.execute(
@@ -111,58 +118,28 @@ class AuthService:
                         last_failed_attempt = ?
                     WHERE email = ?
                     """,
-                    [current_time, email]
+                    [current_time, username]
                 )
                 raise AuthenticationError("Invalid credentials", "INVALID_CREDENTIALS")
 
-            # Get fresh roles from database
-            roles_result = self.db.execute(
-                "SELECT roles FROM users WHERE id = ?",
-                [user["id"]]
-            )
-            if roles_result.rows:
-                user["roles"] = roles_result.rows[0][0]
+            logger.info(f"Password verified successfully for user: {username}")
 
-            # Create session
-            session_id = str(uuid.uuid4())
-            expires_at = int(time.time()) + 24 * 60 * 60  # 24 hours from now
-
-            self.db.execute(
-                """
-                INSERT INTO sessions (id, user_id, created_at, expires_at)
-                VALUES (?, ?, ?, ?)
-                """,
-                [session_id, user["id"], int(time.time()), expires_at]
-            )
-
-            # Create token payload
-            token_data = {
-                "sub": user["id"],
-                "user": {
-                    "id": user["id"],
-                    "email": user["email"],
-                    "name": user["name"],
-                    "roles": user["roles"].split(","),
-                    "session_id": session_id
-                },
-                "session_id": session_id,
-                "exp": expires_at
+            # Clean user object
+            clean_user = {
+                "id": user["id"],
+                "email": user["email"],
+                "name": user["name"],
+                "roles": user["roles"].split(",") if user["roles"] else []
             }
 
-            # Generate token
-            access_token = create_access_token(token_data)
-
-            return {
-                "access_token": access_token,
-                "token_type": "bearer",
-                "user": token_data["user"],
-                "expires_in": 24 * 60 * 60
-            }
+            logger.info(f"Authentication successful for user: {username}")
+            return clean_user
 
         except AuthenticationError:
             raise
         except Exception as e:
-            raise AuthenticationError("Internal server error", "INTERNAL_ERROR")
+            logger.error(f"Authentication error for user {username}: {str(e)}")
+            raise AuthenticationError(str(e), "AUTHENTICATION_ERROR")
 
     def _create_session(self, user: Dict[str, Any]) -> dict:
         """Create a new session for the user"""

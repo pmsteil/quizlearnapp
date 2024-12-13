@@ -1,5 +1,5 @@
 import axios, { AxiosInstance, AxiosError, AxiosRequestConfig } from 'axios';
-import { AppError } from './utils/error';
+import { AppError } from './error';
 import { TokenManager } from './utils/token';
 
 // Types
@@ -16,51 +16,67 @@ export interface ApiError {
 
 // Base API client
 export class ApiClient {
-  protected baseURL: string;
-  protected headers: Record<string, string>;
+  protected baseUrl: string;
 
-  constructor(config: ApiConfig) {
-    this.baseURL = config.baseURL;
-    this.headers = {
+  constructor(baseUrl: string) {
+    this.baseUrl = baseUrl;
+  }
+
+  protected async request<T>(
+    path: string,
+    options: RequestInit = {}
+  ): Promise<T> {
+    const tokenData = TokenManager.getTokenData();
+    const headers = {
       'Content-Type': 'application/json',
-      ...config.headers,
+      ...(tokenData?.access_token ? { Authorization: `Bearer ${tokenData.access_token}` } : {}),
+      ...options.headers,
     };
-  }
 
-  protected async get<T = any>(path: string): Promise<T> {
-    const response = await fetch(`${this.baseURL}${path}`, {
-      headers: this.headers,
+    const response = await fetch(`${this.baseUrl}${path}`, {
+      ...options,
+      headers,
     });
-    if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
-    return response.json();
+
+    if (!response.ok) {
+      const contentType = response.headers.get('content-type');
+      if (contentType && contentType.includes('application/json')) {
+        const error = await response.json();
+        throw new AppError(error.detail.message, response.status, error.detail.error_code);
+      } else {
+        throw new AppError('An unexpected error occurred', response.status, 'UNKNOWN_ERROR');
+      }
+    }
+
+    const contentType = response.headers.get('content-type');
+    if (contentType && contentType.includes('application/json')) {
+      return response.json();
+    }
+    
+    throw new AppError('Invalid response format', 500, 'INVALID_RESPONSE_FORMAT');
   }
 
-  protected async post<T = any>(path: string, data: any): Promise<T> {
-    const response = await fetch(`${this.baseURL}${path}`, {
+  protected async get<T>(path: string, options: RequestInit = {}): Promise<T> {
+    return this.request<T>(path, { ...options, method: 'GET' });
+  }
+
+  protected async post<T>(path: string, data: any, options: RequestInit = {}): Promise<T> {
+    return this.request<T>(path, {
+      ...options,
       method: 'POST',
-      headers: this.headers,
       body: JSON.stringify(data),
     });
-    if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
-    return response.json();
   }
 
-  protected async put<T = any>(path: string, data: any): Promise<T> {
-    const response = await fetch(`${this.baseURL}${path}`, {
+  protected async put<T>(path: string, data: any, options: RequestInit = {}): Promise<T> {
+    return this.request<T>(path, {
+      ...options,
       method: 'PUT',
-      headers: this.headers,
       body: JSON.stringify(data),
     });
-    if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
-    return response.json();
   }
 
-  protected async delete<T = any>(path: string): Promise<T> {
-    const response = await fetch(`${this.baseURL}${path}`, {
-      method: 'DELETE',
-      headers: this.headers,
-    });
-    if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
-    return response.json();
+  protected async delete<T>(path: string, options: RequestInit = {}): Promise<T> {
+    return this.request<T>(path, { ...options, method: 'DELETE' });
   }
 }

@@ -1,17 +1,38 @@
+// Debug logging utility that logs to both console and sends to server
 export const debug = {
   log: (...args: any[]) => {
-    if (import.meta.env.DEV) {
-      console.log(...args);
-    }
+    console.log(...args);
+    // Send to server for logging
+    fetch('/api/log', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        level: 'log',
+        message: args.map(arg => 
+          typeof arg === 'object' ? JSON.stringify(arg) : String(arg)
+        ).join(' '),
+        timestamp: new Date().toISOString()
+      })
+    }).catch(() => {
+      // Ignore fetch errors in logging
+    });
   },
+  
   error: (...args: any[]) => {
-    if (import.meta.env.DEV) {
-      console.error(...args);
-    }
-  },
-  warn: (...args: any[]) => {
-    if (import.meta.env.DEV) {
-      console.warn(...args);
-    }
+    console.error(...args);
+    // Send to server for logging
+    fetch('/api/log', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        level: 'error',
+        message: args.map(arg => 
+          typeof arg === 'object' ? JSON.stringify(arg) : String(arg)
+        ).join(' '),
+        timestamp: new Date().toISOString()
+      })
+    }).catch(() => {
+      // Ignore fetch errors in logging
+    });
   }
 };

@@ -1,8 +1,9 @@
-from fastapi import FastAPI, Request
+from fastapi import FastAPI, Request, APIRouter, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.openapi.docs import get_swagger_ui_html, get_redoc_html
 from fastapi.openapi.utils import get_openapi
 from fastapi.staticfiles import StaticFiles
+from fastapi.responses import JSONResponse
 from libsql_client import create_client_sync
 from dotenv import load_dotenv
 import os
@@ -11,9 +12,24 @@ from .users.routes import router as users_router
 from .auth.service import AuthService
 from .db import get_db, get_test_db
 from .topics.routes import router as topics_router
+from .routes.log import router as log_router
+import logging
+import sys
 
 # Load environment variables
 load_dotenv()
+
+# Configure logging
+logging.basicConfig(
+    level=logging.INFO,
+    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
+    handlers=[
+        logging.StreamHandler(sys.stdout),
+        logging.FileHandler('app.log')
+    ]
+)
+
+logger = logging.getLogger(__name__)
 
 # Create FastAPI app with metadata
 app = FastAPI(
@@ -57,7 +73,6 @@ app = FastAPI(
             "message": "Human readable error message"
         }
     }
-    ```
     """,
     version="1.0.0",
     terms_of_service="http://quizlearn.com/terms/",
@@ -100,14 +115,34 @@ app = FastAPI(
     redoc_url=None,  # Disable default redoc
 )
 
-# Add CORS middleware
+# Configure CORS
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  # In production, replace with your frontend URL
+    allow_origins=["http://localhost:5173"],  # Frontend dev server
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+# Exception handler for HTTPException
+@app.exception_handler(HTTPException)
+async def http_exception_handler(request: Request, exc: HTTPException):
+    return JSONResponse(
+        status_code=exc.status_code,
+        content={"detail": {"error_code": str(exc.status_code), "message": exc.detail}},
+    )
+
+# Add middleware for handling errors
+@app.middleware("http")
+async def error_handling_middleware(request: Request, call_next):
+    try:
+        response = await call_next(request)
+        return response
+    except Exception as e:
+        return JSONResponse(
+            status_code=500,
+            content={"detail": {"error_code": "INTERNAL_SERVER_ERROR", "message": str(e)}},
+        )
 
 # Database connection middleware
 @app.middleware("http")
@@ -118,8 +153,14 @@ async def db_session_middleware(request: Request, call_next):
         request.app.state.db = db_func()
         request.app.state.auth_service = AuthService(request.app.state.db)
 
-    response = await call_next(request)
-    return response
+    try:
+        response = await call_next(request)
+        return response
+    except Exception as e:
+        return JSONResponse(
+            status_code=500,
+            content={"detail": {"error_code": "INTERNAL_SERVER_ERROR", "message": str(e)}},
+        )
 
 # Custom API documentation endpoints
 @app.get("/docs", include_in_schema=False)
@@ -208,10 +249,17 @@ def custom_openapi():
 
 app.openapi = custom_openapi
 
-# Include routers
-app.include_router(auth_router)
-app.include_router(users_router)
-app.include_router(topics_router)
+# Create API v1 router
+api_v1 = APIRouter(prefix="/api/v1")
+
+# Include routers under API v1
+api_v1.include_router(auth_router)
+api_v1.include_router(users_router)
+api_v1.include_router(topics_router)
+api_v1.include_router(log_router)
+
+# Include API v1 router in main app
+app.include_router(api_v1)
 
 # Mount static files
 app.mount("/static", StaticFiles(directory="src/static"), name="static")

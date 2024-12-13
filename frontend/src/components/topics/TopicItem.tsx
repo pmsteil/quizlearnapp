@@ -4,11 +4,10 @@ import { Clock, AlertCircle } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { Skeleton } from '@/components/ui/skeleton';
 import type { Topic } from '@/lib/services';
-import { useProgress } from '@/lib/hooks/useProgress';
 
 interface TopicItemProps {
   topic: Topic;
-  isLoading?: boolean;
+  onClick?: () => void;
 }
 
 export function TopicItemSkeleton() {
@@ -30,16 +29,7 @@ export function TopicItemSkeleton() {
   );
 }
 
-export function TopicItem({ topic, isLoading = false }: TopicItemProps) {
-  const navigate = useNavigate();
-  const { topicProgress } = useProgress(topic.id);
-
-  const getTopicStatus = (progress: number) => {
-    if (progress === 0) return 'new';
-    if (progress === 100) return 'completed';
-    return 'in-progress';
-  };
-
+export function TopicItem({ topic, onClick }: TopicItemProps) {
   const formatDate = (timestamp: number) => {
     const date = new Date(timestamp * 1000);
     const now = new Date();
@@ -52,61 +42,41 @@ export function TopicItem({ topic, isLoading = false }: TopicItemProps) {
     return date.toLocaleDateString();
   };
 
-  if (isLoading) {
-    return <TopicItemSkeleton />;
-  }
-
-  if (!topic) {
-    return (
-      <div className="topic-card rounded-xl p-6 border border-destructive/50 bg-destructive/10">
-        <div className="flex items-center gap-2 text-destructive">
-          <AlertCircle className="w-5 h-5" />
-          <p>Error loading topic</p>
-        </div>
-      </div>
+  const getProgress = () => {
+    const total = topic.lessonPlan.mainTopics.reduce(
+      (acc, topic) => acc + topic.subtopics.length,
+      0
     );
-  }
+    const completed = topic.lessonPlan.completedTopics.length;
+    return Math.round((completed / total) * 100);
+  };
 
-  const progress = topicProgress?.completion_percentage ?? topic.progress;
+  const progress = getProgress();
 
   return (
-    <div
-      className="topic-card rounded-xl p-6 cursor-pointer border border-border hover:shadow-lg transition-all duration-200"
-      onClick={() => navigate(`/topic/${topic.id}`)}
+    <div 
+      className="group rounded-lg border p-4 transition-colors hover:bg-muted/50 cursor-pointer"
+      onClick={onClick}
     >
-      <div className="flex items-center justify-between mb-4">
+      <div className="flex items-center justify-between mb-2">
         <div>
-          <div className="flex items-center gap-3">
-            <h3 className="text-2xl font-medium">{topic.title}</h3>
-            <Badge variant={progress === 100 ? 'default' : 'secondary'}>
-              {getTopicStatus(progress)}
-            </Badge>
-          </div>
-          <p className="text-muted-foreground mt-1">{topic.description}</p>
+          <h3 className="font-semibold">{topic.title}</h3>
+          <p className="text-sm text-muted-foreground">{topic.description}</p>
         </div>
-        <div className="text-gray-400 text-2xl font-bold chevron-right">›</div>
+        <Badge variant={progress === 100 ? "default" : "secondary"}>
+          {progress}% Complete
+        </Badge>
       </div>
 
-      <Progress
-        value={progress}
-        className="h-2 mb-4"
-      />
+      <Progress value={progress} className="h-2" />
 
-      <div className="flex items-center justify-between text-sm text-muted-foreground">
-        <div className="flex items-center space-x-2">
-          <Clock className="w-4 h-4" />
-          <span>Last updated: {formatDate(topic.updated_at)}</span>
+      <div className="mt-4 flex items-center justify-between text-sm text-muted-foreground">
+        <div className="flex items-center gap-2">
+          <Clock className="h-4 w-4" />
+          <span>Updated {formatDate(topic.updatedAt)}</span>
         </div>
-        <div className="flex items-center space-x-4">
-          {topicProgress && (
-            <>
-              <span>
-                {topicProgress.correct_answers}/{topicProgress.total_questions} Questions
-              </span>
-              <span>•</span>
-            </>
-          )}
-          <span>{progress}% Complete</span>
+        <div className="flex items-center gap-2">
+          <span>Current: {topic.lessonPlan.currentTopic}</span>
         </div>
       </div>
     </div>

@@ -16,5 +16,4 @@ if command -v lsof >/dev/null 2>&1; then
 fi
 
 # Start the frontend development server
-echo "Starting frontend development server..."
-npm run dev -w frontend
+cd frontend && npm run dev
