@@ -253,10 +253,31 @@ class TopicService:
 
     @staticmethod
     async def delete_topic(topic_id: str) -> None:
-        db = get_db()
-        current_time = int(time.time())
-        db.execute("""
-            UPDATE topics
-            SET deleted_at = ?
-            WHERE id = ?
-        """, [current_time, topic_id])
+        """Delete a topic."""
+        try:
+            db = get_db()
+            
+            # First check if the topic exists
+            result = db.execute("""
+                SELECT id FROM topics 
+                WHERE id = ?
+            """, [topic_id])
+            
+            if not result.rows:
+                raise HTTPException(status_code=404, detail="Topic not found")
+            
+            # Delete the topic
+            db.execute("""
+                DELETE FROM topics
+                WHERE id = ?
+            """, [topic_id])
+            
+        except Exception as e:
+            logger.error(f"Error deleting topic {topic_id}")
+            logger.error(f"Error type: {type(e)}")
+            logger.error(f"Error message: {str(e)}")
+            logger.exception(e)
+            raise HTTPException(
+                status_code=500,
+                detail={"error": str(e), "type": str(type(e))}
+            )

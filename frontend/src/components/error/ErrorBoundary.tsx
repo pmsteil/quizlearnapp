@@ -32,10 +32,10 @@ class ErrorBoundary extends Component<Props, State> {
     if (this.state.hasError) {
       return (
         <div className="p-4">
-          <h1 className="text-xl font-bold text-red-600">Something went wrong</h1>
+          <h1 className="text-xl font-bold text-destructive">Something went wrong</h1>
           <details className="mt-2">
-            <summary className="cursor-pointer">Error details</summary>
-            <pre className="mt-2 p-2 bg-gray-100 rounded overflow-auto">
+            <summary className="cursor-pointer text-muted-foreground">Error details</summary>
+            <pre className="mt-2 p-2 rounded overflow-auto bg-muted text-muted-foreground border">
               {this.state.error?.toString()}
               {this.state.errorInfo?.componentStack}
             </pre>

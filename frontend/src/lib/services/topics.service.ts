@@ -82,8 +82,25 @@ export class TopicsService extends ApiClient {
 
   async createTopic(data: CreateTopicData): Promise<Topic> {
     const defaultLessonPlan = {
-      mainTopics: [],
-      currentTopic: "",
+      mainTopics: [
+        {
+          name: "Getting Started",
+          subtopics: [
+            { name: "Introduction", status: "current" },
+            { name: "Basic Concepts", status: "upcoming" },
+            { name: "Key Terms", status: "upcoming" }
+          ]
+        },
+        {
+          name: "Core Concepts",
+          subtopics: [
+            { name: "Overview", status: "upcoming" },
+            { name: "Fundamentals", status: "upcoming" },
+            { name: "Advanced Topics", status: "upcoming" }
+          ]
+        }
+      ],
+      currentTopic: "Introduction",
       completedTopics: []
     };
 

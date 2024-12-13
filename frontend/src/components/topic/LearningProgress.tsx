@@ -4,7 +4,6 @@ import { Card } from '@/components/ui/card';
 import { CheckCircle, XCircle, MoreVertical, Trash2, Square, Pencil } from 'lucide-react';
 import { formatDuration } from '@/lib/utils/learning';
 import type { Topic } from '@/lib/types/database';
-import type { TopicProgress } from '@/lib/services/progress.service';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { useToast } from '@/lib/contexts/toast.context';
@@ -19,12 +18,11 @@ import { topicsService } from '@/lib/services/topics.service';
 
 interface LearningProgressProps {
   topic: Topic;
-  progress: TopicProgress;
-  onDelete: () => void;
+  onDelete?: () => void;
   onUpdate?: (topic: Topic) => void;
 }
 
-export function LearningProgress({ topic, progress, onDelete, onUpdate }: LearningProgressProps) {
+export function LearningProgress({ topic, onDelete, onUpdate }: LearningProgressProps) {
   const { showToast } = useToast();
   const [isEditingTitle, setIsEditingTitle] = useState(false);
   const [isEditingDescription, setIsEditingDescription] = useState(false);
@@ -156,44 +154,17 @@ export function LearningProgress({ topic, progress, onDelete, onUpdate }: Learni
           </div>
 
           <div className="space-y-4">
-            <div className="flex items-center gap-6">
-              <Progress value={progress.completion_percentage} className="flex-1" />
-              <span className="text-sm font-medium">
-                {progress.completion_percentage}% Complete
-              </span>
-            </div>
-
             <div className="flex justify-between items-center text-sm text-muted-foreground">
-              <div className="flex items-center space-x-6">
-                <div className="flex items-center space-x-2">
-                  <CheckCircle className="w-5 h-5 text-green-500" />
-                  <span className="text-green-500 font-medium">
-                    {progress.correct_answers}
-                  </span>
-                </div>
-                <div className="flex items-center space-x-2">
-                  <XCircle className="w-5 h-5 text-red-500" />
-                  <span className="text-red-500 font-medium">
-                    {progress.incorrect_answers}
-                  </span>
-                </div>
-                <div className="flex items-center space-x-2">
-                  <Square className="w-5 h-5" />
-                  <span>
-                    {progress.total_questions - (progress.correct_answers + progress.incorrect_answers)} remaining
-                  </span>
-                </div>
-              </div>
               <div className="flex items-center space-x-8">
                 <div>
                   <span className="block text-foreground text-lg">
-                    {formatDuration(progress.time_spent_minutes)}
+                    {formatDuration(0)}
                   </span>
                   <span>Time spent</span>
                 </div>
                 <div>
                   <span className="block text-foreground text-lg">
-                    {Math.round((progress.correct_answers / (progress.correct_answers + progress.incorrect_answers || 1)) * 100)}%
+                    0%
                   </span>
                   <span>Accuracy</span>
                 </div>

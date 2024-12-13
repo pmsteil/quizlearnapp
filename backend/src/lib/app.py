@@ -120,8 +120,10 @@ app.add_middleware(
     CORSMiddleware,
     allow_origins=["http://localhost:5173"],  # Frontend dev server
     allow_credentials=True,
-    allow_methods=["*"],
+    allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"],  # Explicitly list allowed methods
     allow_headers=["*"],
+    expose_headers=["*"],  # Expose headers to the frontend
+    max_age=3600  # Cache preflight requests for 1 hour
 )
 
 # Exception handler for HTTPException
@@ -139,10 +141,28 @@ async def error_handling_middleware(request: Request, call_next):
         response = await call_next(request)
         return response
     except Exception as e:
-        return JSONResponse(
-            status_code=500,
-            content={"detail": {"error_code": "INTERNAL_SERVER_ERROR", "message": str(e)}},
+        logger.error("Error in request")
+        logger.error(f"Error type: {type(e)}")
+        logger.error(f"Error message: {str(e)}")
+        logger.exception(e)
+        
+        # Create error response
+        status_code = 500
+        if isinstance(e, HTTPException):
+            status_code = e.status_code
+            
+        error_response = JSONResponse(
+            status_code=status_code,
+            content={"detail": {"error_code": "INTERNAL_SERVER_ERROR", "message": str(e)}}
         )
+        
+        # Add CORS headers even for error responses
+        origin = request.headers.get("origin")
+        if origin == "http://localhost:5173":  # Frontend dev server
+            error_response.headers["Access-Control-Allow-Origin"] = origin
+            error_response.headers["Access-Control-Allow-Credentials"] = "true"
+            
+        return error_response
 
 # Database connection middleware
 @app.middleware("http")
