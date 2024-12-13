@@ -49,11 +49,17 @@ export default function TopicsList() {
   } = useAsync(
     () => {
       if (!user?.id) throw new Error('User not authenticated');
+      console.log('Fetching topics for user:', user.id);
       return topicsService.getUserTopics(user.id);
     },
     {
       onError: (error) => {
-        showToast('Error loading topics', 'error');
+        console.error('Error loading topics:', error);
+        if (error.message.includes('not found')) {
+          showToast('Please log out and log back in', 'error');
+        } else {
+          showToast('Error loading topics', 'error');
+        }
       },
     }
   );
@@ -97,7 +103,7 @@ export default function TopicsList() {
     }
   }, [topics, sortBy]);
 
-  const handleCreateTopic = async (data: { title: string; description: string }) => {
+  const handleCreateTopic = async (title: string) => {
     if (!user?.id) {
       showToast('Please log in to create a topic', 'error');
       return;
@@ -105,12 +111,12 @@ export default function TopicsList() {
 
     try {
       console.log('Creating topic:', {
-        ...data,
+        title,
         userId: user.id
       });
       await createTopic({
-        title: data.title,
-        description: data.description,
+        title,
+        description: title, // Use title as description for now
         userId: user.id
       });
       showToast('Topic created successfully', 'success');

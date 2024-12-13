@@ -69,7 +69,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       setError(null);
       console.log('Attempting login with email:', email);
       const response = await authService.login({ email, password });
-      console.log('Login successful, setting user');
+      console.log('Login successful, setting user and tokens');
+      TokenManager.setTokens(response.access_token, response.refresh_token, response.user);
       setUser(response.user);
       showToast('Successfully logged in', 'success');
     } catch (err) {

@@ -3,6 +3,10 @@ from libsql_client import create_client_sync
 from dotenv import load_dotenv
 import uuid
 import time
+import logging
+
+# Set up logging
+logger = logging.getLogger(__name__)
 
 # Load environment variables
 load_dotenv()
@@ -48,11 +52,21 @@ def get_db():
     """Get the database client instance."""
     global _db_client
     if _db_client is None:
-        _db_client = create_client_sync(
-            url=os.getenv("VITE_LIBSQL_DB_URL"),
-            auth_token=os.getenv("VITE_LIBSQL_DB_AUTH_TOKEN")
-        )
-        initialize_db(_db_client)
+        try:
+            logger.info("Creating new database connection")
+            _db_client = create_client_sync(
+                url=os.getenv("VITE_LIBSQL_DB_URL"),
+                auth_token=os.getenv("VITE_LIBSQL_DB_AUTH_TOKEN")
+            )
+            logger.info("Database connection created successfully")
+            initialize_db(_db_client)
+            logger.info("Database initialized")
+        except Exception as e:
+            logger.error("Error creating database connection")
+            logger.error(f"Error type: {type(e)}")
+            logger.error(f"Error message: {str(e)}")
+            logger.exception(e)
+            raise e
     return _db_client
 
 def get_test_db():

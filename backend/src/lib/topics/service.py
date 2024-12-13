@@ -59,56 +59,76 @@ class TopicService:
     db = get_db()
 
     @staticmethod
-    async def get_user_topics(user_id: str) -> List[Dict[str, Any]]:
+    def get_user_topics(user_id: str) -> List[Dict[str, Any]]:
+        """Get all topics for a user."""
         try:
-            db = get_db()
-            result = db.execute("""
-                SELECT * FROM topics
+            logger.info(f"Getting topics for user {user_id}")
+            
+            # First check if user exists
+            user_result = get_db().execute("SELECT id FROM users WHERE id = ?", [user_id])
+            user = user_result.rows
+            if not user:
+                logger.error(f"User {user_id} not found")
+                raise HTTPException(status_code=404, detail=f"User {user_id} not found")
+
+            # Get topics
+            logger.info(f"User found, fetching their topics")
+            result = get_db().execute("""
+                SELECT id, user_id, title, description, progress, lesson_plan, created_at, updated_at 
+                FROM topics
                 WHERE user_id = ?
                 ORDER BY created_at DESC
             """, [user_id])
-            
-            if not result.rows:
-                return []
-                
+            logger.info(f"Found {len(result.rows) if result.rows else 0} topics")
+
             topics = []
             for row in result.rows:
-                topic_dict = dict(row)
-                # Convert snake_case to camelCase for frontend
-                topic_dict["userId"] = topic_dict.pop("user_id")
-                topic_dict["createdAt"] = topic_dict.pop("created_at")
-                topic_dict["updatedAt"] = topic_dict.pop("updated_at")
-                
-                # Handle lesson_plan - if None, initialize with default structure
-                lesson_plan = topic_dict.pop("lesson_plan")
-                if not lesson_plan:
-                    lesson_plan = {
-                        "mainTopics": [],
-                        "currentTopic": "",
-                        "completedTopics": []
-                    }
-                elif isinstance(lesson_plan, str):
-                    try:
-                        lesson_plan = json.loads(lesson_plan)
-                    except json.JSONDecodeError:
-                        logger.error(f"Invalid lesson_plan JSON for topic {topic_dict['id']}")
+                try:
+                    topic_dict = dict(row)
+                    logger.debug(f"Processing topic: {topic_dict}")
+                    
+                    # Convert snake_case to camelCase for frontend
+                    topic_dict["userId"] = topic_dict.pop("user_id")
+                    topic_dict["createdAt"] = topic_dict.pop("created_at")
+                    topic_dict["updatedAt"] = topic_dict.pop("updated_at")
+                    
+                    # Handle lesson_plan - if None, initialize with default structure
+                    lesson_plan = topic_dict.pop("lesson_plan")
+                    if not lesson_plan:
                         lesson_plan = {
                             "mainTopics": [],
                             "currentTopic": "",
                             "completedTopics": []
                         }
-                topic_dict["lessonPlan"] = lesson_plan
-                
-                topics.append(topic_dict)
-            
+                    elif isinstance(lesson_plan, str):
+                        try:
+                            lesson_plan = json.loads(lesson_plan)
+                        except json.JSONDecodeError:
+                            logger.error(f"Invalid lesson_plan JSON for topic {topic_dict['id']}")
+                            lesson_plan = {
+                                "mainTopics": [],
+                                "currentTopic": "",
+                                "completedTopics": []
+                            }
+                    topic_dict["lessonPlan"] = lesson_plan
+                    
+                    topics.append(topic_dict)
+                except Exception as e:
+                    logger.error(f"Error processing topic row: {row}")
+                    logger.error(f"Error: {str(e)}")
+                    logger.exception(e)
+                    continue
+
             return topics
-            
+        except HTTPException as e:
+            logger.error(f"HTTP error in get_user_topics: {str(e)}")
+            raise e
         except Exception as e:
-            logger.error(f"Error getting topics for user {user_id}: {str(e)}")
-            raise HTTPException(
-                status_code=500,
-                detail=f"Error retrieving topics: {str(e)}"
-            )
+            logger.error("Error in get_user_topics")
+            logger.error(f"Error type: {type(e)}")
+            logger.error(f"Error message: {str(e)}")
+            logger.exception(e)
+            raise HTTPException(status_code=500, detail={"error": str(e), "type": str(type(e))})
 
     @staticmethod
     async def get_topic_by_id(topic_id: str) -> Optional[Dict[str, Any]]:
@@ -129,22 +149,25 @@ class TopicService:
             
             query = """
                 INSERT INTO topics (id, user_id, title, description, lesson_plan, created_at, updated_at)
-                VALUES (:id, :user_id, :title, :description, :lesson_plan, :created_at, :updated_at)
-                RETURNING *
+                VALUES (?, ?, ?, ?, ?, ?, ?)
             """
             current_time = int(time.time())
-            values = {
-                "id": str(uuid.uuid4()),
-                "user_id": topic.userId,
-                "title": topic.title,
-                "description": topic.description,
-                "lesson_plan": json.dumps(lesson_plan.dict()),
-                "created_at": current_time,
-                "updated_at": current_time
-            }
+            topic_id = str(uuid.uuid4())
+            values = [
+                topic_id,
+                topic.userId,
+                topic.title,
+                topic.description,
+                json.dumps(lesson_plan.dict()),
+                current_time,
+                current_time
+            ]
             logger.info(f"Executing query with values: {values}")
             
-            result = cls.db.execute(query, values)
+            cls.db.execute(query, values)
+            
+            # Fetch the created topic
+            result = cls.db.execute("SELECT * FROM topics WHERE id = ?", [topic_id])
             if not result.rows:
                 raise HTTPException(status_code=500, detail="Failed to create topic")
             
@@ -172,8 +195,11 @@ class TopicService:
             logger.error(f"Validation error: {str(e)}")
             raise HTTPException(status_code=422, detail=str(e))
         except Exception as e:
-            logger.error(f"Error creating topic: {str(e)}")
-            raise HTTPException(status_code=500, detail=str(e))
+            logger.error("Error in create_topic")
+            logger.error(f"Error type: {type(e)}")
+            logger.error(f"Error message: {str(e)}")
+            logger.exception(e)
+            raise HTTPException(status_code=500, detail={"error": str(e), "type": str(type(e))})
 
     @staticmethod
     async def update_topic(topic_id: str, data: TopicUpdate) -> Optional[Dict[str, Any]]:

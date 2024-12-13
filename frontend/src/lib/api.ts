@@ -51,16 +51,11 @@ export class ApiClient {
       if (contentType && contentType.includes('application/json')) {
         const error = await response.json();
         console.error('API Error:', error);
-        if (Array.isArray(error.detail)) {
-          // Handle validation errors
-          const messages = error.detail.map((e: any) => e.msg || e.message).join(', ');
-          throw new AppError(messages, response.status, 'VALIDATION_ERROR');
-        }
-        throw new AppError(error.detail || error.message, response.status, error.error_code);
+        throw new AppError(error.detail || 'An unexpected error occurred', response.status);
       } else {
         const text = await response.text();
         console.error('API Error (non-JSON):', text);
-        throw new AppError('An unexpected error occurred', response.status, 'UNKNOWN_ERROR');
+        throw new AppError('An unexpected error occurred', response.status);
       }
     }
 
@@ -71,7 +66,7 @@ export class ApiClient {
       return data;
     }
     
-    throw new AppError('Invalid response format', 500, 'INVALID_RESPONSE_FORMAT');
+    throw new AppError('Invalid response format', 500);
   }
 
   protected async get<T>(path: string, options: RequestInit = {}): Promise<T> {

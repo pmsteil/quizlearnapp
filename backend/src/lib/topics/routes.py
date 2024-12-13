@@ -24,8 +24,20 @@ async def get_user_topics(user_id: str, current_user = Depends(get_current_user)
     """Get all topics for a specific user."""
     if current_user["id"] != user_id and "role_admin" not in current_user.get("roles", []):
         raise HTTPException(status_code=403, detail="Not authorized to view these topics")
-    topics = await TopicService.get_user_topics(user_id)
-    return topics
+    try:
+        logger.info(f"Getting topics for user {user_id}")
+        topics = TopicService.get_user_topics(user_id)
+        logger.info(f"Successfully retrieved {len(topics)} topics")
+        return topics
+    except HTTPException as e:
+        logger.error(f"HTTP error in get_user_topics endpoint: {str(e)}")
+        raise e
+    except Exception as e:
+        logger.error("Error in get_user_topics endpoint")
+        logger.error(f"Error type: {type(e)}")
+        logger.error(f"Error message: {str(e)}")
+        logger.exception(e)
+        raise HTTPException(status_code=500, detail={"error": str(e), "type": str(type(e))})
 
 @router.get("/{topic_id}", response_model=TopicResponse)
 async def get_topic(topic_id: str, current_user = Depends(get_current_user)):
