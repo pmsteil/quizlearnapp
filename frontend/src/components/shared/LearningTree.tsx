@@ -9,9 +9,10 @@ interface LearningTreeProps {
 }
 
 export function LearningTree({ topic, onSelectTopic }: LearningTreeProps) {
+  const mainTopics = topic.lessonPlan?.mainTopics ?? [];
   const [expandedTopics, setExpandedTopics] = useState<string[]>(() => 
     // Initialize with all main topics expanded
-    topic.lessonPlan.mainTopics.map(topic => topic.name)
+    mainTopics.map(topic => topic.name)
   );
 
   const toggleTopic = (topicName: string) => {
@@ -35,8 +36,9 @@ export function LearningTree({ topic, onSelectTopic }: LearningTreeProps) {
 
   return (
     <div className="p-4 space-y-2">
-      {topic.lessonPlan.mainTopics.map((mainTopic) => {
+      {mainTopics.map((mainTopic) => {
         const isExpanded = expandedTopics.includes(mainTopic.name);
+        const subtopics = mainTopic.subtopics ?? [];
         return (
           <div key={mainTopic.name} className="space-y-1">
             <Button
@@ -54,7 +56,7 @@ export function LearningTree({ topic, onSelectTopic }: LearningTreeProps) {
             
             {isExpanded && (
               <div className="ml-6 space-y-1">
-                {mainTopic.subtopics.map((subtopic) => (
+                {subtopics.map((subtopic) => (
                   <Button
                     key={subtopic.name}
                     variant="ghost"

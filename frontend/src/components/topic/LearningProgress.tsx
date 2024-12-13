@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef, useCallback } from 'react';
 import { Progress } from '@/components/ui/progress';
 import { Card } from '@/components/ui/card';
 import { CheckCircle, XCircle, MoreVertical, Trash2, Square, Pencil } from 'lucide-react';
@@ -29,122 +29,140 @@ export function LearningProgress({ topic, onDelete, onUpdate }: LearningProgress
   const [editedTitle, setEditedTitle] = useState(topic.title);
   const [editedDescription, setEditedDescription] = useState(topic.description || '');
   const [isUpdating, setIsUpdating] = useState(false);
+  const titleInputRef = useRef<HTMLInputElement>(null);
+  const descriptionTextareaRef = useRef<HTMLTextAreaElement>(null);
+  const containerRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     setEditedTitle(topic.title);
     setEditedDescription(topic.description || '');
   }, [topic]);
 
+  // Handle clicks outside of the editing area
+  useEffect(() => {
+    function handleClickOutside(event: MouseEvent) {
+      // Ignore clicks if we're not in edit mode
+      if (!isEditingTitle && !isEditingDescription) return;
+      
+      // Get the clicked element
+      const target = event.target as HTMLElement;
+      
+      // If we clicked an input/textarea that we're currently editing, ignore it
+      if (isEditingTitle && titleInputRef.current?.contains(target)) return;
+      if (isEditingDescription && descriptionTextareaRef.current?.contains(target)) return;
+      
+      // If we clicked outside our container, save and exit edit mode
+      if (!containerRef.current?.contains(target)) {
+        if (isEditingTitle) handleTitleSave();
+        if (isEditingDescription) handleDescriptionSave();
+      }
+    }
+
+    // Add listener with a slight delay to avoid menu conflicts
+    const timeoutId = setTimeout(() => {
+      document.addEventListener('mousedown', handleClickOutside);
+    }, 100);
+
+    return () => {
+      clearTimeout(timeoutId);
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, [isEditingTitle, isEditingDescription]);
+
   const handleTitleSave = async () => {
     if (!editedTitle.trim()) {
       showToast('Title cannot be empty', 'error');
-      setEditedTitle(topic.title);
-      setIsEditingTitle(false);
-      return;
-    }
-
-    if (editedTitle === topic.title) {
-      setIsEditingTitle(false);
       return;
     }
 
     setIsUpdating(true);
     try {
-      const updatedTopic = await topicsService.updateTopic(topic.id, {
-        title: editedTitle
-      });
-      onUpdate?.(updatedTopic);
-      showToast('Title updated successfully', 'success');
-      setEditedTitle(updatedTopic.title);
+      await onUpdate({ title: editedTitle });
+      setIsEditingTitle(false);
     } catch (error) {
       showToast('Failed to update title', 'error');
-      setEditedTitle(topic.title);
-    } finally {
-      setIsUpdating(false);
-      setIsEditingTitle(false);
     }
+    setIsUpdating(false);
   };
 
   const handleDescriptionSave = async () => {
-    if (editedDescription === topic.description) {
-      setIsEditingDescription(false);
-      return;
-    }
-
     setIsUpdating(true);
     try {
-      const updatedTopic = await topicsService.updateTopic(topic.id, {
-        description: editedDescription
-      });
-      onUpdate?.(updatedTopic);
-      showToast('Description updated successfully', 'success');
-      setEditedDescription(updatedTopic.description);
+      await onUpdate({ description: editedDescription });
+      setIsEditingDescription(false);
     } catch (error) {
       showToast('Failed to update description', 'error');
-      setEditedDescription(topic.description || '');
-    } finally {
-      setIsUpdating(false);
-      setIsEditingDescription(false);
     }
+    setIsUpdating(false);
   };
+
+  // Handle focus management
+  const startEditing = useCallback((type: 'title' | 'description') => {
+    if (type === 'title') {
+      // If we're editing description, save it first
+      if (isEditingDescription) {
+        handleDescriptionSave();
+      }
+      setIsEditingTitle(true);
+      setTimeout(() => {
+        if (titleInputRef.current) {
+          titleInputRef.current.focus();
+          titleInputRef.current.selectionStart = titleInputRef.current.value.length;
+          titleInputRef.current.selectionEnd = titleInputRef.current.value.length;
+        }
+      }, 0);
+    } else {
+      // If we're editing title, save it first
+      if (isEditingTitle) {
+        handleTitleSave();
+      }
+      setIsEditingDescription(true);
+      setTimeout(() => {
+        if (descriptionTextareaRef.current) {
+          descriptionTextareaRef.current.focus();
+          descriptionTextareaRef.current.selectionStart = descriptionTextareaRef.current.value.length;
+          descriptionTextareaRef.current.selectionEnd = descriptionTextareaRef.current.value.length;
+        }
+      }, 0);
+    }
+  }, [isEditingTitle, isEditingDescription, handleTitleSave, handleDescriptionSave]);
 
   const handleKeyDown = (
     e: React.KeyboardEvent<HTMLInputElement | HTMLTextAreaElement>,
-    saveFunction: () => void
+    saveHandler: () => void
   ) => {
     if (e.key === 'Enter' && !e.shiftKey) {
       e.preventDefault();
-      saveFunction();
-    } else if (e.key === 'Escape') {
-      e.preventDefault();
-      setEditedTitle(topic.title);
-      setEditedDescription(topic.description || '');
-      setIsEditingTitle(false);
-      setIsEditingDescription(false);
-    }
-  };
-
-  const handleTitleBlur = (e: React.FocusEvent<HTMLInputElement>) => {
-    // Don't save if Enter was just pressed (it will be handled by handleKeyDown)
-    if (!e.currentTarget.contains(e.relatedTarget)) {
-      handleTitleSave();
-    }
-  };
-
-  const handleDescriptionBlur = (e: React.FocusEvent<HTMLTextAreaElement>) => {
-    // Don't save if Enter was just pressed (it will be handled by handleKeyDown)
-    if (!e.currentTarget.contains(e.relatedTarget)) {
-      handleDescriptionSave();
+      saveHandler();
     }
   };
 
   // Calculate completion percentage based on completed topics
-  const completedTopics = topic.lessonPlan.completedTopics.length;
-  const totalTopics = topic.lessonPlan.mainTopics.reduce(
-    (total, mainTopic) => total + mainTopic.subtopics.length,
+  const completedTopics = topic.lessonPlan?.completedTopics?.length ?? 0;
+  const totalTopics = topic.lessonPlan?.mainTopics?.reduce(
+    (acc, mainTopic) => acc + (mainTopic.subtopics?.length ?? 0) + 1,
     0
-  );
+  ) ?? 0;
   const completionPercentage = totalTopics ? Math.round((completedTopics / totalTopics) * 100) : 0;
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6" ref={containerRef}>
       <div className="flex items-start justify-between">
         <div className="space-y-4 flex-1 mr-4">
           <div>
             {isEditingTitle ? (
               <Input
+                ref={titleInputRef}
                 value={editedTitle}
                 onChange={(e) => setEditedTitle(e.target.value)}
-                onBlur={handleTitleBlur}
                 onKeyDown={(e) => handleKeyDown(e, handleTitleSave)}
                 className="text-2xl font-semibold"
                 disabled={isUpdating}
-                autoFocus
               />
             ) : (
               <h2
                 className="text-2xl font-semibold cursor-pointer hover:text-primary"
-                onClick={() => setIsEditingTitle(true)}
+                onClick={() => startEditing('title')}
               >
                 {editedTitle}
               </h2>
@@ -154,25 +172,18 @@ export function LearningProgress({ topic, onDelete, onUpdate }: LearningProgress
           <div>
             {isEditingDescription ? (
               <Textarea
+                ref={descriptionTextareaRef}
                 value={editedDescription}
                 onChange={(e) => setEditedDescription(e.target.value)}
-                onBlur={handleDescriptionBlur}
                 onKeyDown={(e) => handleKeyDown(e, handleDescriptionSave)}
                 className="text-muted-foreground resize-none"
                 placeholder="Add a description..."
                 disabled={isUpdating}
-                autoFocus
-                ref={(textareaRef) => {
-                  if (textareaRef) {
-                    textareaRef.selectionStart = textareaRef.value.length;
-                    textareaRef.selectionEnd = textareaRef.value.length;
-                  }
-                }}
               />
             ) : (
               <p
                 className="text-muted-foreground cursor-pointer hover:text-foreground min-h-[1.5rem]"
-                onClick={() => setIsEditingDescription(true)}
+                onClick={() => startEditing('description')}
               >
                 {editedDescription || 'Click to add a description...'}
               </p>
@@ -187,15 +198,10 @@ export function LearningProgress({ topic, onDelete, onUpdate }: LearningProgress
             </Button>
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end">
-            <DropdownMenuItem onClick={() => setIsEditingTitle(true)}>
-              <Pencil className="mr-2 h-4 w-4" />
-              Edit Title
-            </DropdownMenuItem>
-            <DropdownMenuItem onClick={() => setIsEditingDescription(true)}>
-              <Square className="mr-2 h-4 w-4" />
-              Edit Description
-            </DropdownMenuItem>
-            <DropdownMenuItem onClick={onDelete} className="text-destructive">
+            <DropdownMenuItem 
+              onSelect={() => onDelete()}
+              className="text-destructive"
+            >
               <Trash2 className="mr-2 h-4 w-4" />
               Delete Topic
             </DropdownMenuItem>
