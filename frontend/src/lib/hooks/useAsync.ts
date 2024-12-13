@@ -22,7 +22,9 @@ export function useAsync<T = any>(
     showToast = true,
     successMessage
   } = options;
+  const [data, setData] = useState<T | null>(null);
   const [error, setError] = useState<AppError | null>(null);
+  const [loading, setLoading] = useState(false);
   const { startLoading, stopLoading } = useLoading();
   const { showToast: toast } = useToast();
 
@@ -30,11 +32,14 @@ export function useAsync<T = any>(
     async (...args: any[]) => {
       try {
         setError(null);
+        setLoading(true);
         if (loadingKey) {
           startLoading(loadingKey);
         }
 
         const result = await asyncFn(...args);
+        console.log('useAsync result:', result);
+        setData(result);
 
         if (showToast && successMessage) {
           toast(successMessage, 'success');
@@ -50,6 +55,7 @@ export function useAsync<T = any>(
         onError?.(appError);
         throw appError;
       } finally {
+        setLoading(false);
         if (loadingKey) {
           stopLoading(loadingKey);
         }
@@ -59,8 +65,9 @@ export function useAsync<T = any>(
   );
 
   return {
-    execute,
+    data,
     error,
-    clearError: () => setError(null),
+    loading,
+    execute,
   };
 }

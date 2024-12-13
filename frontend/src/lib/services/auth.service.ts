@@ -122,30 +122,47 @@ export class AuthService extends ApiClient {
   }
 
   async refreshToken(refreshToken: string): Promise<TokenResponse> {
-    const formData = new URLSearchParams();
-    formData.append('refresh_token', refreshToken);
-    formData.append('grant_type', 'refresh_token');
+    try {
+      console.log('Attempting to refresh token');
+      const formData = new URLSearchParams();
+      formData.append('refresh_token', refreshToken);
 
-    const response = await fetch(`${this.baseUrl}/auth/refresh`, {
-      method: 'POST',
-      body: formData,
-      headers: {
-        'Content-Type': 'application/x-www-form-urlencoded',
-      },
-    });
+      const response = await fetch(`${this.baseUrl}/auth/refresh`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/x-www-form-urlencoded',
+        },
+        body: formData,
+      });
 
-    if (!response.ok) {
-      throw new AppError('Failed to refresh token', response.status, 'REFRESH_TOKEN_FAILED');
+      if (!response.ok) {
+        const error = await response.json();
+        console.error('Token refresh error:', error);
+        throw new AppError('Token refresh failed', response.status, 'TOKEN_REFRESH_FAILED');
+      }
+
+      const data = await response.json();
+      console.log('Token refresh successful');
+      TokenManager.setTokenData(data);
+      return data;
+    } catch (error) {
+      console.error('Token refresh error:', error);
+      throw error;
     }
+  }
 
-    const data: TokenResponse = await response.json();
-    this.saveToStorage(data.access_token, data.user);
-    TokenManager.setTokens(
-      data.access_token,
-      data.refresh_token,
-      data.expires_in
-    );
-    return data;
+  async getCurrentUser(): Promise<User> {
+    try {
+      console.log('Getting current user');
+      const response = await this.request<User>('/auth/me', {
+        method: 'GET',
+      });
+      console.log('Got current user:', response);
+      return response;
+    } catch (error) {
+      console.error('Get current user error:', error);
+      throw error;
+    }
   }
 
   async logout() {
@@ -155,10 +172,6 @@ export class AuthService extends ApiClient {
     }
     this.clearStorage();
     TokenManager.clearTokens();
-  }
-
-  async getCurrentUser(): Promise<User> {
-    return this.get('/auth/me');
   }
 }
 

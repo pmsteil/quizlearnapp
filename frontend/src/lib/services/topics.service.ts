@@ -5,6 +5,7 @@ export interface Topic {
   userId: string;
   title: string;
   description: string;
+  progress: number;
   lessonPlan: {
     mainTopics: Array<{
       name: string;

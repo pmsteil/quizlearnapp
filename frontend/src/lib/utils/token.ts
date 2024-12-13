@@ -51,6 +51,13 @@ export class TokenManager {
     return token;
   }
 
+  static getRefreshToken(): string | null {
+    const data = this.getTokenData();
+    const token = data?.refresh_token || null;
+    console.log('Getting refresh token:', token ? '[REDACTED]' : null);
+    return token;
+  }
+
   static clearTokens() {
     console.log('Clearing tokens');
     localStorage.removeItem(this.TOKEN_KEY);
@@ -58,17 +65,34 @@ export class TokenManager {
 
   static isTokenExpired(): boolean {
     const data = this.getTokenData();
-    if (!data || !data.expires_in) {
-      console.log('Token expired: No data or expiration');
+    if (!data?.access_token) {
+      console.log('No token found');
       return true;
     }
     
-    const expirationTime = new Date(data.expires_in * 1000);
-    const isExpired = new Date() > expirationTime;
-    console.log('Token expiration check:', {
-      expirationTime,
-      isExpired
-    });
-    return isExpired;
+    try {
+      // Check if token is expired by decoding it
+      const base64Url = data.access_token.split('.')[1];
+      const base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/');
+      const jsonPayload = decodeURIComponent(atob(base64).split('').map(function(c) {
+        return '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2);
+      }).join(''));
+
+      const payload = JSON.parse(jsonPayload);
+      const expirationTime = payload.exp * 1000; // Convert to milliseconds
+      const currentTime = Date.now();
+      const isExpired = currentTime >= expirationTime;
+      
+      console.log('Token expiration check:', {
+        expirationTime: new Date(expirationTime).toISOString(),
+        currentTime: new Date(currentTime).toISOString(),
+        isExpired
+      });
+      
+      return isExpired;
+    } catch (e) {
+      console.error('Error checking token expiration:', e);
+      return true;
+    }
   }
 }

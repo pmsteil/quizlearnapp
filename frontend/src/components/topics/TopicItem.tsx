@@ -43,12 +43,7 @@ export function TopicItem({ topic, onClick }: TopicItemProps) {
   };
 
   const getProgress = () => {
-    const total = topic.lessonPlan.mainTopics.reduce(
-      (acc, topic) => acc + topic.subtopics.length,
-      0
-    );
-    const completed = topic.lessonPlan.completedTopics.length;
-    return Math.round((completed / total) * 100);
+    return topic.progress;
   };
 
   const progress = getProgress();
@@ -76,7 +71,7 @@ export function TopicItem({ topic, onClick }: TopicItemProps) {
           <span>Updated {formatDate(topic.updatedAt)}</span>
         </div>
         <div className="flex items-center gap-2">
-          <span>Current: {topic.lessonPlan.currentTopic}</span>
+          <span>Current: {topic.lessonPlan.currentTopic || 'Not started'}</span>
         </div>
       </div>
     </div>

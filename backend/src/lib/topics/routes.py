@@ -50,25 +50,25 @@ async def get_topic(topic_id: str, current_user = Depends(get_current_user)):
     return topic
 
 @router.post("", response_model=TopicResponse)
-async def create_topic(topic: TopicCreate, current_user = Depends(get_current_user)):
+def create_topic(topic: TopicCreate, current_user = Depends(get_current_user)):
     """Create a new topic."""
     try:
-        logger.info(f"Creating topic with data: {topic.dict()}")
-        lesson_plan = topic.get_lesson_plan()
-        logger.info(f"Using lesson plan: {lesson_plan.dict()}")
+        logger.info(f"Creating topic for user {current_user['id']}")
+        topic.userId = current_user["id"]
+        logger.info(f"Topic data: {topic.dict()}")
         
-        logger.info(f"Executing TopicService.create_topic with topic: {topic.dict()}")
-        
-        result = TopicService.create_topic(topic)
-        if result is None:
-            raise HTTPException(status_code=500, detail="Failed to create topic")
-        return result
-    except ValidationError as e:
-        logger.error(f"Validation error: {str(e)}")
-        raise HTTPException(status_code=422, detail=str(e))
+        new_topic = TopicService.create_topic(topic)
+        logger.info(f"Topic created successfully: {new_topic}")
+        return new_topic
+    except HTTPException as e:
+        logger.error(f"HTTP error in create_topic endpoint: {str(e)}")
+        raise e
     except Exception as e:
-        logger.error(f"Error creating topic: {str(e)}")
-        raise HTTPException(status_code=500, detail=str(e))
+        logger.error("Error in create_topic endpoint")
+        logger.error(f"Error type: {type(e)}")
+        logger.error(f"Error message: {str(e)}")
+        logger.exception(e)
+        raise HTTPException(status_code=500, detail={"error": str(e), "type": str(type(e))})
 
 @router.put("/{topic_id}", response_model=TopicResponse)
 async def update_topic(topic_id: str, topic: TopicUpdate, current_user = Depends(get_current_user)):

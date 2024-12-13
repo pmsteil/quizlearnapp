@@ -49,12 +49,24 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
       try {
         if (TokenManager.isTokenExpired()) {
-          await authService.refreshToken();
+          console.log('Token expired, attempting refresh');
+          const refreshToken = tokenData.refresh_token;
+          if (!refreshToken) {
+            console.log('No refresh token, logging out');
+            await logout();
+            return;
+          }
+          const response = await authService.refreshToken(refreshToken);
+          TokenManager.setTokenData(response);
+          setUser(response.user);
+        } else {
+          console.log('Token valid, getting user data');
+          const user = await authService.getCurrentUser();
+          setUser(user);
         }
-        const user = await authService.getMe();
-        setUser(user);
       } catch (err) {
-        TokenManager.clearTokens();
+        console.error('Auth initialization error:', err);
+        await logout();
       } finally {
         setLoading(false);
       }
@@ -119,7 +131,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       setError(null);
       showToast('Successfully logged out', 'success');
     } catch (err) {
-      const message = getErrorMessage(err);
+      const message = err instanceof Error ? err.message : 'Logout failed';
       setError(message);
       showToast(message, 'error');
       throw err;

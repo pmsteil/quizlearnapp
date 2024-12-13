@@ -53,6 +53,9 @@ export default function TopicsList() {
       return topicsService.getUserTopics(user.id);
     },
     {
+      onSuccess: (data) => {
+        console.log('Topics fetched successfully:', data);
+      },
       onError: (error) => {
         console.error('Error loading topics:', error);
         if (error.message.includes('not found')) {
@@ -85,14 +88,19 @@ export default function TopicsList() {
 
   useEffect(() => {
     if (user?.id) {
+      console.log('Fetching topics for user:', user.id);
       fetchTopics();
     }
   }, [user?.id]);
 
   const sortedTopics = useMemo(() => {
-    if (!topics) return [];
+    if (!topics || !Array.isArray(topics)) {
+      console.log('Topics is not an array:', topics);
+      return [];
+    }
     
     const topicsCopy = [...topics];
+    console.log('Topics copy:', topicsCopy);
     switch (sortBy) {
       case 'recent':
         return topicsCopy.sort((a, b) => b.createdAt - a.createdAt);
@@ -102,6 +110,10 @@ export default function TopicsList() {
         return topicsCopy;
     }
   }, [topics, sortBy]);
+
+  useEffect(() => {
+    console.log('Sorted topics:', sortedTopics);
+  }, [sortedTopics]);
 
   const handleCreateTopic = async (title: string) => {
     if (!user?.id) {
@@ -152,6 +164,13 @@ export default function TopicsList() {
     );
   }
 
+  console.log('Rendering topics:', {
+    topics,
+    sortedTopics,
+    isLoading,
+    topicsError
+  });
+
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
@@ -181,9 +200,13 @@ export default function TopicsList() {
         </div>
       </div>
 
+      <div className="rounded-xl border-2 border-primary/20 bg-card p-6 shadow-sm hover:border-primary/30 transition-colors">
+        <NewTopicForm onSubmit={handleCreateTopic} isCreating={isCreating} />
+      </div>
+
       {!sortedTopics?.length ? (
         <div className="text-center py-12">
-          <p className="text-muted-foreground">No topics yet. Create your first topic to get started!</p>
+          <p className="text-muted-foreground">No topics yet. Create your first topic above!</p>
         </div>
       ) : (
         <div className="grid gap-4">
@@ -191,13 +214,11 @@ export default function TopicsList() {
             <TopicItem
               key={topic.id}
               topic={topic}
-              onSelect={() => navigate(`/topic/${topic.id}`)}
+              onClick={() => navigate(`/topic/${topic.id}`)}
             />
           ))}
         </div>
       )}
-
-      <NewTopicForm onSubmit={handleCreateTopic} isCreating={isCreating} />
     </div>
   );
 }
