@@ -19,28 +19,31 @@ export function NewTopicForm({ onSubmit, isCreating }: NewTopicFormProps) {
     }
   };
 
+  const showButton = title.trim().length > 0;
+
   return (
     <form onSubmit={handleSubmit} className="w-full">
-      <div className="flex gap-4">
+      <div className={`flex gap-6 transition-all duration-500 ease-in-out ${showButton ? 'pr-[160px]' : ''}`}>
         <textarea
           id="title"
           value={title}
           onChange={(e) => setTitle(e.target.value)}
           onFocus={() => setIsFocused(true)}
+          onBlur={() => setIsFocused(false)}
           placeholder="Create a New Topic..."
-          className="flex-1 p-4 rounded-lg border border-input bg-background text-lg resize-none focus:border-primary"
-          style={{ height: '52px', minHeight: '52px', maxHeight: '52px' }}
+          className="flex-1 px-4 py-3 rounded-lg border border-input bg-background text-lg resize-none focus:border-primary leading-none overflow-hidden"
+          style={{ height: '44px' }}
           disabled={isCreating}
         />
-        {(title.trim() || isFocused) && (
+        <div className={`absolute right-0 transition-all duration-500 ease-in-out ${showButton ? 'translate-x-0 opacity-100' : 'translate-x-8 opacity-0'}`}>
           <Button 
             type="submit" 
             disabled={isCreating || !title.trim()} 
-            className="px-8 text-lg whitespace-nowrap"
+            className="h-[44px] px-8 text-lg whitespace-nowrap"
           >
             {isCreating ? 'Creating...' : 'Create Topic'}
           </Button>
-        )}
+        </div>
       </div>
     </form>
   );

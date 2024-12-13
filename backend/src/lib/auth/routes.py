@@ -28,6 +28,9 @@ class Token(BaseModel):
 class TokenData(BaseModel):
     username: Optional[str] = None
 
+class LogoutRequest(BaseModel):
+    refresh_token: str
+
 @router.options("/login")
 async def login_options():
     """Handle preflight requests for the login endpoint."""
@@ -184,7 +187,7 @@ async def refresh_token(refresh_token: str):
         )
 
 @router.post("/logout")
-async def logout(refresh_token: str):
+async def logout(request: LogoutRequest):
     """Logout a user by invalidating their refresh token."""
     # In a production system, you would want to blacklist the refresh token
     return {"message": "Successfully logged out"}

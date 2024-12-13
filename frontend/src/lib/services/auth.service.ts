@@ -166,12 +166,22 @@ export class AuthService extends ApiClient {
   }
 
   async logout() {
-    const refreshToken = TokenManager.getRefreshToken();
-    if (refreshToken) {
-      await this.post('/auth/logout', { refresh_token: refreshToken });
+    try {
+      const refreshToken = TokenManager.getRefreshToken();
+      if (refreshToken) {
+        await this.post('/auth/logout', { refresh_token: refreshToken }, {
+          headers: {
+            'Content-Type': 'application/json',
+          },
+        }).catch(() => {
+          // Ignore logout API errors since we want to clear tokens anyway
+          console.log('Ignoring logout API error');
+        });
+      }
+    } finally {
+      this.clearStorage();
+      TokenManager.clearTokens();
     }
-    this.clearStorage();
-    TokenManager.clearTokens();
   }
 }
 

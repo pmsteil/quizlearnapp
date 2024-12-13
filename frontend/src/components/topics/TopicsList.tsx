@@ -200,7 +200,7 @@ export default function TopicsList() {
         </div>
       </div>
 
-      <div className="rounded-xl border-2 border-primary/20 bg-card p-6 shadow-sm hover:border-primary/30 transition-colors">
+      <div className="rounded-xl border-2 border-primary/20 bg-card p-6 shadow-sm hover:border-primary/30 transition-colors relative">
         <NewTopicForm onSubmit={handleCreateTopic} isCreating={isCreating} />
       </div>
 
