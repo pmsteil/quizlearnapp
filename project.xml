@@ -1,0 +1,308 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project>
+    <metadata>
+        <name>QuizLearn</name>
+        <type>Web Application</type>
+        <architecture>Monorepo</architecture>
+        <description>
+            A modern educational platform for creating and taking quizzes, featuring a React frontend
+            and FastAPI backend, with a focus on user interaction and learning management.
+            The platform leverages AI and Large Language Models to create personalized learning plans
+            and provide interactive chat-based teaching experiences.
+        </description>
+        <lastUpdated>2024-12-13</lastUpdated>
+        <documentation>
+            <file>PROJECT_PLAN.md</file>
+            <description>
+                Comprehensive project plan detailing the development phases,
+                completed milestones, and upcoming features. This document
+                serves as the primary source of truth for project progress
+                and planning.
+            </description>
+        </documentation>
+    </metadata>
+
+    <future-features>
+        <ai-integration>
+            <description>
+                Planned integration of AI/LLM capabilities for enhanced learning experience:
+                - AI-powered learning plan generation
+                - Interactive chat-based teaching
+                - Personalized quiz content adaptation
+                - Natural language processing for student responses
+            </description>
+            <status>Planned for post-MVP implementation</status>
+        </ai-integration>
+    </future-features>
+
+    <technology-stack>
+        <frontend>
+            <framework>React</framework>
+            <language>TypeScript</language>
+            <build-tool>Vite</build-tool>
+            <styling>
+                <framework>Tailwind CSS</framework>
+                <ui-components>Radix UI</ui-components>
+            </styling>
+            <key-libraries>
+                <library>
+                    <name>@hookform/resolvers</name>
+                    <purpose>Form validation and handling</purpose>
+                </library>
+                <library>
+                    <name>@radix-ui/*</name>
+                    <purpose>Accessible UI components</purpose>
+                </library>
+            </key-libraries>
+        </frontend>
+
+        <backend>
+            <framework>FastAPI</framework>
+            <language>Python</language>
+            <python-features>
+                <version>3.x</version>
+                <key-libraries>
+                    <library>FastAPI - Modern, fast web framework</library>
+                    <library>SQLAlchemy - SQL Toolkit and ORM</library>
+                    <library>Pydantic - Data validation</library>
+                    <library>Python-JOSE - JWT token handling</library>
+                </key-libraries>
+                <future-libraries>
+                    <library>LangChain/LlamaIndex - For AI/LLM integration</library>
+                    <library>OpenAI SDK - For GPT model access</library>
+                </future-libraries>
+            </python-features>
+            <database>
+                <development>SQLite</development>
+                <production>Turso (Distributed SQLite)</production>
+                <features>
+                    - Distributed SQL database built on libSQL
+                    - Edge-ready with global replication
+                    - Compatible with SQLite development workflow
+                </features>
+            </database>
+            <dependency-management>Pipenv</dependency-management>
+        </backend>
+
+        <shared>
+            <description>Common types and utilities shared between frontend and backend</description>
+            <language>TypeScript</language>
+        </shared>
+    </technology-stack>
+
+    <project-structure>
+        <directories>
+            <directory name="frontend">
+                <purpose>React-based client application</purpose>
+                <files>144 files</files>
+            </directory>
+            <directory name="backend">
+                <purpose>FastAPI server application</purpose>
+                <files>88 files</files>
+            </directory>
+            <directory name="shared">
+                <purpose>Shared types and utilities</purpose>
+                <files>39 files</files>
+            </directory>
+            <directory name="scripts">
+                <purpose>Build and automation scripts</purpose>
+                <files>7 files</files>
+            </directory>
+        </directories>
+
+        <configuration-files>
+            <file name=".env">Environment variables for development</file>
+            <file name=".env.test">Environment variables for testing</file>
+            <file name="tsconfig.json">TypeScript configuration</file>
+            <file name="vite.config.ts">Vite build configuration</file>
+            <file name="tailwind.config.js">Tailwind CSS configuration</file>
+            <file name="Dockerfile">Container configuration</file>
+        </configuration-files>
+    </project-structure>
+
+    <development-workflow>
+        <startup-scripts>
+            <backend>
+                <command>./scripts/start-backend.sh</command>
+                <description>
+                    Starts the FastAPI backend server:
+                    - Automatically changes to backend directory
+                    - Kills any existing processes on port 3000
+                    - Starts server on http://localhost:3000/api/v1
+                    - Enables hot-reload for development
+                </description>
+            </backend>
+            <frontend>
+                <command>./scripts/start-frontend.sh</command>
+                <description>
+                    Starts the React frontend development server:
+                    - Kills any existing processes on ports 5173/5174
+                    - Starts server on http://localhost:5173 or :5174
+                    - Enables hot-reload for development
+                </description>
+            </frontend>
+            <all-in-one>
+                <command>./scripts/start-dev.sh</command>
+                <description>
+                    Starts both backend and frontend servers in separate terminal windows:
+                    - Opens new terminal windows using iTerm2 or Terminal.app
+                    - Starts backend server first
+                    - Waits 5 seconds for backend to initialize
+                    - Starts frontend server
+                    - Enables hot-reload for both services
+                </description>
+            </all-in-one>
+            <notes>
+                <note>Run both scripts in separate terminal windows for development</note>
+                <note>Backend must be running for the frontend to work properly</note>
+            </notes>
+        </startup-scripts>
+        <scripts>
+            <script name="dev">Runs both frontend and backend in development mode</script>
+            <script name="build">Builds both frontend and backend for production</script>
+            <script name="test">Runs tests for both frontend and backend</script>
+            <script name="lint">Runs linting for both frontend and backend</script>
+        </scripts>
+
+        <development-setup>
+            <prerequisites>
+                <item>Node.js and npm installed</item>
+                <item>Python 3.x installed</item>
+                <item>pipenv installed (pip install pipenv)</item>
+            </prerequisites>
+
+            <initial-setup>
+                <step>
+                    <command>npm install</command>
+                    <description>Install all workspace dependencies</description>
+                </step>
+                <step>
+                    <command>pipenv install</command>
+                    <description>Install Python dependencies</description>
+                </step>
+                <step>
+                    <command>cp .env.example .env</command>
+                    <description>Create local environment file</description>
+                </step>
+            </initial-setup>
+
+            <development-mode>
+                <start-all>
+                    <command>npm run dev</command>
+                    <description>
+                        Starts both frontend and backend concurrently using concurrently npm package.
+                        - Frontend will run on http://localhost:5173
+                        - Backend will run on http://localhost:8000
+                    </description>
+                </start-all>
+
+                <start-individual>
+                    <frontend>
+                        <command>npm run dev:frontend</command>
+                        <description>
+                            Starts only the frontend Vite dev server
+                            - Runs on http://localhost:5173
+                            - Enables hot module replacement (HMR)
+                            - Provides real-time TypeScript checking
+                        </description>
+                    </frontend>
+                    
+                    <backend>
+                        <command>npm run dev:backend</command>
+                        <description>
+                            Starts only the FastAPI backend server
+                            - Runs on http://localhost:8000
+                            - Enables auto-reload on code changes
+                            - Provides Swagger UI at /docs endpoint
+                        </description>
+                    </backend>
+                </start-individual>
+
+                <environment-variables>
+                    <file>.env</file>
+                    <required-variables>
+                        <variable>DATABASE_URL - SQLite/Turso database connection string</variable>
+                        <variable>JWT_SECRET - Secret key for JWT token generation</variable>
+                        <variable>CORS_ORIGINS - Allowed CORS origins</variable>
+                    </required-variables>
+                </environment-variables>
+            </development-mode>
+        </development-setup>
+
+        <development-tools>
+            <tool>
+                <name>ESLint</name>
+                <purpose>Code linting and style enforcement</purpose>
+            </tool>
+            <tool>
+                <name>Prettier</name>
+                <purpose>Code formatting</purpose>
+            </tool>
+            <tool>
+                <name>Jest</name>
+                <purpose>Testing framework</purpose>
+            </tool>
+        </development-tools>
+    </development-workflow>
+
+    <authentication>
+        <type>JWT (JSON Web Tokens)</type>
+        <features>
+            <feature>Token generation and validation</feature>
+            <feature>User registration endpoint</feature>
+            <feature>User login endpoint</feature>
+            <feature>Session handling</feature>
+            <feature>Connection timeouts</feature>
+        </features>
+    </authentication>
+
+    <database>
+        <features>
+            <indexes>
+                <index>topics(user_id)</index>
+            </indexes>
+            <user-roles>
+                <role>role_user (Default role)</role>
+                <role>role_admin (Admin access)</role>
+            </user-roles>
+        </features>
+    </database>
+
+    <deployment>
+        <containerization>
+            <tool>Docker</tool>
+            <configuration>Dockerfile in root directory</configuration>
+        </containerization>
+        <hosting>
+            <platform>Fly.io</platform>
+            <configuration>fly.toml in root directory</configuration>
+        </hosting>
+    </deployment>
+
+    <development-status>
+        <completed-phases>
+            <phase>Database Updates</phase>
+            <phase>Authentication Setup</phase>
+            <phase>Project Structure Setup</phase>
+            <phase>Backend Development</phase>
+        </completed-phases>
+    </development-status>
+
+    <best-practices>
+        <security>
+            <practice>Environment variable management with .env files</practice>
+            <practice>JWT-based authentication</practice>
+            <practice>Rate limiting implementation</practice>
+        </security>
+        <code-quality>
+            <practice>TypeScript for type safety</practice>
+            <practice>ESLint and Prettier for code consistency</practice>
+            <practice>Automated testing with Jest</practice>
+        </code-quality>
+        <architecture>
+            <practice>Monorepo structure for better code organization</practice>
+            <practice>Shared types between frontend and backend</practice>
+            <practice>Component-based frontend architecture</practice>
+        </architecture>
+    </best-practices>
+</project>

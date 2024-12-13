@@ -1,0 +1,29 @@
+{
+  "name": "@quizlearn/backend",
+  "private": true,
+  "version": "0.0.0",
+  "type": "module",
+  "scripts": {
+    "dev": "tsx watch src/index.ts",
+    "build": "tsc -b",
+    "lint": "eslint .",
+    "test": "jest",
+    "migrate": "tsx src/scripts/migrate_db.ts",
+    "populate-test-data": "tsx scripts/populate_test_topics.ts"
+  },
+  "dependencies": {
+    "@libsql/client": "^0.5.6",
+    "@quizlearn/shared": "0.0.0",
+    "dotenv": "^16.4.7",
+    "jose": "^5.2.3"
+  },
+  "devDependencies": {
+    "@types/node": "^22.7.3",
+    "eslint": "^8.56.0",
+    "jest": "^29.7.0",
+    "ts-jest": "^29.1.2",
+    "ts-node": "^10.9.2",
+    "tsx": "^4.19.2",
+    "typescript": "^5.5.3"
+  }
+}

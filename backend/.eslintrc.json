@@ -1,0 +1,10 @@
+{
+  "extends": ["../.eslintrc.json"],
+  "rules": {
+    "@typescript-eslint/explicit-function-return-type": ["error", {
+      "allowExpressions": true,
+      "allowTypedFunctionExpressions": true
+    }],
+    "no-console": ["error", { "allow": ["warn", "error"] }]
+  }
+}
