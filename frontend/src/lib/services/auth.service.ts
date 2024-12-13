@@ -28,6 +28,8 @@ interface TokenResponse {
 
 export class AuthService extends ApiClient {
   private static instance: AuthService;
+  private static readonly TOKEN_KEY = 'auth_token';
+  private static readonly USER_KEY = 'auth_user';
 
   private constructor() {
     super('http://localhost:3000/api/v1');
@@ -40,44 +42,59 @@ export class AuthService extends ApiClient {
     return AuthService.instance;
   }
 
+  private saveToStorage(token: string, user: User) {
+    localStorage.setItem(AuthService.TOKEN_KEY, token);
+    localStorage.setItem(AuthService.USER_KEY, JSON.stringify(user));
+  }
+
+  private clearStorage() {
+    localStorage.removeItem(AuthService.TOKEN_KEY);
+    localStorage.removeItem(AuthService.USER_KEY);
+  }
+
+  public getStoredAuth(): { token: string; user: User } | null {
+    const token = localStorage.getItem(AuthService.TOKEN_KEY);
+    const userStr = localStorage.getItem(AuthService.USER_KEY);
+    
+    if (token && userStr) {
+      try {
+        const user = JSON.parse(userStr);
+        return { token, user };
+      } catch (e) {
+        this.clearStorage();
+      }
+    }
+    return null;
+  }
+
   async login(credentials: LoginCredentials) {
     // Convert credentials to URLSearchParams for OAuth2 compatibility
     const formData = new URLSearchParams();
-    formData.append('grant_type', 'password');
-    formData.append('username', credentials.email);  // OAuth2 uses username field
+    formData.append('username', credentials.email);
     formData.append('password', credentials.password);
-    formData.append('scope', '');  // Required by OAuth2 spec
 
     try {
+      console.log('Attempting login with:', { email: credentials.email });
       const response = await fetch(`${this.baseUrl}/auth/login`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/x-www-form-urlencoded',
-          'Accept': 'application/json',
         },
         body: formData,
-        mode: 'cors',
-        credentials: 'include',
       });
 
       if (!response.ok) {
-        const contentType = response.headers.get('content-type');
-        if (contentType && contentType.includes('application/json')) {
-          const error = await response.json();
-          console.error('Login error response:', error);
-          throw new AppError(
-            error.detail.message || 'Login failed',
-            response.status,
-            error.detail.error_code || 'LOGIN_FAILED'
-          );
-        } else {
-          const text = await response.text();
-          console.error('Login error text:', text);
-          throw new AppError('Login failed', response.status, 'LOGIN_FAILED');
+        const error = await response.json();
+        console.error('Login error response:', error);
+        if (error.detail?.message) {
+          throw new AppError(error.detail.message, response.status, error.detail.error_code);
         }
+        throw new AppError('Login failed', response.status, 'LOGIN_FAILED');
       }
 
       const data = await response.json();
+      console.log('Login successful, setting tokens');
+      this.saveToStorage(data.access_token, data.user);
       TokenManager.setTokenData(data);
       return data;
     } catch (error) {
@@ -95,6 +112,7 @@ export class AuthService extends ApiClient {
       password: data.password,
       name: data.name,
     });
+    this.saveToStorage(response.access_token, response.user);
     TokenManager.setTokens(
       response.access_token,
       response.refresh_token,
@@ -121,6 +139,7 @@ export class AuthService extends ApiClient {
     }
 
     const data: TokenResponse = await response.json();
+    this.saveToStorage(data.access_token, data.user);
     TokenManager.setTokens(
       data.access_token,
       data.refresh_token,
@@ -134,6 +153,7 @@ export class AuthService extends ApiClient {
     if (refreshToken) {
       await this.post('/auth/logout', { refresh_token: refreshToken });
     }
+    this.clearStorage();
     TokenManager.clearTokens();
   }
 

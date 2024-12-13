@@ -20,11 +20,27 @@ export interface Topic {
   updatedAt: number;
 }
 
+export interface LessonPlan {
+  mainTopics: Array<{
+    name: string;
+    subtopics: Array<{
+      name: string;
+      status: 'current' | 'upcoming' | 'completed';
+    }>;
+  }>;
+  currentTopic: string;
+  completedTopics: string[];
+}
+
 export interface CreateTopicData {
   userId: string;
   title: string;
   description: string;
-  lessonPlan: Topic['lessonPlan'];
+  lessonPlan?: {
+    mainTopics: any[];
+    currentTopic: string;
+    completedTopics: string[];
+  };
 }
 
 export class TopicsService extends ApiClient {
@@ -50,7 +66,19 @@ export class TopicsService extends ApiClient {
   }
 
   async createTopic(data: CreateTopicData): Promise<Topic> {
-    return this.post('/topics', data);
+    const defaultLessonPlan = {
+      mainTopics: [],
+      currentTopic: "",
+      completedTopics: []
+    };
+
+    const payload = {
+      ...data,
+      lessonPlan: data.lessonPlan || defaultLessonPlan
+    };
+
+    console.log('Creating topic with payload:', payload);
+    return this.post('/topics', payload);
   }
 
   async updateTopic(id: string, data: Partial<CreateTopicData>): Promise<Topic> {

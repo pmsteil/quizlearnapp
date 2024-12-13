@@ -38,66 +38,42 @@ export default function TopicsList() {
   const navigate = useNavigate();
   const { user } = useAuth();
   const { showToast } = useToast();
-  const [topics, setTopics] = useState<Topic[]>([]);
   const [sortBy, setSort] = useState<'recent' | 'progress' | 'name'>('recent');
   const [configError, setConfigError] = useState<{title: string; message: string} | null>(null);
 
   const {
-    execute: fetchTopics,
+    data: topics,
     error: topicsError,
     loading: isLoading,
+    execute: fetchTopics,
   } = useAsync(
-    () => topicsService.getUserTopics(user?.id!),
+    () => {
+      if (!user?.id) throw new Error('User not authenticated');
+      return topicsService.getUserTopics(user.id);
+    },
     {
-      onSuccess: (loadedTopics) => {
-        setTopics(loadedTopics);
-      },
       onError: (error) => {
-        showToast(error.message, 'error');
+        showToast('Error loading topics', 'error');
       },
-      loadingKey: 'fetchTopics',
     }
   );
 
   const {
+    error: createError,
     execute: createTopic,
     loading: isCreating,
   } = useAsync(
-    (title: string, description: string) => {
-      if (!user?.id) throw new Error('User not authenticated');
-
-      const defaultLessonPlan = {
-        mainTopics: [{
-          name: "Learning Path",
-          subtopics: [
-            { name: 'Introduction', status: 'current' },
-            { name: 'Basic Concepts', status: 'upcoming' },
-            { name: 'Practice Exercises', status: 'upcoming' },
-            { name: 'Advanced Topics', status: 'upcoming' },
-            { name: 'Final Review', status: 'upcoming' }
-          ]
-        }],
-        currentTopic: 'Introduction',
-        completedTopics: []
-      };
-
-      return topicsService.createTopic(
-        user.id,
-        title,
-        description,
-        defaultLessonPlan
-      );
+    (data: { title: string; description: string; userId: string }) => {
+      return topicsService.createTopic(data);
     },
     {
-      onSuccess: (topic) => {
-        setTopics(prev => [...prev, topic]);
+      onSuccess: () => {
         showToast('Topic created successfully', 'success');
-        navigate(`/topic/${topic.id}`);
+        fetchTopics();
       },
       onError: (error) => {
-        showToast(error.message, 'error');
+        showToast('Error creating topic', 'error');
       },
-      loadingKey: 'createTopic',
     }
   );
 
@@ -122,7 +98,23 @@ export default function TopicsList() {
   }, [topics, sortBy]);
 
   const handleCreateTopic = async (data: { title: string; description: string }) => {
-    await createTopic(data.title, data.description);
+    if (!user?.id) {
+      showToast('Please log in to create a topic', 'error');
+      return;
+    }
+
+    try {
+      await createTopic({
+        title: data.title,
+        description: data.description,
+        userId: user.id
+      });
+      showToast('Topic created successfully', 'success');
+      // closeDialog(); // This function is not defined in the provided code
+    } catch (error) {
+      console.error('Error creating topic:', error);
+      showToast('Failed to create topic', 'error');
+    }
   };
 
   if (configError) {
@@ -136,6 +128,15 @@ export default function TopicsList() {
 
   if (isLoading) {
     return <TopicSkeleton />;
+  }
+
+  if (topicsError) {
+    return (
+      <ErrorMessage
+        title="Failed to load topics"
+        message={topicsError.message}
+      />
+    );
   }
 
   return (
@@ -153,11 +154,9 @@ export default function TopicsList() {
           </Button>
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
-              <Button variant="outline">
-                Sort by: {sortBy}
-              </Button>
+              <Button variant="outline">Sort By</Button>
             </DropdownMenuTrigger>
-            <DropdownMenuContent align="end">
+            <DropdownMenuContent>
               <DropdownMenuItem onClick={() => setSort('recent')}>
                 Most Recent
               </DropdownMenuItem>
@@ -169,15 +168,9 @@ export default function TopicsList() {
         </div>
       </div>
 
-      {topicsError ? (
-        <ErrorMessage
-          title="Failed to load topics"
-          message={topicsError.message}
-        />
-      ) : sortedTopics.length === 0 ? (
+      {!sortedTopics?.length ? (
         <div className="text-center py-12">
           <p className="text-muted-foreground">No topics yet. Create your first topic to get started!</p>
-          <NewTopicForm onSubmit={handleCreateTopic} isLoading={isCreating} />
         </div>
       ) : (
         <div className="grid gap-4">
@@ -185,12 +178,13 @@ export default function TopicsList() {
             <TopicItem
               key={topic.id}
               topic={topic}
-              onClick={() => navigate(`/topic/${topic.id}`)}
+              onSelect={() => navigate(`/topic/${topic.id}`)}
             />
           ))}
-          <NewTopicForm onSubmit={handleCreateTopic} isLoading={isCreating} />
         </div>
       )}
+
+      <NewTopicForm onSubmit={handleCreateTopic} isCreating={isCreating} />
     </div>
   );
 }

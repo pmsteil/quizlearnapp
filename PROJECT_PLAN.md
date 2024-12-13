@@ -4,7 +4,7 @@ Status Legend:
 ✅ Done | 🚧 In Progress | ⌛ Not Started | ❌ Blocked | 🔜 Do This Next
 
 ## Phase 1: Database Updates
-Status: ✅ Done
+Status: 🚧 In Progress
 1. Add missing indexes ✅
    - Index on topics(user_id)
 2. Rename users.role column to users.roles ✅
@@ -12,6 +12,7 @@ Status: ✅ Done
    - role_user: Default role for all users
    - role_admin: Required for /admin access
 4. Verify all needed cascade deletes are in place ✅
+5. Remove duplicate 'role' field from users table (use 'roles' field only) 🔜
 
 ## Phase 2: Authentication Setup
 Status: ✅ Done

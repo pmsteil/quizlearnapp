@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useEffect } from 'react';
+import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
 import { User } from '../services';
 import { authService } from '../services';
 import { TokenManager } from '../utils/token';
@@ -19,7 +19,25 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [token, setToken] = useState<string | null>(null);
   const { showToast } = useToast();
+
+  useEffect(() => {
+    const init = async () => {
+      try {
+        setLoading(true);
+        const tokenData = TokenManager.getTokenData();
+        if (tokenData?.user) {
+          setUser(tokenData.user);
+        }
+      } catch (error) {
+        console.error('Error initializing auth:', error);
+      } finally {
+        setLoading(false);
+      }
+    };
+    init();
+  }, []);
 
   useEffect(() => {
     const initAuth = async () => {
@@ -45,21 +63,29 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     initAuth();
   }, []);
 
-  const login = async (email: string, password: string) => {
+  const login = useCallback(async (email: string, password: string) => {
     try {
+      setLoading(true);
+      setError(null);
+      console.log('Attempting login with email:', email);
       const response = await authService.login({ email, password });
+      console.log('Login successful, setting user');
       setUser(response.user);
-      return response;
-    } catch (error) {
-      console.error('Login error in context:', error);
-      if (error instanceof Error) {
-        setError(error.message);
+      showToast('Successfully logged in', 'success');
+    } catch (err) {
+      console.error('Login error:', err);
+      if (err instanceof AppError) {
+        setError(err.message);
+        showToast(err.message, 'error');
       } else {
         setError('An unexpected error occurred');
+        showToast('Failed to log in', 'error');
       }
-      throw error;
+      throw err;
+    } finally {
+      setLoading(false);
     }
-  };
+  }, [showToast]);
 
   const register = async (name: string, email: string, password: string) => {
     try {

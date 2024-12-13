@@ -2,34 +2,113 @@ from typing import List, Optional, Dict, Any
 import time
 import uuid
 from src.lib.db import get_db
-from pydantic import BaseModel
+from pydantic import BaseModel, ValidationError
+from fastapi import HTTPException
+import logging
+import json
+
+logger = logging.getLogger(__name__)
 
 class LessonPlan(BaseModel):
-    mainTopics: List[dict]
-    currentTopic: str
-    completedTopics: List[str]
+    mainTopics: List[dict] = []
+    currentTopic: str = ""
+    completedTopics: List[str] = []
+
+    class Config:
+        json_schema_extra = {
+            "example": {
+                "mainTopics": [],
+                "currentTopic": "",
+                "completedTopics": []
+            }
+        }
 
 class TopicCreate(BaseModel):
     userId: str
     title: str
     description: str
-    lessonPlan: LessonPlan
+    lessonPlan: LessonPlan | None = None
+
+    @property
+    def default_lesson_plan(self) -> LessonPlan:
+        return LessonPlan()
+
+    def get_lesson_plan(self) -> LessonPlan:
+        return self.lessonPlan or self.default_lesson_plan
+
+    class Config:
+        json_encoders = {
+            LessonPlan: lambda v: v.dict()
+        }
 
 class TopicUpdate(BaseModel):
     title: str | None = None
     description: str | None = None
     lessonPlan: LessonPlan | None = None
 
+class Topic(BaseModel):
+    id: str
+    userId: str
+    title: str
+    description: str
+    lessonPlan: dict
+    createdAt: int
+    updatedAt: int
+
 class TopicService:
+    db = get_db()
+
     @staticmethod
     async def get_user_topics(user_id: str) -> List[Dict[str, Any]]:
-        db = get_db()
-        result = db.execute("""
-            SELECT * FROM topics
-            WHERE user_id = ? AND deleted_at IS NULL
-            ORDER BY created_at DESC
-        """, [user_id])
-        return [dict(row) for row in result.rows]
+        try:
+            db = get_db()
+            result = db.execute("""
+                SELECT * FROM topics
+                WHERE user_id = ?
+                ORDER BY created_at DESC
+            """, [user_id])
+            
+            if not result.rows:
+                return []
+                
+            topics = []
+            for row in result.rows:
+                topic_dict = dict(row)
+                # Convert snake_case to camelCase for frontend
+                topic_dict["userId"] = topic_dict.pop("user_id")
+                topic_dict["createdAt"] = topic_dict.pop("created_at")
+                topic_dict["updatedAt"] = topic_dict.pop("updated_at")
+                
+                # Handle lesson_plan - if None, initialize with default structure
+                lesson_plan = topic_dict.pop("lesson_plan")
+                if not lesson_plan:
+                    lesson_plan = {
+                        "mainTopics": [],
+                        "currentTopic": "",
+                        "completedTopics": []
+                    }
+                elif isinstance(lesson_plan, str):
+                    try:
+                        lesson_plan = json.loads(lesson_plan)
+                    except json.JSONDecodeError:
+                        logger.error(f"Invalid lesson_plan JSON for topic {topic_dict['id']}")
+                        lesson_plan = {
+                            "mainTopics": [],
+                            "currentTopic": "",
+                            "completedTopics": []
+                        }
+                topic_dict["lessonPlan"] = lesson_plan
+                
+                topics.append(topic_dict)
+            
+            return topics
+            
+        except Exception as e:
+            logger.error(f"Error getting topics for user {user_id}: {str(e)}")
+            raise HTTPException(
+                status_code=500,
+                detail=f"Error retrieving topics: {str(e)}"
+            )
 
     @staticmethod
     async def get_topic_by_id(topic_id: str) -> Optional[Dict[str, Any]]:
@@ -40,29 +119,39 @@ class TopicService:
         """, [topic_id])
         return dict(result.rows[0]) if result.rows else None
 
-    @staticmethod
-    async def create_topic(data: TopicCreate) -> Dict[str, Any]:
-        db = get_db()
-        topic_id = str(uuid.uuid4())
-        current_time = int(time.time())
-
-        result = db.execute("""
-            INSERT INTO topics (
-                id, user_id, title, description, lesson_plan,
-                created_at, updated_at
-            ) VALUES (?, ?, ?, ?, ?, ?, ?)
-            RETURNING *
-        """, [
-            topic_id,
-            data.userId,
-            data.title,
-            data.description,
-            data.lessonPlan.json(),
-            current_time,
-            current_time
-        ])
-
-        return dict(result.rows[0])
+    @classmethod
+    async def create_topic(cls, topic: TopicCreate) -> Topic:
+        """Create a new topic."""
+        try:
+            logger.info(f"Creating topic with data: {topic.dict()}")
+            lesson_plan = topic.get_lesson_plan()
+            logger.info(f"Using lesson plan: {lesson_plan.dict()}")
+            
+            query = """
+                INSERT INTO topics (user_id, title, description, lesson_plan)
+                VALUES (:user_id, :title, :description, :lesson_plan)
+                RETURNING id, user_id, title, description, lesson_plan, created_at, updated_at
+            """
+            values = {
+                "user_id": topic.userId,
+                "title": topic.title,
+                "description": topic.description,
+                "lesson_plan": json.dumps(lesson_plan.dict())
+            }
+            logger.info(f"Executing query with values: {values}")
+            
+            async with cls.db.transaction():
+                result = await cls.db.fetch_one(query, values)
+                if result is None:
+                    raise HTTPException(status_code=500, detail="Failed to create topic")
+                    
+                return Topic(**result)
+        except ValidationError as e:
+            logger.error(f"Validation error: {str(e)}")
+            raise HTTPException(status_code=422, detail=str(e))
+        except Exception as e:
+            logger.error(f"Error creating topic: {str(e)}")
+            raise HTTPException(status_code=500, detail=str(e))
 
     @staticmethod
     async def update_topic(topic_id: str, data: TopicUpdate) -> Optional[Dict[str, Any]]:

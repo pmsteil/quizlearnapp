@@ -2,7 +2,11 @@ from fastapi import APIRouter, Depends, HTTPException
 from typing import List
 from src.lib.auth.service import get_current_user, require_admin
 from src.lib.topics.service import TopicService, TopicCreate, TopicUpdate, LessonPlan
-from pydantic import BaseModel
+from pydantic import BaseModel, ValidationError
+import logging
+import json
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/topics", tags=["topics"])
 
@@ -36,9 +40,24 @@ async def get_topic(topic_id: str, current_user = Depends(get_current_user)):
 @router.post("", response_model=TopicResponse)
 async def create_topic(topic: TopicCreate, current_user = Depends(get_current_user)):
     """Create a new topic."""
-    if topic.userId != current_user["id"] and "role_admin" not in current_user.get("roles", []):
-        raise HTTPException(status_code=403, detail="Not authorized to create topic for this user")
-    return await TopicService.create_topic(topic)
+    try:
+        logger.info(f"Creating topic with data: {topic.dict()}")
+        lesson_plan = topic.get_lesson_plan()
+        logger.info(f"Using lesson plan: {lesson_plan.dict()}")
+        
+        logger.info(f"Executing TopicService.create_topic with topic: {topic.dict()}")
+        
+        result = await TopicService.create_topic(topic)
+        if result is None:
+            raise HTTPException(status_code=500, detail="Failed to create topic")
+            
+        return result
+    except ValidationError as e:
+        logger.error(f"Validation error creating topic: {str(e)}")
+        raise HTTPException(status_code=422, detail=str(e))
+    except Exception as e:
+        logger.error(f"Error creating topic: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
 
 @router.put("/{topic_id}", response_model=TopicResponse)
 async def update_topic(topic_id: str, topic: TopicUpdate, current_user = Depends(get_current_user)):
