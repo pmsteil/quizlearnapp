@@ -162,6 +162,12 @@ export function LearningProgress({ topic, onDelete, onUpdate }: LearningProgress
                 placeholder="Add a description..."
                 disabled={isUpdating}
                 autoFocus
+                ref={(textareaRef) => {
+                  if (textareaRef) {
+                    textareaRef.selectionStart = textareaRef.value.length;
+                    textareaRef.selectionEnd = textareaRef.value.length;
+                  }
+                }}
               />
             ) : (
               <p
