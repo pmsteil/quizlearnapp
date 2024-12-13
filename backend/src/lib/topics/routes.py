@@ -42,12 +42,31 @@ async def get_user_topics(user_id: str, current_user = Depends(get_current_user)
 @router.get("/{topic_id}", response_model=TopicResponse)
 async def get_topic(topic_id: str, current_user = Depends(get_current_user)):
     """Get a specific topic by ID."""
-    topic = await TopicService.get_topic_by_id(topic_id)
-    if not topic:
-        raise HTTPException(status_code=404, detail="Topic not found")
-    if topic["user_id"] != current_user["id"] and "role_admin" not in current_user.get("roles", []):
-        raise HTTPException(status_code=403, detail="Not authorized to view this topic")
-    return topic
+    try:
+        logger.info(f"Fetching topic {topic_id} for user {current_user['id']}")
+        topic = await TopicService.get_topic_by_id(topic_id)
+        
+        if not topic:
+            logger.error(f"Topic {topic_id} not found")
+            raise HTTPException(status_code=404, detail="Topic not found")
+            
+        logger.info(f"Topic data retrieved: {topic}")
+        
+        if topic["userId"] != current_user["id"] and "role_admin" not in current_user.get("roles", []):
+            logger.error(f"User {current_user['id']} not authorized to view topic {topic_id}")
+            raise HTTPException(status_code=403, detail="Not authorized to view this topic")
+            
+        logger.info(f"Successfully returning topic {topic_id}")
+        return topic
+    except HTTPException as e:
+        logger.error(f"HTTP error in get_topic endpoint: {str(e)}")
+        raise e
+    except Exception as e:
+        logger.error(f"Unexpected error in get_topic endpoint for topic {topic_id}")
+        logger.error(f"Error type: {type(e)}")
+        logger.error(f"Error message: {str(e)}")
+        logger.exception(e)
+        raise HTTPException(status_code=500, detail={"error": str(e), "type": str(type(e))})
 
 @router.post("", response_model=TopicResponse)
 def create_topic(topic: TopicCreate, current_user = Depends(get_current_user)):
@@ -76,7 +95,7 @@ async def update_topic(topic_id: str, topic: TopicUpdate, current_user = Depends
     existing_topic = await TopicService.get_topic_by_id(topic_id)
     if not existing_topic:
         raise HTTPException(status_code=404, detail="Topic not found")
-    if existing_topic["user_id"] != current_user["id"] and "role_admin" not in current_user.get("roles", []):
+    if existing_topic["userId"] != current_user["id"] and "role_admin" not in current_user.get("roles", []):
         raise HTTPException(status_code=403, detail="Not authorized to update this topic")
     
     updated_topic = await TopicService.update_topic(topic_id, topic)
@@ -90,7 +109,7 @@ async def delete_topic(topic_id: str, current_user = Depends(get_current_user)):
     existing_topic = await TopicService.get_topic_by_id(topic_id)
     if not existing_topic:
         raise HTTPException(status_code=404, detail="Topic not found")
-    if existing_topic["user_id"] != current_user["id"] and "role_admin" not in current_user.get("roles", []):
+    if existing_topic["userId"] != current_user["id"] and "role_admin" not in current_user.get("roles", []):
         raise HTTPException(status_code=403, detail="Not authorized to delete this topic")
     
     await TopicService.delete_topic(topic_id)

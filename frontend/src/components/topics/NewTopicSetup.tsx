@@ -1,55 +1,64 @@
 import { useState } from 'react';
-import { PageLayout } from '../shared/PageLayout';
-import { ChatInterface } from '../shared/ChatInterface';
-import { LearningTree } from '../shared/LearningTree';
-import type { Message, SubtopicStatus } from '@/lib/types';
-import { INITIAL_SETUP_MESSAGES, GUITAR_LEARNING_PLAN } from './constants';
+import { useNavigate } from 'react-router-dom';
+import { Card } from '@/components/ui/card';
+import { useAuth } from '@/lib/contexts/auth.context';
+import { useToast } from '@/lib/contexts/toast.context';
+import { topicsService } from '@/lib/services';
 
 export default function NewTopicSetup() {
-  const [messages, setMessages] = useState<Message[]>(INITIAL_SETUP_MESSAGES);
+  const navigate = useNavigate();
+  const { user } = useAuth();
+  const { showToast } = useToast();
+  const [title, setTitle] = useState('');
+  const [isCreating, setIsCreating] = useState(false);
 
-  const handleSendMessage = (content: string) => {
-    const newMessage: Message = {
-      id: messages.length + 1,
-      type: 'user',
-      content
-    };
+  const handleCreateTopic = async () => {
+    if (!user?.id || !title.trim()) return;
 
-    setMessages([...messages, newMessage]);
-
-    // Simulate AI response
-    setTimeout(() => {
-      const aiResponse: Message = {
-        id: messages.length + 2,
-        type: 'ai',
-        content: "Perfect! I recommend starting with 15-20 minutes of practice daily. This helps build muscle memory without overwhelming you. I've updated the learning plan with this schedule. Would you like to begin with your first lesson on guitar basics?"
-      };
-      setMessages(prev => [...prev, aiResponse]);
-    }, 1000);
+    setIsCreating(true);
+    try {
+      const topic = await topicsService.createTopic({
+        userId: user.id,
+        title: title.trim(),
+        description: title.trim()
+      });
+      showToast('Topic created successfully', 'success');
+      navigate(`/topic/${topic.id}`);
+    } catch (error) {
+      console.error('Failed to create topic:', error);
+      showToast('Failed to create topic', 'error');
+    } finally {
+      setIsCreating(false);
+    }
   };
 
-  const topicsWithStatus = GUITAR_LEARNING_PLAN.mainTopics.map(topic => ({
-    ...topic,
-    subtopics: topic.subtopics.map(subtopic => ({
-      ...subtopic,
-      status: 'upcoming' as SubtopicStatus
-    }))
-  }));
-
   return (
-    <PageLayout>
-      <div className="grid grid-cols-3 gap-6">
-        <div className="col-span-2">
-          <ChatInterface
-            messages={messages}
-            onSendMessage={handleSendMessage}
-          />
+    <div className="container mx-auto px-4 py-6">
+      <Card className="p-6">
+        <h1 className="text-2xl font-bold mb-4">Create New Topic</h1>
+        <div className="space-y-4">
+          <div>
+            <label htmlFor="title" className="block text-sm font-medium mb-1">
+              Topic Title
+            </label>
+            <input
+              id="title"
+              type="text"
+              value={title}
+              onChange={(e) => setTitle(e.target.value)}
+              className="w-full p-2 border rounded-md"
+              placeholder="Enter topic title"
+            />
+          </div>
+          <button
+            onClick={handleCreateTopic}
+            disabled={isCreating || !title.trim()}
+            className="px-4 py-2 bg-primary text-primary-foreground rounded-md hover:bg-primary/90 disabled:opacity-50"
+          >
+            {isCreating ? 'Creating...' : 'Create Topic'}
+          </button>
         </div>
-
-        <div className="space-y-6">
-          <LearningTree topics={topicsWithStatus} />
-        </div>
-      </div>
-    </PageLayout>
+      </Card>
+    </div>
   );
 }

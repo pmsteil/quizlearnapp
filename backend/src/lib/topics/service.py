@@ -79,7 +79,7 @@ class TopicService:
             # Get topics
             logger.info(f"User found, fetching their topics")
             result = get_db().execute("""
-                SELECT id, user_id, title, description, progress, lesson_plan, created_at, updated_at 
+                SELECT id, user_id, title, description, lesson_plan, created_at, updated_at 
                 FROM topics
                 WHERE user_id = ?
                 ORDER BY created_at DESC
@@ -95,10 +95,9 @@ class TopicService:
                         "userId": row[1],
                         "title": row[2],
                         "description": row[3],
-                        "progress": row[4],
-                        "lessonPlan": json.loads(row[5]) if row[5] else {"mainTopics": [], "currentTopic": "", "completedTopics": []},
-                        "createdAt": row[6],
-                        "updatedAt": row[7]
+                        "lessonPlan": json.loads(row[4]) if row[4] else {"mainTopics": [], "currentTopic": "", "completedTopics": []},
+                        "createdAt": row[5],
+                        "updatedAt": row[6]
                     }
                     topics.append(topic_dict)
                 except Exception as e:
@@ -119,12 +118,53 @@ class TopicService:
 
     @staticmethod
     async def get_topic_by_id(topic_id: str) -> Optional[Dict[str, Any]]:
-        db = get_db()
-        result = db.execute("""
-            SELECT * FROM topics
-            WHERE id = ? AND deleted_at IS NULL
-        """, [topic_id])
-        return dict(result.rows[0]) if result.rows else None
+        """Get a specific topic by ID."""
+        try:
+            logger.info(f"Getting topic {topic_id}")
+            db = get_db()
+            result = db.execute("""
+                SELECT id, user_id, title, description, lesson_plan, created_at, updated_at 
+                FROM topics
+                WHERE id = ?
+            """, [topic_id])
+            
+            if not result.rows:
+                logger.info(f"Topic {topic_id} not found")
+                return None
+                
+            row = result.rows[0]
+            logger.info(f"Found topic: {row}")
+            
+            try:
+                lesson_plan = json.loads(row[4]) if row[4] else {
+                    "mainTopics": [],
+                    "currentTopic": "",
+                    "completedTopics": []
+                }
+            except json.JSONDecodeError as e:
+                logger.error(f"Error decoding lesson_plan JSON: {e}")
+                logger.error(f"Raw lesson_plan value: {row[4]}")
+                lesson_plan = {
+                    "mainTopics": [],
+                    "currentTopic": "",
+                    "completedTopics": []
+                }
+            
+            return {
+                "id": row[0],
+                "userId": row[1],
+                "title": row[2],
+                "description": row[3],
+                "lessonPlan": lesson_plan,
+                "createdAt": row[5],
+                "updatedAt": row[6]
+            }
+        except Exception as e:
+            logger.error(f"Error getting topic {topic_id}")
+            logger.error(f"Error type: {type(e)}")
+            logger.error(f"Error message: {str(e)}")
+            logger.exception(e)
+            raise HTTPException(status_code=500, detail={"error": str(e), "type": str(type(e))})
 
     @staticmethod
     def create_topic(topic: TopicCreate) -> Dict[str, Any]:
@@ -205,7 +245,7 @@ class TopicService:
         result = db.execute(f"""
             UPDATE topics
             SET {", ".join(updates)}
-            WHERE id = ? AND deleted_at IS NULL
+            WHERE id = ? 
             RETURNING *
         """, params)
 

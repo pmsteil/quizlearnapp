@@ -5,7 +5,6 @@ export interface Topic {
   userId: string;
   title: string;
   description: string;
-  progress: number;
   lessonPlan: {
     mainTopics: Array<{
       name: string;
@@ -63,7 +62,22 @@ export class TopicsService extends ApiClient {
   }
 
   async getTopic(id: string): Promise<Topic> {
-    return this.get(`/topics/${id}`);
+    console.log(`Fetching topic with id: ${id}`);
+    try {
+      const response = await this.get(`/topics/${id}`);
+      console.log('Topic fetch successful:', response);
+      return response;
+    } catch (error) {
+      console.error('Error fetching topic:', {
+        topicId: id,
+        error: error instanceof Error ? {
+          name: error.name,
+          message: error.message,
+          stack: error.stack
+        } : error
+      });
+      throw error;
+    }
   }
 
   async createTopic(data: CreateTopicData): Promise<Topic> {

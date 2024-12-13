@@ -4,7 +4,7 @@ import { Brain, LayoutDashboard, ShieldCheck } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useAuth } from '@/lib/contexts/auth.context';
 import { topicsService } from '@/lib/services/topics.service';
-import type { Topic } from '@/lib/types';
+import type { Topic } from '@/lib/services/topics.service';
 import { toast } from '@/components/ui/use-toast';
 import { UserMenu } from '../auth/UserMenu';
 import { ModeToggle } from '@/components/theme/mode-toggle';
@@ -51,9 +51,7 @@ export default function Navbar() {
                 icon: undefined // Remove icon since it's incompatible
               }))
             }))
-          },
-          created_at: Math.floor(loadedTopic.createdAt.getTime() / 1000),
-          updated_at: Math.floor(loadedTopic.updatedAt.getTime() / 1000)
+          }
         });
 
       } catch (error) {
