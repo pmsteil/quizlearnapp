@@ -55,8 +55,17 @@ export default function TopicLearning() {
     loadTopic();
   }, [id, navigate, showToast]);
 
-  const handleUpdateTopic = (updatedTopic: Topic) => {
-    setTopic(updatedTopic);
+  const handleUpdateTopic = async (updates: Partial<Topic>) => {
+    if (!id || !topic) return;
+
+    try {
+      const updatedTopic = await topicsService.updateTopic(id, updates);
+      setTopic(updatedTopic);
+      showToast('Topic updated successfully', 'success');
+    } catch (error) {
+      console.error('Error updating topic:', error);
+      showToast('Failed to update topic', 'error');
+    }
   };
 
   const handleDeleteTopic = async () => {

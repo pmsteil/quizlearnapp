@@ -1,28 +1,31 @@
-import { useEffect, useState, useRef, useCallback } from 'react';
+import { useEffect, useState, useRef } from 'react';
 import { Progress } from '@/components/ui/progress';
 import { Card } from '@/components/ui/card';
-import { CheckCircle, XCircle, MoreVertical, Trash2, Square, Pencil } from 'lucide-react';
-import { formatDuration } from '@/lib/utils/learning';
-import type { Topic } from '@/lib/types/database';
+import { CheckCircle, XCircle, MoreVertical, Trash2 } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
-import { useToast } from '@/lib/contexts/toast.context';
+import { Button } from '@/components/ui/button';
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
-import { Button } from '@/components/ui/button';
-import { topicsService } from '@/lib/services/topics.service';
+import { useToast } from '@/lib/contexts/toast.context';
+import { Topic } from '@/lib/types/database';
 
 interface LearningProgressProps {
   topic: Topic;
-  onDelete?: () => void;
-  onUpdate?: (topic: Topic) => void;
+  onDelete: () => void;
+  onUpdate: (updates: Partial<Topic>) => Promise<void>;
 }
 
 export function LearningProgress({ topic, onDelete, onUpdate }: LearningProgressProps) {
+  console.log('LearningProgress rendered with:', { 
+    topic, 
+    isEditingTitle: false,
+    editedTitle: topic.title 
+  });
   const { showToast } = useToast();
   const [isEditingTitle, setIsEditingTitle] = useState(false);
   const [isEditingDescription, setIsEditingDescription] = useState(false);
@@ -31,122 +34,112 @@ export function LearningProgress({ topic, onDelete, onUpdate }: LearningProgress
   const [isUpdating, setIsUpdating] = useState(false);
   const titleInputRef = useRef<HTMLInputElement>(null);
   const descriptionTextareaRef = useRef<HTMLTextAreaElement>(null);
-  const containerRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     setEditedTitle(topic.title);
     setEditedDescription(topic.description || '');
   }, [topic]);
 
-  // Handle clicks outside of the editing area
   useEffect(() => {
-    function handleClickOutside(event: MouseEvent) {
-      // Ignore clicks if we're not in edit mode
-      if (!isEditingTitle && !isEditingDescription) return;
-      
-      // Get the clicked element
-      const target = event.target as HTMLElement;
-      
-      // If we clicked an input/textarea that we're currently editing, ignore it
-      if (isEditingTitle && titleInputRef.current?.contains(target)) return;
-      if (isEditingDescription && descriptionTextareaRef.current?.contains(target)) return;
-      
-      // If we clicked outside our container, save and exit edit mode
-      if (!containerRef.current?.contains(target)) {
-        if (isEditingTitle) handleTitleSave();
-        if (isEditingDescription) handleDescriptionSave();
-      }
+    if (isEditingTitle && titleInputRef.current) {
+      titleInputRef.current.focus();
+      titleInputRef.current.selectionStart = titleInputRef.current.value.length;
+      titleInputRef.current.selectionEnd = titleInputRef.current.value.length;
     }
+  }, [isEditingTitle]);
 
-    // Add listener with a slight delay to avoid menu conflicts
-    const timeoutId = setTimeout(() => {
-      document.addEventListener('mousedown', handleClickOutside);
-    }, 100);
-
-    return () => {
-      clearTimeout(timeoutId);
-      document.removeEventListener('mousedown', handleClickOutside);
-    };
-  }, [isEditingTitle, isEditingDescription]);
+  useEffect(() => {
+    if (isEditingDescription && descriptionTextareaRef.current) {
+      descriptionTextareaRef.current.focus();
+      descriptionTextareaRef.current.selectionStart = descriptionTextareaRef.current.value.length;
+      descriptionTextareaRef.current.selectionEnd = descriptionTextareaRef.current.value.length;
+    }
+  }, [isEditingDescription]);
 
   const handleTitleSave = async () => {
     if (!editedTitle.trim()) {
       showToast('Title cannot be empty', 'error');
+      setEditedTitle(topic.title);
+      setIsEditingTitle(false);
+      return;
+    }
+
+    if (editedTitle === topic.title) {
+      setIsEditingTitle(false);
       return;
     }
 
     setIsUpdating(true);
     try {
       await onUpdate({ title: editedTitle });
-      setIsEditingTitle(false);
+      showToast('Title updated successfully', 'success');
     } catch (error) {
       showToast('Failed to update title', 'error');
+      setEditedTitle(topic.title);
+    } finally {
+      setIsUpdating(false);
+      setIsEditingTitle(false);
     }
-    setIsUpdating(false);
   };
 
   const handleDescriptionSave = async () => {
+    if (editedDescription === topic.description) {
+      setIsEditingDescription(false);
+      return;
+    }
+
     setIsUpdating(true);
     try {
       await onUpdate({ description: editedDescription });
-      setIsEditingDescription(false);
+      showToast('Description updated successfully', 'success');
     } catch (error) {
       showToast('Failed to update description', 'error');
+      setEditedDescription(topic.description || '');
+    } finally {
+      setIsUpdating(false);
+      setIsEditingDescription(false);
     }
-    setIsUpdating(false);
   };
-
-  // Handle focus management
-  const startEditing = useCallback((type: 'title' | 'description') => {
-    if (type === 'title') {
-      // If we're editing description, save it first
-      if (isEditingDescription) {
-        handleDescriptionSave();
-      }
-      setIsEditingTitle(true);
-      setTimeout(() => {
-        if (titleInputRef.current) {
-          titleInputRef.current.focus();
-          titleInputRef.current.selectionStart = titleInputRef.current.value.length;
-          titleInputRef.current.selectionEnd = titleInputRef.current.value.length;
-        }
-      }, 0);
-    } else {
-      // If we're editing title, save it first
-      if (isEditingTitle) {
-        handleTitleSave();
-      }
-      setIsEditingDescription(true);
-      setTimeout(() => {
-        if (descriptionTextareaRef.current) {
-          descriptionTextareaRef.current.focus();
-          descriptionTextareaRef.current.selectionStart = descriptionTextareaRef.current.value.length;
-          descriptionTextareaRef.current.selectionEnd = descriptionTextareaRef.current.value.length;
-        }
-      }, 0);
-    }
-  }, [isEditingTitle, isEditingDescription, handleTitleSave, handleDescriptionSave]);
 
   const handleKeyDown = (
     e: React.KeyboardEvent<HTMLInputElement | HTMLTextAreaElement>,
-    saveHandler: () => void
+    saveFunction: () => void
   ) => {
     if (e.key === 'Enter' && !e.shiftKey) {
       e.preventDefault();
-      saveHandler();
+      saveFunction();
+    } else if (e.key === 'Escape') {
+      e.preventDefault();
+      setEditedTitle(topic.title);
+      setEditedDescription(topic.description || '');
+      setIsEditingTitle(false);
+      setIsEditingDescription(false);
     }
   };
 
+  const handleTitleBlur = () => {
+    handleTitleSave();
+  };
+
+  const handleDescriptionBlur = () => {
+    handleDescriptionSave();
+  };
+
   // Calculate completion percentage based on completed topics
-  const completedTopics = topic.lessonPlan?.completedTopics?.length ?? 0;
-  const totalTopics = topic.lessonPlan?.mainTopics?.reduce(
-    (acc, mainTopic) => acc + (mainTopic.subtopics?.length ?? 0) + 1,
+  const lessonPlan = topic.lessonPlan ?? {
+    mainTopics: [],
+    currentTopic: '',
+    completedTopics: []
+  };
+  const completedTopics = lessonPlan.completedTopics.length;
+  const totalTopics = lessonPlan.mainTopics.reduce(
+    (total, mainTopic) => total + (mainTopic.subtopics?.length ?? 0) + 1,
     0
-  ) ?? 0;
+  );
   const completionPercentage = totalTopics ? Math.round((completedTopics / totalTopics) * 100) : 0;
 
   return (
-    <div className="space-y-6" ref={containerRef}>
+    <div className="space-y-6">
       <div className="flex items-start justify-between">
         <div className="space-y-4 flex-1 mr-4">
           <div>
@@ -155,6 +148,7 @@ export function LearningProgress({ topic, onDelete, onUpdate }: LearningProgress
                 ref={titleInputRef}
                 value={editedTitle}
                 onChange={(e) => setEditedTitle(e.target.value)}
+                onBlur={handleTitleBlur}
                 onKeyDown={(e) => handleKeyDown(e, handleTitleSave)}
                 className="text-2xl font-semibold"
                 disabled={isUpdating}
@@ -162,7 +156,10 @@ export function LearningProgress({ topic, onDelete, onUpdate }: LearningProgress
             ) : (
               <h2
                 className="text-2xl font-semibold cursor-pointer hover:text-primary"
-                onClick={() => startEditing('title')}
+                onClick={() => {
+                  console.log('Title clicked, setting isEditingTitle to true');
+                  setIsEditingTitle(true);
+                }}
               >
                 {editedTitle}
               </h2>
@@ -175,6 +172,7 @@ export function LearningProgress({ topic, onDelete, onUpdate }: LearningProgress
                 ref={descriptionTextareaRef}
                 value={editedDescription}
                 onChange={(e) => setEditedDescription(e.target.value)}
+                onBlur={handleDescriptionBlur}
                 onKeyDown={(e) => handleKeyDown(e, handleDescriptionSave)}
                 className="text-muted-foreground resize-none"
                 placeholder="Add a description..."
@@ -183,7 +181,7 @@ export function LearningProgress({ topic, onDelete, onUpdate }: LearningProgress
             ) : (
               <p
                 className="text-muted-foreground cursor-pointer hover:text-foreground min-h-[1.5rem]"
-                onClick={() => startEditing('description')}
+                onClick={() => setIsEditingDescription(true)}
               >
                 {editedDescription || 'Click to add a description...'}
               </p>
@@ -209,25 +207,24 @@ export function LearningProgress({ topic, onDelete, onUpdate }: LearningProgress
         </DropdownMenu>
       </div>
 
-      <div className="space-y-4">
-        <div className="flex justify-between items-center text-sm text-muted-foreground">
-          <div className="flex items-center space-x-8">
-            <div>
-              <span className="block text-foreground text-lg font-medium">
-                {completionPercentage}%
-              </span>
-              <span>Completion</span>
-            </div>
-            <div>
-              <span className="block text-foreground text-lg font-medium">
-                {completedTopics} / {totalTopics}
-              </span>
-              <span>Topics Completed</span>
-            </div>
+      <Card className="p-6">
+        <div className="flex items-center justify-between mb-4">
+          <div className="flex items-center gap-2">
+            {completionPercentage === 100 ? (
+              <CheckCircle className="h-5 w-5 text-green-500" />
+            ) : (
+              <XCircle className="h-5 w-5 text-destructive" />
+            )}
+            <span className="font-medium">
+              {completionPercentage === 100 ? 'Completed' : 'In Progress'}
+            </span>
           </div>
+          <span className="text-sm text-muted-foreground">
+            {completedTopics} of {totalTopics} topics completed
+          </span>
         </div>
         <Progress value={completionPercentage} className="h-2" />
-      </div>
+      </Card>
     </div>
   );
 }
