@@ -1,6 +1,6 @@
 from fastapi import APIRouter, Depends, HTTPException
-from typing import List
-from pydantic import BaseModel
+from typing import List, Optional
+from pydantic import BaseModel, Field
 from backend.src.lib.auth.middleware import require_auth
 from backend.src.lib.auth.service import get_current_user
 from backend.src.lib.db.models.topic import TopicModel
@@ -11,12 +11,15 @@ router = APIRouter(prefix="/topics", tags=["topics"])
 class CreateTopicRequest(BaseModel):
     title: str
     description: str
-    lesson_plan: LessonPlan
+    lesson_plan: LessonPlan = Field(alias="lessonPlan")
 
 class UpdateTopicRequest(BaseModel):
-    title: str
-    description: str
-    lesson_plan: LessonPlan
+    title: Optional[str] = None
+    description: Optional[str] = None
+    lesson_plan: Optional[LessonPlan] = Field(None, alias="lessonPlan")
+
+    class Config:
+        allow_population_by_field_name = True
 
 @router.get("/", response_model=List[Topic])
 async def get_topics(current_user: User = Depends(require_auth())):
@@ -109,6 +112,7 @@ async def update_topic(
     """
     Update a specific topic.
     Only admins or the topic owner can update it.
+    Supports partial updates - only provided fields will be updated.
     """
     try:
         # Check if topic exists and user has access
@@ -126,12 +130,12 @@ async def update_topic(
                 detail="You don't have permission to update this topic"
             )
 
-        # Update the topic
+        # Update the topic with only the provided fields
         updated_topic = await TopicModel.update(
             topic_id,
-            topic_data.title,
-            topic_data.description,
-            topic_data.lesson_plan
+            title=topic_data.title,
+            description=topic_data.description,
+            lesson_plan=topic_data.lesson_plan
         )
         return updated_topic
     except HTTPException:

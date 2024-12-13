@@ -217,39 +217,68 @@ class TopicService:
 
     @staticmethod
     async def update_topic(topic_id: str, data: TopicUpdate) -> Optional[Dict[str, Any]]:
-        db = get_db()
-        current_time = int(time.time())
+        try:
+            db = get_db()
+            current_time = int(time.time())
 
-        # Build update query dynamically based on provided fields
-        updates = []
-        params = []
-        if data.title is not None:
-            updates.append("title = ?")
-            params.append(data.title)
-        if data.description is not None:
-            updates.append("description = ?")
-            params.append(data.description)
-        if data.lessonPlan is not None:
-            updates.append("lesson_plan = ?")
-            params.append(data.lessonPlan.json())
+            # Build update query dynamically based on provided fields
+            updates = []
+            params = []
+            if data.title is not None:
+                updates.append("title = ?")
+                params.append(data.title)
+            if data.description is not None:
+                updates.append("description = ?")
+                params.append(data.description)
+            if data.lessonPlan is not None:
+                updates.append("lesson_plan = ?")
+                params.append(json.dumps(data.lessonPlan.dict()))
 
-        updates.append("updated_at = ?")
-        params.append(current_time)
+            updates.append("updated_at = ?")
+            params.append(current_time)
 
-        # Add topic_id as the last parameter
-        params.append(topic_id)
+            # Add topic_id as the last parameter
+            params.append(topic_id)
 
-        if not updates:
-            return None
+            if not updates:
+                return None
 
-        result = db.execute(f"""
-            UPDATE topics
-            SET {", ".join(updates)}
-            WHERE id = ? 
-            RETURNING *
-        """, params)
+            result = db.execute(f"""
+                UPDATE topics
+                SET {", ".join(updates)}
+                WHERE id = ? 
+                RETURNING id, user_id, title, description, lesson_plan, created_at, updated_at
+            """, params)
 
-        return dict(result.rows[0]) if result.rows else None
+            if not result.rows:
+                raise HTTPException(status_code=404, detail="Topic not found")
+
+            row = result.rows[0]
+            # Log the row data for debugging
+            logger.debug(f"Row data: {row}")
+            
+            return {
+                "id": row[0],
+                "userId": row[1], 
+                "title": row[2],
+                "description": row[3],
+                "lessonPlan": json.loads(row[4]) if row[4] else {
+                    "mainTopics": [],
+                    "currentTopic": "",
+                    "completedTopics": []
+                },
+                "createdAt": int(row[5]),  # Ensure integer conversion
+                "updatedAt": int(row[6])   # Ensure integer conversion
+            }
+        except Exception as e:
+            logger.error(f"Error updating topic {topic_id}")
+            logger.error(f"Error type: {type(e)}")
+            logger.error(f"Error message: {str(e)}")
+            logger.exception(e)
+            raise HTTPException(
+                status_code=500,
+                detail={"error": str(e), "type": str(type(e))}
+            )
 
     @staticmethod
     async def delete_topic(topic_id: str) -> None:

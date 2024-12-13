@@ -51,12 +51,11 @@ export function LearningProgress({ topic, onDelete, onUpdate }: LearningProgress
     setIsUpdating(true);
     try {
       const updatedTopic = await topicsService.updateTopic(topic.id, {
-        title: editedTitle,
-        description: topic.description,
-        lessonPlan: topic.lessonPlan
+        title: editedTitle
       });
       onUpdate?.(updatedTopic);
       showToast('Title updated successfully', 'success');
+      setEditedTitle(updatedTopic.title);
     } catch (error) {
       showToast('Failed to update title', 'error');
       setEditedTitle(topic.title);
@@ -75,12 +74,11 @@ export function LearningProgress({ topic, onDelete, onUpdate }: LearningProgress
     setIsUpdating(true);
     try {
       const updatedTopic = await topicsService.updateTopic(topic.id, {
-        title: topic.title,
-        description: editedDescription,
-        lessonPlan: topic.lessonPlan
+        description: editedDescription
       });
       onUpdate?.(updatedTopic);
       showToast('Description updated successfully', 'success');
+      setEditedDescription(updatedTopic.description);
     } catch (error) {
       showToast('Failed to update description', 'error');
       setEditedDescription(topic.description || '');
@@ -106,6 +104,20 @@ export function LearningProgress({ topic, onDelete, onUpdate }: LearningProgress
     }
   };
 
+  const handleTitleBlur = (e: React.FocusEvent<HTMLInputElement>) => {
+    // Don't save if Enter was just pressed (it will be handled by handleKeyDown)
+    if (!e.currentTarget.contains(e.relatedTarget)) {
+      handleTitleSave();
+    }
+  };
+
+  const handleDescriptionBlur = (e: React.FocusEvent<HTMLTextAreaElement>) => {
+    // Don't save if Enter was just pressed (it will be handled by handleKeyDown)
+    if (!e.currentTarget.contains(e.relatedTarget)) {
+      handleDescriptionSave();
+    }
+  };
+
   // Calculate completion percentage based on completed topics
   const completedTopics = topic.lessonPlan.completedTopics.length;
   const totalTopics = topic.lessonPlan.mainTopics.reduce(
@@ -123,7 +135,7 @@ export function LearningProgress({ topic, onDelete, onUpdate }: LearningProgress
               <Input
                 value={editedTitle}
                 onChange={(e) => setEditedTitle(e.target.value)}
-                onBlur={handleTitleSave}
+                onBlur={handleTitleBlur}
                 onKeyDown={(e) => handleKeyDown(e, handleTitleSave)}
                 className="text-2xl font-semibold"
                 disabled={isUpdating}
@@ -134,7 +146,7 @@ export function LearningProgress({ topic, onDelete, onUpdate }: LearningProgress
                 className="text-2xl font-semibold cursor-pointer hover:text-primary"
                 onClick={() => setIsEditingTitle(true)}
               >
-                {topic.title}
+                {editedTitle}
               </h2>
             )}
           </div>
@@ -144,7 +156,7 @@ export function LearningProgress({ topic, onDelete, onUpdate }: LearningProgress
               <Textarea
                 value={editedDescription}
                 onChange={(e) => setEditedDescription(e.target.value)}
-                onBlur={handleDescriptionSave}
+                onBlur={handleDescriptionBlur}
                 onKeyDown={(e) => handleKeyDown(e, handleDescriptionSave)}
                 className="text-muted-foreground resize-none"
                 placeholder="Add a description..."
@@ -156,7 +168,7 @@ export function LearningProgress({ topic, onDelete, onUpdate }: LearningProgress
                 className="text-muted-foreground cursor-pointer hover:text-foreground min-h-[1.5rem]"
                 onClick={() => setIsEditingDescription(true)}
               >
-                {topic.description || 'Click to add a description...'}
+                {editedDescription || 'Click to add a description...'}
               </p>
             )}
           </div>

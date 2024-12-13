@@ -67,21 +67,62 @@ class TopicModel:
     @staticmethod
     async def update(
         id: str,
-        title: str,
-        description: str,
-        lessonPlan: LessonPlan
+        title: Optional[str] = None,
+        description: Optional[str] = None,
+        lessonPlan: Optional[LessonPlan] = None
     ) -> Topic:
         timestamp = int(datetime.now().timestamp())
 
         try:
-            result = await dbClient.execute(
-                sql="""
+            # First get the existing topic
+            existing = await TopicModel.getById(id)
+            if not existing:
+                raise Exception('Topic not found')
+
+            # Build update query dynamically based on provided fields
+            updates = []
+            params = []
+            if title is not None:
+                updates.append("title = ?")
+                params.append(title)
+            if description is not None:
+                updates.append("description = ?")
+                params.append(description)
+            if lessonPlan is not None:
+                updates.append("lesson_plan = ?")
+                params.append(json.dumps(lessonPlan))
+
+            # Always update the timestamp
+            updates.append("updated_at = ?")
+            params.append(timestamp)
+
+            # Add id as the last parameter for WHERE clause
+            params.append(id)
+
+            # If no fields to update, return existing topic
+            if not updates:
+                return existing
+
+            # Print debug info
+            print("Updating topic with:", {
+                "updates": updates,
+                "params": params,
+                "sql": f"""
                     UPDATE topics
-                    SET title = ?, description = ?, lesson_plan = ?, updated_at = ?
+                    SET {", ".join(updates)}
+                    WHERE id = ?
+                    RETURNING *
+                """
+            })
+
+            result = await dbClient.execute(
+                sql=f"""
+                    UPDATE topics
+                    SET {", ".join(updates)}
                     WHERE id = ?
                     RETURNING *
                 """,
-                args=[title, description, json.dumps(lessonPlan), timestamp, id]
+                args=params
             )
 
             if not result.rows or len(result.rows) == 0:

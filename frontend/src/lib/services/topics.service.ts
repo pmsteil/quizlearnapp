@@ -120,8 +120,27 @@ export class TopicsService extends ApiClient {
     }
   }
 
-  async updateTopic(id: string, data: Partial<CreateTopicData>): Promise<Topic> {
-    return this.put(`/topics/${id}`, data);
+  async updateTopic(id: string, data: Partial<{
+    title?: string;
+    description?: string;
+    lesson_plan?: LessonPlan;
+  }>): Promise<Topic> {
+    // Convert from camelCase to snake_case for the backend
+    const payload = {
+      ...data,
+      lesson_plan: data.lesson_plan || data.lessonPlan
+    };
+    delete payload.lessonPlan;
+
+    console.log('Updating topic with payload:', payload);
+    try {
+      const response = await this.put(`/topics/${id}`, payload);
+      console.log('Topic updated:', response);
+      return response;
+    } catch (error) {
+      console.error('Error updating topic:', error);
+      throw error;
+    }
   }
 
   async deleteTopic(id: string): Promise<void> {
