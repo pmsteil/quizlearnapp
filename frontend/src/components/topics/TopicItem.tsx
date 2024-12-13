@@ -67,11 +67,11 @@ export function TopicItem({ topic, onClick }: TopicItemProps) {
 
       <div className="mt-4 flex items-center justify-between text-sm text-muted-foreground">
         <div className="flex items-center gap-2">
-          <Clock className="h-4 w-4" />
-          <span>Updated {formatDate(topic.updatedAt)}</span>
+          <span>Current: {topic.lessonPlan.currentTopic || 'Not started'}</span>
         </div>
         <div className="flex items-center gap-2">
-          <span>Current: {topic.lessonPlan.currentTopic || 'Not started'}</span>
+          <Clock className="h-4 w-4" />
+          <span>Updated {formatDate(topic.updatedAt)}</span>
         </div>
       </div>
     </div>

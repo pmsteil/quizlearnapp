@@ -140,74 +140,74 @@ export function LearningProgress({ topic, onDelete, onUpdate }: LearningProgress
 
   return (
     <div className="space-y-6">
-      <div className="flex items-start justify-between">
-        <div className="space-y-4 flex-1 mr-4">
-          <div>
-            {isEditingTitle ? (
-              <Input
-                ref={titleInputRef}
-                value={editedTitle}
-                onChange={(e) => setEditedTitle(e.target.value)}
-                onBlur={handleTitleBlur}
-                onKeyDown={(e) => handleKeyDown(e, handleTitleSave)}
-                className="text-2xl font-semibold"
-                disabled={isUpdating}
-              />
-            ) : (
-              <h2
-                className="text-2xl font-semibold cursor-pointer hover:text-primary"
-                onClick={() => {
-                  console.log('Title clicked, setting isEditingTitle to true');
-                  setIsEditingTitle(true);
-                }}
-              >
-                {editedTitle}
-              </h2>
-            )}
+      <Card className="p-6">
+        <div className="flex items-start justify-between mb-6">
+          <div className="space-y-4 flex-1 mr-4">
+            <div>
+              {isEditingTitle ? (
+                <Input
+                  ref={titleInputRef}
+                  value={editedTitle}
+                  onChange={(e) => setEditedTitle(e.target.value)}
+                  onBlur={handleTitleBlur}
+                  onKeyDown={(e) => handleKeyDown(e, handleTitleSave)}
+                  className="text-2xl font-semibold"
+                  disabled={isUpdating}
+                />
+              ) : (
+                <h2
+                  className="text-2xl font-semibold cursor-pointer hover:text-primary"
+                  onClick={() => {
+                    console.log('Title clicked, setting isEditingTitle to true');
+                    setIsEditingTitle(true);
+                  }}
+                >
+                  {editedTitle}
+                </h2>
+              )}
+            </div>
+
+            <div>
+              {isEditingDescription ? (
+                <Textarea
+                  ref={descriptionTextareaRef}
+                  value={editedDescription}
+                  onChange={(e) => setEditedDescription(e.target.value)}
+                  onBlur={handleDescriptionBlur}
+                  onKeyDown={(e) => handleKeyDown(e, handleDescriptionSave)}
+                  className="text-muted-foreground resize-none"
+                  placeholder="Add a description..."
+                  disabled={isUpdating}
+                />
+              ) : (
+                <p
+                  className="text-muted-foreground cursor-pointer hover:text-foreground min-h-[1.5rem]"
+                  onClick={() => setIsEditingDescription(true)}
+                >
+                  {editedDescription || 'Click to add a description...'}
+                </p>
+              )}
+            </div>
           </div>
 
-          <div>
-            {isEditingDescription ? (
-              <Textarea
-                ref={descriptionTextareaRef}
-                value={editedDescription}
-                onChange={(e) => setEditedDescription(e.target.value)}
-                onBlur={handleDescriptionBlur}
-                onKeyDown={(e) => handleKeyDown(e, handleDescriptionSave)}
-                className="text-muted-foreground resize-none"
-                placeholder="Add a description..."
-                disabled={isUpdating}
-              />
-            ) : (
-              <p
-                className="text-muted-foreground cursor-pointer hover:text-foreground min-h-[1.5rem]"
-                onClick={() => setIsEditingDescription(true)}
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="ghost" size="icon">
+                <MoreVertical className="h-4 w-4" />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end">
+              <DropdownMenuItem 
+                onSelect={() => onDelete()}
+                className="text-destructive"
               >
-                {editedDescription || 'Click to add a description...'}
-              </p>
-            )}
-          </div>
+                <Trash2 className="mr-2 h-4 w-4" />
+                Delete Topic
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
         </div>
 
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <Button variant="ghost" size="icon">
-              <MoreVertical className="h-4 w-4" />
-            </Button>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent align="end">
-            <DropdownMenuItem 
-              onSelect={() => onDelete()}
-              className="text-destructive"
-            >
-              <Trash2 className="mr-2 h-4 w-4" />
-              Delete Topic
-            </DropdownMenuItem>
-          </DropdownMenuContent>
-        </DropdownMenu>
-      </div>
-
-      <Card className="p-6">
         <div className="flex items-center justify-between mb-4">
           <div className="flex items-center gap-2">
             {completionPercentage === 100 ? (
