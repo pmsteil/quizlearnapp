@@ -56,12 +56,12 @@ export default function Navbar() {
 
       } catch (error) {
         console.error('Error loading topic:', error);
+        // Only show error toast, don't navigate away
         toast({
           title: "Error",
-          description: "Failed to load the topic. Please try again.",
+          description: "Failed to load the topic. Please try refreshing the page.",
           variant: "destructive"
         });
-        navigate('/dashboard');
       }
     };
 

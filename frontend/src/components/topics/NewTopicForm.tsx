@@ -19,6 +19,13 @@ export function NewTopicForm({ onSubmit, isCreating }: NewTopicFormProps) {
     }
   };
 
+  const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
+    if (e.key === 'Enter' && !e.shiftKey) {
+      e.preventDefault();
+      handleSubmit(e);
+    }
+  };
+
   const showButton = title.trim().length > 0;
 
   return (
@@ -30,6 +37,7 @@ export function NewTopicForm({ onSubmit, isCreating }: NewTopicFormProps) {
           onChange={(e) => setTitle(e.target.value)}
           onFocus={() => setIsFocused(true)}
           onBlur={() => setIsFocused(false)}
+          onKeyDown={handleKeyDown}
           placeholder="Create a New Topic..."
           className="flex-1 px-4 py-3 rounded-lg border border-input bg-background text-lg resize-none focus:border-primary leading-none overflow-hidden"
           style={{ height: '44px' }}

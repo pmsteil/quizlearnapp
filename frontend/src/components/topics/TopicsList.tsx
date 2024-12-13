@@ -126,12 +126,13 @@ export default function TopicsList() {
         title,
         userId: user.id
       });
-      await createTopic({
+      const topic = await createTopic({
         title,
         description: title, // Use title as description for now
         userId: user.id
       });
       showToast('Topic created successfully', 'success');
+      navigate(`/topic/${topic.id}`);
     } catch (error) {
       console.error('Error creating topic:', error);
       if (error instanceof AppError) {

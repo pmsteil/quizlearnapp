@@ -27,15 +27,22 @@ export function LearningProgress({ topic, onDelete, onUpdate }: LearningProgress
   const [isEditingTitle, setIsEditingTitle] = useState(false);
   const [isEditingDescription, setIsEditingDescription] = useState(false);
   const [editedTitle, setEditedTitle] = useState(topic.title);
-  const [editedDescription, setEditedDescription] = useState(topic.description);
+  const [editedDescription, setEditedDescription] = useState(topic.description || '');
   const [isUpdating, setIsUpdating] = useState(false);
 
   useEffect(() => {
     setEditedTitle(topic.title);
-    setEditedDescription(topic.description);
+    setEditedDescription(topic.description || '');
   }, [topic]);
 
   const handleTitleSave = async () => {
+    if (!editedTitle.trim()) {
+      showToast('Title cannot be empty', 'error');
+      setEditedTitle(topic.title);
+      setIsEditingTitle(false);
+      return;
+    }
+
     if (editedTitle === topic.title) {
       setIsEditingTitle(false);
       return;
@@ -46,16 +53,12 @@ export function LearningProgress({ topic, onDelete, onUpdate }: LearningProgress
       const updatedTopic = await topicsService.updateTopic(topic.id, {
         title: editedTitle,
         description: topic.description,
-        lesson_plan: topic.lesson_plan
+        lessonPlan: topic.lessonPlan
       });
       onUpdate?.(updatedTopic);
       showToast('Title updated successfully', 'success');
     } catch (error) {
-      if (error instanceof Error) {
-        showToast(error.message, 'error');
-      } else {
-        showToast('Failed to update title', 'error');
-      }
+      showToast('Failed to update title', 'error');
       setEditedTitle(topic.title);
     } finally {
       setIsUpdating(false);
@@ -74,17 +77,13 @@ export function LearningProgress({ topic, onDelete, onUpdate }: LearningProgress
       const updatedTopic = await topicsService.updateTopic(topic.id, {
         title: topic.title,
         description: editedDescription,
-        lesson_plan: topic.lesson_plan
+        lessonPlan: topic.lessonPlan
       });
       onUpdate?.(updatedTopic);
       showToast('Description updated successfully', 'success');
     } catch (error) {
-      if (error instanceof Error) {
-        showToast(error.message, 'error');
-      } else {
-        showToast('Failed to update description', 'error');
-      }
-      setEditedDescription(topic.description);
+      showToast('Failed to update description', 'error');
+      setEditedDescription(topic.description || '');
     } finally {
       setIsUpdating(false);
       setIsEditingDescription(false);
@@ -101,14 +100,22 @@ export function LearningProgress({ topic, onDelete, onUpdate }: LearningProgress
     } else if (e.key === 'Escape') {
       e.preventDefault();
       setEditedTitle(topic.title);
-      setEditedDescription(topic.description);
+      setEditedDescription(topic.description || '');
       setIsEditingTitle(false);
       setIsEditingDescription(false);
     }
   };
 
+  // Calculate completion percentage based on completed topics
+  const completedTopics = topic.lessonPlan.completedTopics.length;
+  const totalTopics = topic.lessonPlan.mainTopics.reduce(
+    (total, mainTopic) => total + mainTopic.subtopics.length,
+    0
+  );
+  const completionPercentage = totalTopics ? Math.round((completedTopics / totalTopics) * 100) : 0;
+
   return (
-    <Card className="p-6">
+    <div className="space-y-6">
       <div className="flex items-start justify-between">
         <div className="space-y-4 flex-1 mr-4">
           <div>
@@ -139,37 +146,19 @@ export function LearningProgress({ topic, onDelete, onUpdate }: LearningProgress
                 onChange={(e) => setEditedDescription(e.target.value)}
                 onBlur={handleDescriptionSave}
                 onKeyDown={(e) => handleKeyDown(e, handleDescriptionSave)}
-                className="text-muted-foreground"
+                className="text-muted-foreground resize-none"
+                placeholder="Add a description..."
                 disabled={isUpdating}
                 autoFocus
               />
             ) : (
               <p
-                className="text-muted-foreground cursor-pointer hover:text-foreground"
+                className="text-muted-foreground cursor-pointer hover:text-foreground min-h-[1.5rem]"
                 onClick={() => setIsEditingDescription(true)}
               >
-                {topic.description}
+                {topic.description || 'Click to add a description...'}
               </p>
             )}
-          </div>
-
-          <div className="space-y-4">
-            <div className="flex justify-between items-center text-sm text-muted-foreground">
-              <div className="flex items-center space-x-8">
-                <div>
-                  <span className="block text-foreground text-lg">
-                    {formatDuration(0)}
-                  </span>
-                  <span>Time spent</span>
-                </div>
-                <div>
-                  <span className="block text-foreground text-lg">
-                    0%
-                  </span>
-                  <span>Accuracy</span>
-                </div>
-              </div>
-            </div>
           </div>
         </div>
 
@@ -195,6 +184,26 @@ export function LearningProgress({ topic, onDelete, onUpdate }: LearningProgress
           </DropdownMenuContent>
         </DropdownMenu>
       </div>
-    </Card>
+
+      <div className="space-y-4">
+        <div className="flex justify-between items-center text-sm text-muted-foreground">
+          <div className="flex items-center space-x-8">
+            <div>
+              <span className="block text-foreground text-lg font-medium">
+                {completionPercentage}%
+              </span>
+              <span>Completion</span>
+            </div>
+            <div>
+              <span className="block text-foreground text-lg font-medium">
+                {completedTopics} / {totalTopics}
+              </span>
+              <span>Topics Completed</span>
+            </div>
+          </div>
+        </div>
+        <Progress value={completionPercentage} className="h-2" />
+      </div>
+    </div>
   );
 }
