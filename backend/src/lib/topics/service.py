@@ -120,7 +120,7 @@ class TopicService:
         return dict(result.rows[0]) if result.rows else None
 
     @classmethod
-    async def create_topic(cls, topic: TopicCreate) -> Topic:
+    def create_topic(cls, topic: TopicCreate) -> Topic:
         """Create a new topic."""
         try:
             logger.info(f"Creating topic with data: {topic.dict()}")
@@ -128,24 +128,46 @@ class TopicService:
             logger.info(f"Using lesson plan: {lesson_plan.dict()}")
             
             query = """
-                INSERT INTO topics (user_id, title, description, lesson_plan)
-                VALUES (:user_id, :title, :description, :lesson_plan)
-                RETURNING id, user_id, title, description, lesson_plan, created_at, updated_at
+                INSERT INTO topics (id, user_id, title, description, lesson_plan, created_at, updated_at)
+                VALUES (:id, :user_id, :title, :description, :lesson_plan, :created_at, :updated_at)
+                RETURNING *
             """
+            current_time = int(time.time())
             values = {
+                "id": str(uuid.uuid4()),
                 "user_id": topic.userId,
                 "title": topic.title,
                 "description": topic.description,
-                "lesson_plan": json.dumps(lesson_plan.dict())
+                "lesson_plan": json.dumps(lesson_plan.dict()),
+                "created_at": current_time,
+                "updated_at": current_time
             }
             logger.info(f"Executing query with values: {values}")
             
-            async with cls.db.transaction():
-                result = await cls.db.fetch_one(query, values)
-                if result is None:
-                    raise HTTPException(status_code=500, detail="Failed to create topic")
-                    
-                return Topic(**result)
+            result = cls.db.execute(query, values)
+            if not result.rows:
+                raise HTTPException(status_code=500, detail="Failed to create topic")
+            
+            topic_dict = dict(result.rows[0])
+            # Convert snake_case to camelCase for frontend
+            topic_dict["userId"] = topic_dict.pop("user_id")
+            topic_dict["createdAt"] = topic_dict.pop("created_at")
+            topic_dict["updatedAt"] = topic_dict.pop("updated_at")
+            
+            # Parse lesson_plan JSON
+            lesson_plan = topic_dict.pop("lesson_plan")
+            if isinstance(lesson_plan, str):
+                try:
+                    lesson_plan = json.loads(lesson_plan)
+                except json.JSONDecodeError:
+                    lesson_plan = {
+                        "mainTopics": [],
+                        "currentTopic": "",
+                        "completedTopics": []
+                    }
+            topic_dict["lessonPlan"] = lesson_plan
+            
+            return Topic(**topic_dict)
         except ValidationError as e:
             logger.error(f"Validation error: {str(e)}")
             raise HTTPException(status_code=422, detail=str(e))

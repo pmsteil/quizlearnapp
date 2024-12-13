@@ -33,7 +33,7 @@ export class ApiClient {
       ...options.headers,
     };
 
-    // Log request details (without sensitive data)
+    // Log request details
     console.log('API Request:', {
       url: `${this.baseUrl}${path}`,
       method: options.method || 'GET',
@@ -41,40 +41,37 @@ export class ApiClient {
       body: options.body ? JSON.parse(options.body as string) : undefined
     });
 
-    try {
-      const response = await fetch(`${this.baseUrl}${path}`, {
-        ...options,
-        headers,
-      });
+    const response = await fetch(`${this.baseUrl}${path}`, {
+      ...options,
+      headers,
+    });
 
-      if (!response.ok) {
-        const contentType = response.headers.get('content-type');
-        if (contentType && contentType.includes('application/json')) {
-          const error = await response.json();
-          console.error('API Error:', error);
-          throw new AppError(error.detail || error.message, response.status, error.error_code);
-        } else {
-          const text = await response.text();
-          console.error('API Error (non-JSON):', text);
-          throw new AppError('An unexpected error occurred', response.status, 'UNKNOWN_ERROR');
-        }
-      }
-
+    if (!response.ok) {
       const contentType = response.headers.get('content-type');
       if (contentType && contentType.includes('application/json')) {
-        const data = await response.json();
-        console.log('API Response:', data);
-        return data;
+        const error = await response.json();
+        console.error('API Error:', error);
+        if (Array.isArray(error.detail)) {
+          // Handle validation errors
+          const messages = error.detail.map((e: any) => e.msg || e.message).join(', ');
+          throw new AppError(messages, response.status, 'VALIDATION_ERROR');
+        }
+        throw new AppError(error.detail || error.message, response.status, error.error_code);
+      } else {
+        const text = await response.text();
+        console.error('API Error (non-JSON):', text);
+        throw new AppError('An unexpected error occurred', response.status, 'UNKNOWN_ERROR');
       }
-      
-      throw new AppError('Invalid response format', 500, 'INVALID_RESPONSE_FORMAT');
-    } catch (error) {
-      if (error instanceof AppError) {
-        throw error;
-      }
-      console.error('Network error:', error);
-      throw new AppError('Network error occurred', 500, 'NETWORK_ERROR');
     }
+
+    const contentType = response.headers.get('content-type');
+    if (contentType && contentType.includes('application/json')) {
+      const data = await response.json();
+      console.log('API Response:', data);
+      return data;
+    }
+    
+    throw new AppError('Invalid response format', 500, 'INVALID_RESPONSE_FORMAT');
   }
 
   protected async get<T>(path: string, options: RequestInit = {}): Promise<T> {

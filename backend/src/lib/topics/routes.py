@@ -47,13 +47,12 @@ async def create_topic(topic: TopicCreate, current_user = Depends(get_current_us
         
         logger.info(f"Executing TopicService.create_topic with topic: {topic.dict()}")
         
-        result = await TopicService.create_topic(topic)
+        result = TopicService.create_topic(topic)
         if result is None:
             raise HTTPException(status_code=500, detail="Failed to create topic")
-            
         return result
     except ValidationError as e:
-        logger.error(f"Validation error creating topic: {str(e)}")
+        logger.error(f"Validation error: {str(e)}")
         raise HTTPException(status_code=422, detail=str(e))
     except Exception as e:
         logger.error(f"Error creating topic: {str(e)}")

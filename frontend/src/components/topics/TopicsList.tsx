@@ -104,16 +104,23 @@ export default function TopicsList() {
     }
 
     try {
+      console.log('Creating topic:', {
+        ...data,
+        userId: user.id
+      });
       await createTopic({
         title: data.title,
         description: data.description,
         userId: user.id
       });
       showToast('Topic created successfully', 'success');
-      // closeDialog(); // This function is not defined in the provided code
     } catch (error) {
       console.error('Error creating topic:', error);
-      showToast('Failed to create topic', 'error');
+      if (error instanceof AppError) {
+        showToast(error.message, 'error');
+      } else {
+        showToast('Failed to create topic', 'error');
+      }
     }
   };
 

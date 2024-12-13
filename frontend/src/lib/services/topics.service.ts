@@ -78,7 +78,14 @@ export class TopicsService extends ApiClient {
     };
 
     console.log('Creating topic with payload:', payload);
-    return this.post('/topics', payload);
+    try {
+      const response = await this.post('/topics', payload);
+      console.log('Topic created:', response);
+      return response;
+    } catch (error) {
+      console.error('Error creating topic:', error);
+      throw error;
+    }
   }
 
   async updateTopic(id: string, data: Partial<CreateTopicData>): Promise<Topic> {
