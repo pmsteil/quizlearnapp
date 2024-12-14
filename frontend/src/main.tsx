@@ -1,11 +1,11 @@
 import React from 'react';
 import ReactDOM from 'react-dom/client';
-import { ThemeProvider } from 'next-themes';
 import App from './App';
 import './index.css';
 import { InitializationWrapper } from './components/app/InitializationWrapper';
 import { RootErrorBoundary } from './components/app/RootErrorBoundary';
 import { ToastProvider } from './lib/contexts/toast.context';
+import { ThemeProvider } from '@/components/theme-provider';
 
 // Add global error handler
 window.onerror = (message, source, lineno, colno, error) => {
@@ -29,7 +29,7 @@ try {
 
   root.render(
     <React.StrictMode>
-      <ThemeProvider attribute="class" defaultTheme="dark">
+      <ThemeProvider defaultTheme="system">
         <RootErrorBoundary>
           <ToastProvider>
             <InitializationWrapper>
