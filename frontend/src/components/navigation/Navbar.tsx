@@ -147,15 +147,19 @@ export default function Navbar() {
                   </TooltipContent>
                 </Tooltip>
               </TooltipProvider>
-              <Button
-                variant="ghost"
-                size="icon"
-                className="w-8 h-8"
-                onClick={() => setShowLoginDialog(true)}
-              >
-                <UserCircle2 className="h-5 w-5" />
-              </Button>
-              <AuthDialog open={showLoginDialog} onOpenChange={setShowLoginDialog} />
+              {!user && (
+                <>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="w-8 h-8"
+                    onClick={() => setShowLoginDialog(true)}
+                  >
+                    <UserCircle2 className="h-5 w-5" />
+                  </Button>
+                  <AuthDialog open={showLoginDialog} onOpenChange={setShowLoginDialog} />
+                </>
+              )}
               {user && <UserMenu />}
             </div>
           </div>
