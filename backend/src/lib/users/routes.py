@@ -13,7 +13,7 @@ class UserBase(BaseModel):
     roles: List[str]
 
 class UserResponse(UserBase):
-    id: str
+    id: str  # Keep as 'id' for API compatibility
     created_at: int
     updated_at: int
 
@@ -105,12 +105,15 @@ async def list_users(
     - Admin role
     """
     try:
-        return request.app.state.auth_service.list_users()
-    except AuthenticationError as e:
-        raise HTTPException(
-            status_code=400,
-            detail={"error_code": e.error_code, "message": e.message}
-        )
+        db = request.app.state.db
+        result = db.execute("SELECT * FROM users")
+        users = []
+        for row in result.rows:
+            user = row_to_dict(row)
+            user["roles"] = user["roles"].split(",") if user["roles"] else []
+            user["id"] = user["user_id"]  # Map user_id to id for API compatibility
+            users.append(user)
+        return users
     except Exception as e:
         print(f"Unexpected error in list_users: {str(e)}")
         raise HTTPException(status_code=500, detail="Internal server error")
@@ -192,7 +195,7 @@ async def update_user(
 
     # Verify user exists
     result = db.execute(
-        "SELECT * FROM users WHERE id = ?",
+        "SELECT * FROM users WHERE user_id = ?",
         [user_id]
     )
     if not result.rows:
@@ -207,8 +210,8 @@ async def update_user(
         """
         UPDATE users
         SET name = ?, roles = ?
-        WHERE id = ?
-        RETURNING id, email, name, roles, created_at, updated_at
+        WHERE user_id = ?
+        RETURNING *
         """,
         [name, ",".join(roles), user_id]
     )
@@ -216,21 +219,14 @@ async def update_user(
     # Convert row to dict and properly format roles
     updated_user = row_to_dict(result.rows[0])
     updated_user["roles"] = updated_user["roles"].split(",")
+    updated_user["id"] = updated_user["user_id"]  # Map user_id to id for API compatibility
     return updated_user
 
 @router.delete(
     "/{user_id}",
-    status_code=status.HTTP_200_OK,
     responses={
-        200: {
-            "description": "Successfully deleted user",
-            "content": {
-                "application/json": {
-                    "example": {
-                        "message": "User deleted successfully"
-                    }
-                }
-            }
+        204: {
+            "description": "User successfully deleted"
         },
         401: {
             "description": "Authentication failed",
@@ -290,16 +286,16 @@ async def delete_user(
 
     # Verify user exists
     result = db.execute(
-        "SELECT * FROM users WHERE id = ?",
+        "SELECT * FROM users WHERE user_id = ?",
         [user_id]
     )
     if not result.rows:
         raise HTTPException(status_code=404, detail="User not found")
 
-    # Delete user (cascade will handle sessions)
+    # Delete user
     db.execute(
-        "DELETE FROM users WHERE id = ?",
+        "DELETE FROM users WHERE user_id = ?",
         [user_id]
     )
 
-    return {"message": "User deleted successfully"}
+    return status.HTTP_204_NO_CONTENT

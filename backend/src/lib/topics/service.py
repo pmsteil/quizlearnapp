@@ -24,17 +24,17 @@ class LessonPlan(BaseModel):
         }
 
 class TopicCreate(BaseModel):
-    userId: str
+    user_id: str
     title: str
     description: str | None = None
-    lessonPlan: LessonPlan | None = None
+    lesson_plan: LessonPlan | None = None
 
     @property
     def default_lesson_plan(self) -> LessonPlan:
         return LessonPlan()
 
     def get_lesson_plan(self) -> LessonPlan:
-        return self.lessonPlan or self.default_lesson_plan
+        return self.lesson_plan or self.default_lesson_plan
 
     class Config:
         json_encoders = {
@@ -44,16 +44,16 @@ class TopicCreate(BaseModel):
 class TopicUpdate(BaseModel):
     title: str | None = None
     description: str | None = None
-    lessonPlan: LessonPlan | None = None
+    lesson_plan: LessonPlan | None = None
 
 class Topic(BaseModel):
     id: str
-    userId: str
+    user_id: str
     title: str
     description: str | None = None
-    lessonPlan: LessonPlan
-    createdAt: int
-    updatedAt: int
+    lesson_plan: LessonPlan
+    created_at: int
+    updated_at: int
 
     class Config:
         json_encoders = {
@@ -70,7 +70,7 @@ class TopicService:
             logger.info(f"Getting topics for user {user_id}")
             
             # First check if user exists
-            user_result = get_db().execute("SELECT id FROM users WHERE id = ?", [user_id])
+            user_result = get_db().execute("SELECT user_id FROM users WHERE user_id = ?", [user_id])
             user = user_result.rows
             if not user:
                 logger.error(f"User {user_id} not found")
@@ -79,10 +79,17 @@ class TopicService:
             # Get topics
             logger.info(f"User found, fetching their topics")
             result = get_db().execute("""
-                SELECT id, user_id, title, description, lesson_plan, created_at, updated_at 
-                FROM topics
-                WHERE user_id = ?
-                ORDER BY created_at DESC
+                SELECT 
+                    t.user_id,
+                    t.id,
+                    t.title,
+                    t.description,
+                    t.lesson_plan,
+                    t.created_at,
+                    t.updated_at 
+                FROM topics t
+                WHERE t.user_id = ?
+                ORDER BY t.created_at DESC
             """, [user_id])
             logger.info(f"Found {len(result.rows)} topics")
 
@@ -91,8 +98,8 @@ class TopicService:
                 try:
                     # Convert row tuple to dict with proper field names
                     topic_dict = {
-                        "id": row[0],
-                        "userId": row[1],
+                        "user_id": row[0],
+                        "id": row[1],
                         "title": row[2],
                         "description": row[3],
                         "lessonPlan": json.loads(row[4]) if row[4] else {"mainTopics": [], "currentTopic": "", "completedTopics": []},
@@ -102,15 +109,15 @@ class TopicService:
                     topics.append(topic_dict)
                 except Exception as e:
                     logger.error(f"Error processing topic row: {row}")
-                    logger.error(f"Error: {str(e)}")
+                    logger.error(f"Error type: {type(e)}")
+                    logger.error(f"Error message: {str(e)}")
                     logger.exception(e)
                     continue
 
             return topics
-        except HTTPException as e:
-            raise e
+
         except Exception as e:
-            logger.error("Error in get_user_topics")
+            logger.error(f"Error getting topics for user {user_id}")
             logger.error(f"Error type: {type(e)}")
             logger.error(f"Error message: {str(e)}")
             logger.exception(e)
@@ -120,42 +127,29 @@ class TopicService:
     async def get_topic_by_id(topic_id: str) -> Optional[Dict[str, Any]]:
         """Get a specific topic by ID."""
         try:
-            logger.info(f"Getting topic {topic_id}")
-            db = get_db()
-            result = db.execute("""
-                SELECT id, user_id, title, description, lesson_plan, created_at, updated_at 
-                FROM topics
-                WHERE id = ?
+            result = get_db().execute("""
+                SELECT 
+                    t.user_id,
+                    t.id,
+                    t.title,
+                    t.description,
+                    t.lesson_plan,
+                    t.created_at,
+                    t.updated_at
+                FROM topics t
+                WHERE t.id = ?
             """, [topic_id])
-            
+
             if not result.rows:
-                logger.info(f"Topic {topic_id} not found")
                 return None
-                
+
             row = result.rows[0]
-            logger.info(f"Found topic: {row}")
-            
-            try:
-                lesson_plan = json.loads(row[4]) if row[4] else {
-                    "mainTopics": [],
-                    "currentTopic": "",
-                    "completedTopics": []
-                }
-            except json.JSONDecodeError as e:
-                logger.error(f"Error decoding lesson_plan JSON: {e}")
-                logger.error(f"Raw lesson_plan value: {row[4]}")
-                lesson_plan = {
-                    "mainTopics": [],
-                    "currentTopic": "",
-                    "completedTopics": []
-                }
-            
             return {
-                "id": row[0],
-                "userId": row[1],
+                "user_id": row[0],
+                "id": row[1],
                 "title": row[2],
                 "description": row[3],
-                "lessonPlan": lesson_plan,
+                "lessonPlan": json.loads(row[4]) if row[4] else {"mainTopics": [], "currentTopic": "", "completedTopics": []},
                 "createdAt": row[5],
                 "updatedAt": row[6]
             }
@@ -170,7 +164,7 @@ class TopicService:
     def create_topic(topic: TopicCreate) -> Dict[str, Any]:
         """Create a new topic."""
         try:
-            logger.info(f"Creating topic for user {topic.userId}")
+            logger.info(f"Creating topic for user {topic.user_id}")
             logger.info(f"Topic data: {topic.dict()}")
             
             topic_id = str(uuid.uuid4())
@@ -183,7 +177,7 @@ class TopicService:
                 VALUES (?, ?, ?, ?, ?, ?, ?, ?)
             """, [
                 topic_id,
-                topic.userId,
+                topic.user_id,
                 topic.title,
                 topic.description,
                 0,  # Initial progress
@@ -195,8 +189,8 @@ class TopicService:
             
             # Return the created topic
             return {
+                "user_id": topic.user_id,
                 "id": topic_id,
-                "userId": topic.userId,
                 "title": topic.title,
                 "description": topic.description,
                 "progress": 0,
@@ -230,9 +224,9 @@ class TopicService:
             if data.description is not None:
                 updates.append("description = ?")
                 params.append(data.description)
-            if data.lessonPlan is not None:
+            if data.lesson_plan is not None:
                 updates.append("lesson_plan = ?")
-                params.append(json.dumps(data.lessonPlan.dict()))
+                params.append(json.dumps(data.lesson_plan.dict()))
 
             updates.append("updated_at = ?")
             params.append(current_time)
@@ -258,17 +252,17 @@ class TopicService:
             logger.debug(f"Row data: {row}")
             
             return {
+                "user_id": row[1],
                 "id": row[0],
-                "userId": row[1], 
                 "title": row[2],
                 "description": row[3],
-                "lessonPlan": json.loads(row[4]) if row[4] else {
+                "lesson_plan": json.loads(row[4]) if row[4] else {
                     "mainTopics": [],
                     "currentTopic": "",
                     "completedTopics": []
                 },
-                "createdAt": int(row[5]),  # Ensure integer conversion
-                "updatedAt": int(row[6])   # Ensure integer conversion
+                "created_at": int(row[5]),  # Ensure integer conversion
+                "updated_at": int(row[6])   # Ensure integer conversion
             }
         except Exception as e:
             logger.error(f"Error updating topic {topic_id}")

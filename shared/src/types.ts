@@ -1,29 +1,29 @@
 import { DateTime } from 'luxon';
 
 export interface User {
-    id: string;
+    user_id: string;
     email: string;
     name: string;
     roles: string[];
-    createdAt: DateTime;
-    updatedAt: DateTime;
+    created_at: DateTime;
+    updated_at: DateTime;
 }
 
 export interface Topic {
     id: string;
-    userId: string;
+    user_id: string;
     title: string;
     description: string;
     progress: number;
-    lessonPlan: LessonPlan;
-    createdAt: DateTime;
-    updatedAt: DateTime;
+    lesson_plan: LessonPlan;
+    created_at: DateTime;
+    updated_at: DateTime;
 }
 
 export interface LessonPlan {
-    mainTopics: MainTopic[];
-    currentTopic: string;
-    completedTopics: string[];
+    main_topics: MainTopic[];
+    current_topic: string;
+    completed_topics: string[];
 }
 
 export interface MainTopic {
@@ -39,27 +39,27 @@ export interface Subtopic {
 
 export interface Question {
     id: string;
-    topicId: string;
+    topic_id: string;
     text: string;
     options: string[];
-    correctAnswer: number;
+    correct_answer: number;
     explanation: string;
-    createdAt: DateTime;
-    updatedAt: DateTime;
+    created_at: DateTime;
+    updated_at: DateTime;
 }
 
 export interface Progress {
     id: string;
-    userId: string;
-    topicId: string;
-    questionId: string;
-    isCorrect: boolean;
-    createdAt: DateTime;
+    user_id: string;
+    topic_id: string;
+    question_id: string;
+    is_correct: boolean;
+    created_at: DateTime;
 }
 
 export interface TopicProgress {
-    correctAnswers: number;
-    incorrectAnswers: number;
-    totalQuestions: number;
-    timeSpentMinutes: number;
+    correct_answers: number;
+    incorrect_answers: number;
+    total_questions: number;
+    time_spent_minutes: number;
 }

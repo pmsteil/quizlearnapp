@@ -1,9 +1,11 @@
 from datetime import datetime
-from typing import List, Optional
+from typing import List, Optional, Dict, Any
 from backend.src.lib.db.client import dbClient
 from backend.src.lib.utils.auth import generateId
 from backend.src.lib.utils.dates import now, to_unix_timestamp, from_unix_timestamp
 from shared.src.types import Progress, TopicProgress
+import uuid
+import time
 
 class ProgressModel:
     @staticmethod
@@ -12,18 +14,25 @@ class ProgressModel:
         topicId: str,
         questionId: str,
         isCorrect: bool
-    ) -> Progress:
-        id = generateId()
-        timestamp = to_unix_timestamp(now())
-
+    ) -> Dict[str, Any]:
+        """Create a new progress entry."""
         try:
+            progress_id = str(uuid.uuid4())
+            timestamp = int(time.time())
+
             result = await dbClient.execute(
-                sql="""
-                    INSERT INTO user_progress (id, user_id, topic_id, question_id, is_correct, created_at)
-                    VALUES (?, ?, ?, ?, ?, ?)
-                    RETURNING *
+                """
+                INSERT INTO user_progress (
+                    id,
+                    user_id,
+                    topic_id,
+                    question_id,
+                    is_correct,
+                    created_at
+                ) VALUES (?, ?, ?, ?, ?, ?)
+                RETURNING *
                 """,
-                args=[id, userId, topicId, questionId, 1 if isCorrect else 0, timestamp]
+                [progress_id, userId, topicId, questionId, isCorrect, timestamp]
             )
 
             if not result.rows or len(result.rows) == 0:

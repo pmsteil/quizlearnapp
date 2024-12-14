@@ -1,21 +1,11 @@
 import { ApiClient } from '../api';
 
 export interface Topic {
+  user_id: string;
   id: string;
-  userId: string;
   title: string;
   description: string;
-  lessonPlan: {
-    mainTopics: Array<{
-      name: string;
-      subtopics: Array<{
-        name: string;
-        status: 'current' | 'upcoming' | 'completed';
-      }>;
-    }>;
-    currentTopic: string;
-    completedTopics: string[];
-  };
+  lessonPlan: LessonPlan;
   createdAt: number;
   updatedAt: number;
 }
@@ -33,14 +23,17 @@ export interface LessonPlan {
 }
 
 export interface CreateTopicData {
-  userId: string;
+  user_id: string;
   title: string;
   description: string;
-  lessonPlan?: {
-    mainTopics: any[];
-    currentTopic: string;
-    completedTopics: string[];
-  };
+  lessonPlan?: LessonPlan;
+}
+
+export interface UpdateTopicData {
+  user_id: string;
+  title?: string;
+  description?: string;
+  lessonPlan?: LessonPlan;
 }
 
 export class TopicsService extends ApiClient {
@@ -57,8 +50,8 @@ export class TopicsService extends ApiClient {
     return TopicsService.instance;
   }
 
-  async getUserTopics(userId: string): Promise<Topic[]> {
-    return this.get(`/topics/user/${userId}`);
+  async getUserTopics(user_id: string): Promise<Topic[]> {
+    return this.get(`/topics/user/${user_id}`);
   }
 
   async getTopic(id: string): Promise<Topic> {
@@ -120,15 +113,11 @@ export class TopicsService extends ApiClient {
     }
   }
 
-  async updateTopic(id: string, data: Partial<{
-    title?: string;
-    description?: string;
-    lesson_plan?: LessonPlan;
-  }>): Promise<Topic> {
+  async updateTopic(id: string, data: UpdateTopicData): Promise<Topic> {
     // Convert from camelCase to snake_case for the backend
     const payload = {
       ...data,
-      lesson_plan: data.lesson_plan || data.lessonPlan
+      lesson_plan: data.lessonPlan
     };
     delete payload.lessonPlan;
 

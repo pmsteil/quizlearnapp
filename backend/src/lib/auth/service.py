@@ -99,18 +99,32 @@ class AuthService:
             logger.info(f"Authenticating user: {username}")
             # Get user from database
             result = self.db.execute(
-                "SELECT id, email, name, password_hash, roles FROM users WHERE email = ?",  # We use email as username
+                """
+                SELECT 
+                    user_id,
+                    email,
+                    name,
+                    password_hash,
+                    roles
+                FROM users
+                WHERE email = ?
+                """,
                 [username]
             )
+            logger.info(f"Database query result: {result.rows}")
             if not result.rows:
                 logger.warning(f"User not found: {username}")
                 raise AuthenticationError("Invalid credentials", "INVALID_CREDENTIALS")
 
             user = row_to_dict(result.rows[0])
-            logger.info(f"Found user: {user['email']}, verifying password")
+            logger.info(f"Found user: {user}")
+            logger.info(f"Password hash from DB: {user['password_hash']}")
+            logger.info(f"Input password: {password}")
 
             # Verify password
-            if not verify_password(password, user["password_hash"]):
+            is_valid = verify_password(password, user["password_hash"])
+            logger.info(f"Password verification result: {is_valid}")
+            if not is_valid:
                 logger.warning(f"Invalid password for user: {username}")
                 # Update failed attempts
                 current_time = int(time.time())
@@ -127,9 +141,9 @@ class AuthService:
 
             logger.info(f"Password verified successfully for user: {username}")
 
-            # Clean user object
+            # Clean user object - ensure we use user_id consistently
             clean_user = {
-                "id": user["id"],
+                "user_id": user["user_id"],  
                 "email": user["email"],
                 "name": user["name"],
                 "roles": user["roles"].split(",") if user["roles"] else []
@@ -156,14 +170,14 @@ class AuthService:
                 VALUES (?, ?, ?, ?)
             """, [
                 session_id,
-                user["id"],
+                user["user_id"],
                 current_time,
                 current_time + int(self.session_timeout.total_seconds())
             ])
 
             # Create access token
             user_data = {
-                "id": user["id"],
+                "user_id": user["user_id"],
                 "email": user["email"],
                 "name": user["name"],
                 "roles": user["roles"].split(","),
@@ -172,7 +186,7 @@ class AuthService:
 
             access_token = create_access_token(
                 data={
-                    "sub": user["id"],
+                    "sub": user["user_id"],
                     "user": user_data,
                     "session_id": session_id
                 },
@@ -213,7 +227,7 @@ class AuthService:
         """Register a new user."""
         try:
             # Check if user exists
-            result = self.db.execute("SELECT id FROM users WHERE email = ?", [email])
+            result = self.db.execute("SELECT user_id FROM users WHERE email = ?", [email])
             if result.rows:
                 raise AuthenticationError("User already exists", "USER_EXISTS")
 
@@ -227,13 +241,13 @@ class AuthService:
             # Insert user with clean slate (remove failed attempts fields)
             self.db.execute("""
                 INSERT INTO users (
-                    id, email, name, password_hash, roles,
+                    user_id, email, name, password_hash, roles,
                     created_at, updated_at
                 ) VALUES (?, ?, ?, ?, ?, ?, ?)
             """, [user_id, email, name, password_hash, "role_user", current_time, current_time])
 
             # Get the created user
-            result = self.db.execute("SELECT * FROM users WHERE id = ?", [user_id])
+            result = self.db.execute("SELECT * FROM users WHERE user_id = ?", [user_id])
             if not result.rows:
                 raise AuthenticationError("Failed to create user", "REGISTRATION_ERROR")
 
@@ -260,7 +274,7 @@ class AuthService:
 
             # Convert to API format
             return [{
-                "id": user["id"],
+                "user_id": user["user_id"],
                 "email": user["email"],
                 "name": user["name"],
                 "roles": user["roles"].split(","),

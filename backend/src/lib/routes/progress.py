@@ -33,7 +33,7 @@ async def get_topic_progress(
             )
 
         # Check if user has access to this topic
-        if topic.userId != current_user.id and "role_admin" not in current_user.roles:
+        if topic.userId != current_user.user_id and "role_admin" not in current_user.roles:
             raise HTTPException(
                 status_code=403,
                 detail="You don't have permission to access progress for this topic"
@@ -70,7 +70,7 @@ async def record_progress(
             )
 
         # Check if user owns this topic
-        if topic.userId != current_user.id:
+        if topic.userId != current_user.user_id:
             raise HTTPException(
                 status_code=403,
                 detail="You can only record progress for your own topics"
@@ -91,7 +91,7 @@ async def record_progress(
 
         # Record progress
         progress = await ProgressModel.create(
-            current_user.id,
+            current_user.user_id,
             topic_id,
             progress_data.questionId,
             progress_data.isCorrect

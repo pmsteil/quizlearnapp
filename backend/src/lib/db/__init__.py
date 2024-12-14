@@ -36,7 +36,7 @@ def initialize_db(db):
     result = db.execute("SELECT COUNT(*) FROM users WHERE email = ?", ["test@example.com"])
     if result.rows[0][0] == 0:
         db.execute("""
-            INSERT INTO users (id, email, name, password_hash, roles, created_at, updated_at)
+            INSERT INTO users (user_id, email, name, password_hash, roles, created_at, updated_at)
             VALUES (?, ?, ?, ?, ?, ?, ?)
         """, [
             str(uuid.uuid4()),
@@ -101,24 +101,33 @@ def row_to_dict(row):
         return None
 
     # Get column names from the query result
-    if len(row) == 4:  # SELECT id, email, name, roles
+    if len(row) == 4:  # SELECT user_id, email, name, roles
         return {
-            "id": row[0],
+            "user_id": row[0],
             "email": row[1],
             "name": row[2],
             "roles": row[3]
         }
-    elif len(row) == 5:  # SELECT id, email, name, password_hash, roles
+    elif len(row) == 5:  # SELECT user_id, email, name, password_hash, roles
         return {
-            "id": row[0],
+            "user_id": row[0],
             "email": row[1],
             "name": row[2],
             "password_hash": row[3],
             "roles": row[4]
         }
-    elif len(row) == 7:  # Full user row without failed attempts
+    elif len(row) == 6:  # SELECT user_id, email, name, password_hash, roles, created_at
         return {
-            "id": row[0],
+            "user_id": row[0],
+            "email": row[1],
+            "name": row[2],
+            "password_hash": row[3],
+            "roles": row[4],
+            "created_at": row[5]
+        }
+    elif len(row) == 7:  # SELECT user_id, email, name, password_hash, roles, created_at, updated_at
+        return {
+            "user_id": row[0],
             "email": row[1],
             "name": row[2],
             "password_hash": row[3],
@@ -126,17 +135,5 @@ def row_to_dict(row):
             "created_at": row[5],
             "updated_at": row[6]
         }
-    elif len(row) == 9:  # Full user row with failed attempts
-        return {
-            "id": row[0],
-            "email": row[1],
-            "name": row[2],
-            "password_hash": row[3],
-            "roles": row[4],
-            "failed_attempts": row[5] if row[5] is not None else 0,
-            "last_failed_attempt": row[6],
-            "created_at": row[7],
-            "updated_at": row[8]
-        }
     else:
-        raise ValueError(f"Unknown row format with {len(row)} columns")
+        raise ValueError(f"Unexpected number of columns in row: {len(row)}")

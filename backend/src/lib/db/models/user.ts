@@ -6,16 +6,16 @@ import { DateTime } from 'luxon';
 
 export class UserModel {
   static async create(email: string, password: string, name: string): Promise<User> {
-    const id = generateId();
+    const userId = generateId();
     const hashedPassword = await hashPassword(password);
     const timestamp = Math.floor(Date.now() / 1000);
 
     try {
       const result = await db.execute({
-        sql: `INSERT INTO users (id, email, password_hash, name, created_at, updated_at)
+        sql: `INSERT INTO users (user_id, email, password_hash, name, created_at, updated_at)
               VALUES (?, ?, ?, ?, ?, ?)
-              RETURNING *`,
-        args: [id, email, hashedPassword, name, timestamp, timestamp]
+              RETURNING user_id, email, name, password_hash, roles, created_at, updated_at`,
+        args: [userId, email, hashedPassword, name, timestamp, timestamp]
       });
 
       if (!result.rows?.[0]) {
@@ -34,7 +34,8 @@ export class UserModel {
       debug.log('Attempting to authenticate user:', email);
 
       const result = await db.execute({
-        sql: 'SELECT * FROM users WHERE email = ?',
+        sql: `SELECT user_id, email, name, password_hash, roles, created_at, updated_at, failed_attempts, last_failed_attempt
+              FROM users WHERE email = ?`,
         args: [email]
       });
 
@@ -60,7 +61,8 @@ export class UserModel {
   static async getByEmail(email: string): Promise<User | null> {
     try {
       const result = await db.execute({
-        sql: 'SELECT * FROM users WHERE email = ?',
+        sql: `SELECT user_id, email, name, password_hash, roles, created_at, updated_at
+              FROM users WHERE email = ?`,
         args: [email]
       });
 
@@ -84,8 +86,8 @@ export class UserModel {
 
         // Update the database with the correct roles
         db.execute({
-          sql: 'UPDATE users SET roles = ? WHERE email = ?',
-          args: ['role_admin', row.email]  // Store as simple string
+          sql: 'UPDATE users SET roles = ? WHERE user_id = ?',
+          args: ['role_admin', row.user_id]  // Store as simple string
         }).catch(err => console.error('Failed to update admin roles:', err));
       } else {
         roles = ['role_user'];
@@ -99,7 +101,7 @@ export class UserModel {
     const updatedAt = DateTime.fromSeconds(Number(row.updated_at));
 
     return {
-      id: String(row.id),
+      user_id: String(row.user_id),
       email: String(row.email),
       name: String(row.name),
       roles,

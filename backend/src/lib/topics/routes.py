@@ -11,8 +11,8 @@ logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/topics", tags=["topics"])
 
 class TopicResponse(BaseModel):
+    user_id: str
     id: str
-    userId: str
     title: str
     description: str
     lessonPlan: LessonPlan
@@ -22,7 +22,7 @@ class TopicResponse(BaseModel):
 @router.get("/user/{user_id}", response_model=List[TopicResponse])
 async def get_user_topics(user_id: str, current_user = Depends(get_current_user)):
     """Get all topics for a specific user."""
-    if current_user["id"] != user_id and "role_admin" not in current_user.get("roles", []):
+    if current_user["user_id"] != user_id and "role_admin" not in current_user.get("roles", []):
         raise HTTPException(status_code=403, detail="Not authorized to view these topics")
     try:
         logger.info(f"Getting topics for user {user_id}")
@@ -43,19 +43,19 @@ async def get_user_topics(user_id: str, current_user = Depends(get_current_user)
 async def get_topic(topic_id: str, current_user = Depends(get_current_user)):
     """Get a specific topic by ID."""
     try:
-        logger.info(f"Fetching topic {topic_id} for user {current_user['id']}")
+        logger.info(f"Fetching topic {topic_id} for user {current_user['user_id']}")
         topic = await TopicService.get_topic_by_id(topic_id)
         
         if not topic:
             logger.error(f"Topic {topic_id} not found")
             raise HTTPException(status_code=404, detail="Topic not found")
             
-        logger.info(f"Topic data retrieved: {topic}")
-        
-        if topic["userId"] != current_user["id"] and "role_admin" not in current_user.get("roles", []):
-            logger.error(f"User {current_user['id']} not authorized to view topic {topic_id}")
+        if topic["user_id"] != current_user["user_id"] and "role_admin" not in current_user.get("roles", []):
+            logger.warning(f"User {current_user['user_id']} attempted to access topic {topic_id} owned by {topic['user_id']}")
             raise HTTPException(status_code=403, detail="Not authorized to view this topic")
             
+        logger.info(f"Topic data retrieved: {topic}")
+        
         logger.info(f"Successfully returning topic {topic_id}")
         return topic
     except HTTPException as e:
@@ -72,8 +72,8 @@ async def get_topic(topic_id: str, current_user = Depends(get_current_user)):
 def create_topic(topic: TopicCreate, current_user = Depends(get_current_user)):
     """Create a new topic."""
     try:
-        logger.info(f"Creating topic for user {current_user['id']}")
-        topic.userId = current_user["id"]
+        logger.info(f"Creating topic for user {current_user['user_id']}")
+        topic.user_id = current_user["user_id"]
         logger.info(f"Topic data: {topic.dict()}")
         
         new_topic = TopicService.create_topic(topic)
@@ -95,7 +95,7 @@ async def update_topic(topic_id: str, topic: TopicUpdate, current_user = Depends
     existing_topic = await TopicService.get_topic_by_id(topic_id)
     if not existing_topic:
         raise HTTPException(status_code=404, detail="Topic not found")
-    if existing_topic["userId"] != current_user["id"] and "role_admin" not in current_user.get("roles", []):
+    if existing_topic["user_id"] != current_user["user_id"] and "role_admin" not in current_user.get("roles", []):
         raise HTTPException(status_code=403, detail="Not authorized to update this topic")
     
     updated_topic = await TopicService.update_topic(topic_id, topic)
@@ -109,7 +109,7 @@ async def delete_topic(topic_id: str, current_user = Depends(get_current_user)):
     existing_topic = await TopicService.get_topic_by_id(topic_id)
     if not existing_topic:
         raise HTTPException(status_code=404, detail="Topic not found")
-    if existing_topic["userId"] != current_user["id"] and "role_admin" not in current_user.get("roles", []):
+    if existing_topic["user_id"] != current_user["user_id"] and "role_admin" not in current_user.get("roles", []):
         raise HTTPException(status_code=403, detail="Not authorized to delete this topic")
     
     await TopicService.delete_topic(topic_id)

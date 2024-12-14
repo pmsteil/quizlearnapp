@@ -4,6 +4,13 @@ import { type User } from '../services';
 import { authService } from '../services';
 import { toast } from '@/components/ui/use-toast';
 
+interface User {
+  user_id: string;
+  email: string;
+  name: string;
+  roles: string[];
+}
+
 interface AuthContextType {
   user: User | null;
   login: (email: string, password: string) => Promise<void>;

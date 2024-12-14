@@ -12,12 +12,12 @@ export default function NewTopicSetup() {
   const [isCreating, setIsCreating] = useState(false);
 
   const handleCreateTopic = async () => {
-    if (!user?.id || !title.trim()) return;
+    if (!user?.user_id || !title.trim()) return;
 
     setIsCreating(true);
     try {
       const topic = await topicsService.createTopic({
-        userId: user.id,
+        user_id: user.user_id,
         title: title.trim(),
         description: title.trim()
       });
@@ -25,7 +25,7 @@ export default function NewTopicSetup() {
         title: "Success",
         description: "Topic created successfully",
       });
-      navigate(`/topic/${topic.id}`);
+      navigate(`/topic/${topic.user_id}`);
     } catch (error) {
       console.error('Failed to create topic:', error);
       toast({

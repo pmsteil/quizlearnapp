@@ -48,8 +48,8 @@ export default function TopicsList() {
     execute: fetchTopics,
   } = useAsync(
     () => {
-      if (!user?.id) throw new Error('User not authenticated');
-      return topicsService.getUserTopics(user.id);
+      if (!user?.user_id) throw new Error('User not authenticated');
+      return topicsService.getUserTopics(user.user_id);
     },
     {
       onError: (error) => {
@@ -65,7 +65,7 @@ export default function TopicsList() {
         }
       },
     },
-    [user?.id]
+    [user?.user_id]
   );
 
   const {
@@ -74,7 +74,7 @@ export default function TopicsList() {
     execute: createTopic,
   } = useAsync(
     async (data: CreateTopicData) => {
-      if (!user?.id) throw new Error('User not authenticated');
+      if (!user?.user_id) throw new Error('User not authenticated');
       const topic = await topicsService.createTopic(data);
       await fetchTopics();
       return topic;
@@ -91,10 +91,10 @@ export default function TopicsList() {
   );
 
   useEffect(() => {
-    if (user?.id) {
+    if (user?.user_id) {
       fetchTopics();
     }
-  }, [user?.id]);
+  }, [user?.user_id]);
 
   const sortedTopics = useMemo(() => {
     if (!topics) return [];
@@ -116,7 +116,7 @@ export default function TopicsList() {
   }, [sortedTopics]);
 
   const handleCreateTopic = async (title: string) => {
-    if (!user?.id) {
+    if (!user?.user_id) {
       toast({
         title: "Error",
         description: "Please log in to create a topic",
@@ -134,10 +134,10 @@ export default function TopicsList() {
       
       console.log('Creating topic:', {
         title,
-        userId: user.id
+        user_id: user.user_id
       });
       const topic = await createTopic({
-        userId: user.id,
+        user_id: user.user_id,
         title,
         description: title, // Use title as description for now
       });

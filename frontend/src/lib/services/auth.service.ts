@@ -12,7 +12,7 @@ interface RegisterData extends LoginCredentials {
 }
 
 interface User {
-  id: string;
+  user_id: string;
   email: string;
   name: string;
   roles: string[];
@@ -59,8 +59,18 @@ export class AuthService extends ApiClient {
       if (!response.ok) {
         const error = await response.json();
         console.error('Login error response:', error);
-        if (error.detail?.message) {
-          throw new AppError(error.detail.message, response.status, error.detail.error_code);
+        console.error('Login error status:', response.status);
+        console.error('Login error detail:', error.detail);
+        
+        // Handle the error based on the actual structure
+        if (error.detail?.error_code) {
+          throw new AppError(
+            error.detail.message || 'Login failed',
+            response.status,
+            error.detail.error_code
+          );
+        } else if (typeof error.detail === 'string') {
+          throw new AppError(error.detail, response.status, 'LOGIN_FAILED');
         }
         throw new AppError('Login failed', response.status, 'LOGIN_FAILED');
       }
@@ -105,6 +115,8 @@ export class AuthService extends ApiClient {
       if (!response.ok) {
         const error = await response.json();
         console.error('Token refresh error:', error);
+        console.error('Token refresh error status:', response.status);
+        console.error('Token refresh error detail:', error.detail);
         throw new AppError('Token refresh failed', response.status, 'TOKEN_REFRESH_FAILED');
       }
 

@@ -41,6 +41,7 @@ async def login(request: Request, form_data: OAuth2PasswordRequestForm = Depends
     """Login endpoint that returns an access token."""
     try:
         logger.info(f"Login attempt for username: {form_data.username}")
+        logger.info(f"Raw form data: username={form_data.username}, password length={len(form_data.password)}")
         auth_service = AuthService(request.app.state.db)
         
         # Log form data for debugging
@@ -64,14 +65,14 @@ async def login(request: Request, form_data: OAuth2PasswordRequestForm = Depends
         # Create access token
         access_token_expires = timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
         access_token = create_access_token(
-            data={"sub": user["id"], "user": user},
+            data={"sub": user["user_id"], "user": user},
             expires_delta=access_token_expires
         )
 
         # Create refresh token
         refresh_token_expires = timedelta(days=REFRESH_TOKEN_EXPIRE_DAYS)
         refresh_token = create_access_token(
-            data={"sub": user["id"], "type": "refresh"},
+            data={"sub": user["user_id"], "type": "refresh"},
             expires_delta=refresh_token_expires
         )
 
@@ -86,12 +87,12 @@ async def login(request: Request, form_data: OAuth2PasswordRequestForm = Depends
         return response_data
 
     except AuthenticationError as e:
-        logger.error(f"Authentication error for {form_data.username}: {str(e)}")
+        logger.warning(f"Authentication failed: {e.message} (code: {e.error_code})")
         raise HTTPException(
             status_code=401,
             detail={
                 "error_code": e.error_code,
-                "message": str(e)
+                "message": e.message
             },
             headers={"WWW-Authenticate": "Bearer"},
         )
@@ -120,14 +121,14 @@ async def register(username: str, password: str, name: str):
     # Create access token
     access_token_expires = timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
     access_token = create_access_token(
-        data={"sub": user["id"], "user": user},
+        data={"sub": user["user_id"], "user": user},
         expires_delta=access_token_expires
     )
 
     # Create refresh token
     refresh_token_expires = timedelta(days=REFRESH_TOKEN_EXPIRE_DAYS)
     refresh_token = create_access_token(
-        data={"sub": user["id"], "type": "refresh"},
+        data={"sub": user["user_id"], "type": "refresh"},
         expires_delta=refresh_token_expires
     )
 
@@ -161,14 +162,14 @@ async def refresh_token(refresh_token: str):
         # Create new access token
         access_token_expires = timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
         access_token = create_access_token(
-            data={"sub": user["id"], "user": user},
+            data={"sub": user["user_id"], "user": user},
             expires_delta=access_token_expires
         )
 
         # Create new refresh token
         refresh_token_expires = timedelta(days=REFRESH_TOKEN_EXPIRE_DAYS)
         new_refresh_token = create_access_token(
-            data={"sub": user["id"], "type": "refresh"},
+            data={"sub": user["user_id"], "type": "refresh"},
             expires_delta=refresh_token_expires
         )
 
@@ -196,7 +197,9 @@ async def logout(request: LogoutRequest):
 async def list_users(request: Request):
     """List all users (for debugging)."""
     try:
-        result = request.app.state.db.execute("SELECT id, email, name, roles FROM users")
+        result = request.app.state.db.execute(
+            "SELECT user_id, email, name, roles FROM users"
+        )
         users = [row_to_dict(row) for row in result.rows]
         return {"users": users}
     except Exception as e:
@@ -219,7 +222,7 @@ async def get_user_debug(email: str, request: Request):
     """Get user details for debugging."""
     try:
         result = request.app.state.db.execute(
-            "SELECT id, email, name, password_hash, roles FROM users WHERE email = ?",
+            "SELECT user_id, email, name, password_hash, roles FROM users WHERE email = ?",
             [email]
         )
         if not result.rows:
