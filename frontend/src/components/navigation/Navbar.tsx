@@ -1,12 +1,13 @@
 import { useState, useEffect } from 'react';
 import { useLocation, useNavigate, Link } from 'react-router-dom';
-import { Brain, LayoutDashboard, ShieldCheck, Sun, Moon } from 'lucide-react';
+import { Brain, LayoutDashboard, ShieldCheck, Sun, Moon, UserCircle2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useAuth } from '@/lib/contexts/auth.context';
 import { topicsService } from '@/lib/services/topics.service';
 import { toast } from '@/components/ui/use-toast';
 import { UserMenu } from '../auth/UserMenu';
 import { useTheme } from '@/components/theme-provider';
+import { AuthDialog } from '../auth/AuthDialog';
 import {
   Tooltip,
   TooltipContent,
@@ -19,6 +20,7 @@ export default function Navbar() {
   const navigate = useNavigate();
   const { user } = useAuth();
   const { theme, setTheme } = useTheme();
+  const [showLoginDialog, setShowLoginDialog] = useState(false);
   const isNotHome = location.pathname !== '/';
   const [topic, setTopic] = useState<Topic | null>(null);
   const isAdmin = user?.roles?.includes('role_admin');
@@ -145,7 +147,16 @@ export default function Navbar() {
                   </TooltipContent>
                 </Tooltip>
               </TooltipProvider>
-              <UserMenu />
+              <Button
+                variant="ghost"
+                size="icon"
+                className="w-8 h-8"
+                onClick={() => setShowLoginDialog(true)}
+              >
+                <UserCircle2 className="h-5 w-5" />
+              </Button>
+              <AuthDialog open={showLoginDialog} onOpenChange={setShowLoginDialog} />
+              {user && <UserMenu />}
             </div>
           </div>
         </div>

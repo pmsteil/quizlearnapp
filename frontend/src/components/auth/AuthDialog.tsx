@@ -21,10 +21,10 @@ export function AuthDialog({ open, onOpenChange }: AuthDialogProps) {
             <TabsTrigger value="signup">Sign Up</TabsTrigger>
           </TabsList>
           <div className="px-6 py-4">
-            <TabsContent value="login" className="mt-0">
+            <TabsContent value="login" className="mt-0 min-h-[380px]">
               <LoginDialog />
             </TabsContent>
-            <TabsContent value="signup" className="mt-0">
+            <TabsContent value="signup" className="mt-0 min-h-[380px]">
               <SignupDialog />
             </TabsContent>
           </div>

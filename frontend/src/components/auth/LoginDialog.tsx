@@ -56,8 +56,8 @@ export function LoginDialog() {
             type="email"
             value={email}
             onChange={(e) => setEmail(e.target.value)}
-            placeholder="Enter your email"
             required
+            className="w-full"
           />
         </div>
         <div className="space-y-2">
@@ -69,10 +69,11 @@ export function LoginDialog() {
             type="password"
             value={password}
             onChange={(e) => setPassword(e.target.value)}
-            placeholder="Enter your password"
             required
+            className="w-full"
           />
         </div>
+        <div className="h-[52px]" />
         <Button type="submit" className="w-full" disabled={isLoading}>
           {isLoading ? "Logging in..." : "Login"}
         </Button>
