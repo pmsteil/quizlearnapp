@@ -7,6 +7,7 @@ import { AuthProvider } from '@/lib/contexts/auth.context';
 import { ProtectedRoute } from '@/components/auth/ProtectedRoute';
 import { ToastProvider } from '@/lib/contexts/toast.context';
 import { LoadingProvider } from '@/lib/contexts/loading.context';
+import { ThemeProvider } from '@/components/theme-provider';
 import TopicLearning from '@/components/topic/TopicLearning';
 import NewTopicSetup from '@/components/topics/NewTopicSetup';
 import PublicHome from '@/components/home/PublicHome';
@@ -73,47 +74,49 @@ function App() {
           <AuthProvider>
             <ToastProvider>
               <LoadingProvider>
-                <Routes>
-                  <Route path="/" element={<PublicHome dbError={dbError} />} />
-                  {!dbError && (
-                    <>
-                      <Route
-                        path="/dashboard"
-                        element={
-                          <ProtectedRoute>
-                            <Dashboard />
-                          </ProtectedRoute>
-                        }
-                      />
-                      <Route
-                        path="/topic/:id"
-                        element={
-                          <ProtectedRoute>
-                            <TopicLearning />
-                          </ProtectedRoute>
-                        }
-                      />
-                      <Route
-                        path="/new-topic"
-                        element={
-                          <ProtectedRoute>
-                            <NewTopicSetup />
-                          </ProtectedRoute>
-                        }
-                      />
-                      <Route
-                        path="/admin"
-                        element={
-                          <RoleGuard allowedRoles={['role_admin']}>
-                            <AdminPage />
-                          </RoleGuard>
-                        }
-                      />
-                    </>
-                  )}
-                  <Route path="*" element={<Navigate to="/" replace />} />
-                </Routes>
-                <Toaster />
+                <ThemeProvider defaultTheme="system" storageKey="quizlearn-theme">
+                  <Routes>
+                    <Route path="/" element={<PublicHome dbError={dbError} />} />
+                    {!dbError && (
+                      <>
+                        <Route
+                          path="/dashboard"
+                          element={
+                            <ProtectedRoute>
+                              <Dashboard />
+                            </ProtectedRoute>
+                          }
+                        />
+                        <Route
+                          path="/topic/:id"
+                          element={
+                            <ProtectedRoute>
+                              <TopicLearning />
+                            </ProtectedRoute>
+                          }
+                        />
+                        <Route
+                          path="/new-topic"
+                          element={
+                            <ProtectedRoute>
+                              <NewTopicSetup />
+                            </ProtectedRoute>
+                          }
+                        />
+                        <Route
+                          path="/admin"
+                          element={
+                            <RoleGuard allowedRoles={['role_admin']}>
+                              <AdminPage />
+                            </RoleGuard>
+                          }
+                        />
+                      </>
+                    )}
+                    <Route path="*" element={<Navigate to="/" replace />} />
+                  </Routes>
+                  <Toaster />
+                </ThemeProvider>
               </LoadingProvider>
             </ToastProvider>
           </AuthProvider>

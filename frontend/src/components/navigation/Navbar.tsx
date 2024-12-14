@@ -1,31 +1,30 @@
 import { useState, useEffect } from 'react';
 import { useLocation, useNavigate, Link } from 'react-router-dom';
-import { Brain, LayoutDashboard, ShieldCheck } from 'lucide-react';
+import { Brain, LayoutDashboard, ShieldCheck, Sun, Moon } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useAuth } from '@/lib/contexts/auth.context';
 import { topicsService } from '@/lib/services/topics.service';
-import type { Topic } from '@/lib/services/topics.service';
 import { toast } from '@/components/ui/use-toast';
 import { UserMenu } from '../auth/UserMenu';
-import { ModeToggle } from '@/components/theme/mode-toggle';
+import { useTheme } from '@/components/theme-provider';
 import {
   Tooltip,
   TooltipContent,
   TooltipProvider,
   TooltipTrigger,
-} from "@/components/ui/tooltip";
+} from '@/components/ui/tooltip';
 
 export default function Navbar() {
   const location = useLocation();
   const navigate = useNavigate();
   const { user } = useAuth();
+  const { theme, setTheme } = useTheme();
   const isNotHome = location.pathname !== '/';
   const [topic, setTopic] = useState<Topic | null>(null);
   const isAdmin = user?.roles?.includes('role_admin');
 
   console.log('Navbar user:', user);
   console.log('isAdmin:', isAdmin);
-  console.log('user roles:', user?.roles);
 
   useEffect(() => {
     const loadTopic = async () => {
@@ -87,28 +86,27 @@ export default function Navbar() {
   };
 
   return (
-    <nav className="bg-card border-b border-border">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="flex items-center justify-between h-20">
-          <div className="flex items-center space-x-8">
-            <Link to="/" className="flex items-center gap-2 text-xl font-bold text-primary hover:text-primary/80 transition-colors">
-              <Brain className="h-8 w-8" />
+    <div className="sticky top-0 z-50 w-full border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
+      <div className="container flex h-14 items-center">
+        <div className="mr-4 flex">
+          <Link className="mr-6 flex items-center space-x-2" to="/">
+            <Brain className="h-6 w-6" />
+            <span className="hidden font-bold sm:inline-block">
               QuizLearn
-            </Link>
-
-            {/* Page Title/Info */}
-            {user && (
-              <div className="min-w-0">
-                <h1 className="text-xl font-bold truncate">
-                  {getWelcomeMessage()}
-                </h1>
-                <p className="text-sm text-muted-foreground truncate">
-                  {getDescription()}
-                </p>
-              </div>
-            )}
-          </div>
-
+            </span>
+          </Link>
+          {user && (
+            <div className="min-w-0">
+              <h1 className="text-xl font-bold truncate">
+                {getWelcomeMessage()}
+              </h1>
+              <p className="text-sm text-muted-foreground truncate">
+                {getDescription()}
+              </p>
+            </div>
+          )}
+        </div>
+        <div className="flex flex-1 items-center justify-end space-x-2">
           <div className="flex items-center space-x-4">
             {isNotHome && (
               <TooltipProvider>
@@ -144,11 +142,33 @@ export default function Navbar() {
                 </Tooltip>
               </TooltipProvider>
             )}
-            <ModeToggle />
-            <UserMenu />
+            <div className="flex items-center gap-4">
+              <TooltipProvider>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      onClick={() => {
+                        const newTheme = theme === "light" ? "dark" : "light";
+                        setTheme(newTheme);
+                        console.log('Switching to theme:', newTheme);
+                      }}
+                    >
+                      <Sun className="h-5 w-5 rotate-0 scale-100 transition-all dark:-rotate-90 dark:scale-0" />
+                      <Moon className="absolute h-5 w-5 rotate-90 scale-0 transition-all dark:rotate-0 dark:scale-100" />
+                    </Button>
+                  </TooltipTrigger>
+                  <TooltipContent>
+                    <p>{theme === 'light' ? 'Dark Theme' : 'Light Theme'}</p>
+                  </TooltipContent>
+                </Tooltip>
+              </TooltipProvider>
+              <UserMenu />
+            </div>
           </div>
         </div>
       </div>
-    </nav>
+    </div>
   );
 }
