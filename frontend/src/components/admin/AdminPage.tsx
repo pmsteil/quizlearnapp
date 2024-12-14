@@ -1,15 +1,16 @@
-import { PageLayout } from '../shared/PageLayout';
+import Navbar from '../navigation/Navbar';
+import Footer from '../navigation/Footer';
 import { DatabaseTables } from './DatabaseTables';
 
-export function AdminPage() {
+export default function AdminPage() {
   return (
-    <PageLayout>
-      <div className="container mx-auto py-6">
-        <h1 className="text-3xl font-bold mb-6">Database Administration</h1>
+    <div className="min-h-screen bg-background">
+      <Navbar />
+      <main className="container mx-auto px-4 py-6">
+        <h1 className="text-3xl font-bold mb-6">Admin Dashboard</h1>
         <DatabaseTables />
-      </div>
-    </PageLayout>
+      </main>
+      <Footer />
+    </div>
   );
 }
-
-export default AdminPage;
