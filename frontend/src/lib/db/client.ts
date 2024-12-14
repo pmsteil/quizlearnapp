@@ -34,6 +34,7 @@ export class DatabaseClient {
         throw new DatabaseError('Not authenticated');
       }
 
+      console.log('Executing query:', { sql, params });
       const response = await fetch(`${this.baseUrl}/admin/db/query`, {
         method: 'POST',
         headers: {
@@ -45,6 +46,7 @@ export class DatabaseClient {
 
       if (!response.ok) {
         const error = await response.json();
+        console.error('Query error:', error);
         throw new DatabaseError(
           error.message || 'Failed to execute query',
           'Query Error',
@@ -52,7 +54,9 @@ export class DatabaseClient {
         );
       }
 
-      return response.json();
+      const data = await response.json();
+      console.log('Query response:', data);
+      return data;
     } catch (error) {
       console.error('Database query error:', error);
       if (error instanceof DatabaseError) throw error;

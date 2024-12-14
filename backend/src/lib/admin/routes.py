@@ -19,10 +19,14 @@ async def execute_query(query: DatabaseQuery, current_user = Depends(require_adm
         db = get_db()
         
         logger.info(f"Executing query: {query.sql} with params: {query.params}")
-        result = db.execute(
-            query.sql,
-            query.params or []
-        )
+        try:
+            result = db.execute(
+                query.sql,
+                query.params or []
+            )
+        except Exception as e:
+            logger.error(f"Error executing query: {str(e)}")
+            raise HTTPException(status_code=500, detail=f"Database error: {str(e)}")
         
         # Convert rows to list of dicts for JSON serialization
         rows = []
@@ -33,18 +37,39 @@ async def execute_query(query: DatabaseQuery, current_user = Depends(require_adm
                 row_dict = dict(zip(columns, row))
                 logger.info(f"Row before processing: {row_dict}")
                 
-                # Map abbreviated column names to full names for users table
-                if 'i' in row_dict:
-                    row_dict['id'] = row_dict.pop('i')
-                if 'e' in row_dict:
-                    row_dict['email'] = row_dict.pop('e')
-                if 'n' in row_dict:
-                    row_dict['name'] = row_dict.pop('n')
-                if 'r' in row_dict:
-                    row_dict['roles'] = row_dict.pop('r').split(',')
+                # Map abbreviated column names to full names
+                column_map = {
+                    'i': 'id',
+                    'u': 'updated_at',
+                    't': 'title',
+                    'd': 'description',
+                    'p': 'progress',
+                    'l': 'lesson_plan',
+                    'c': 'created_at',
+                    'ui': 'user_id',
+                    'e': 'email',
+                    'n': 'name',
+                    'r': 'roles',
+                    'ph': 'password_hash',
+                    'fa': 'failed_attempts',
+                    'lf': 'last_failed_attempt',
+                    'ti': 'topic_id',
+                    'qi': 'question_id',
+                    'ic': 'is_correct'
+                }
                 
-                rows.append(row_dict)
-                logger.info(f"Row after processing: {row_dict}")
+                # Create a new dict with mapped column names
+                mapped_dict = {}
+                for key, value in row_dict.items():
+                    new_key = column_map.get(key, key)  # Use original key if no mapping exists
+                    mapped_dict[new_key] = value
+                
+                # Convert roles string to array if present
+                if 'roles' in mapped_dict and isinstance(mapped_dict['roles'], str):
+                    mapped_dict['roles'] = mapped_dict['roles'].split(',')
+                
+                rows.append(mapped_dict)
+                logger.info(f"Row after processing: {mapped_dict}")
                 
         logger.info(f"Returning data: {rows}")
         return {"data": rows}

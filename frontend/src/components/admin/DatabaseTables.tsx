@@ -12,14 +12,32 @@ export function DatabaseTables() {
   useEffect(() => {
     const loadTables = async () => {
       try {
+        console.log('Starting to load tables...');
         const [users, topics, questions, progress] = await Promise.all([
-          db.query('SELECT * FROM users'),
-          db.query('SELECT * FROM topics'),
-          db.query('SELECT * FROM questions'),
-          db.query('SELECT * FROM user_progress')
+          db.query('SELECT * FROM users').catch(err => {
+            console.error('Error loading users:', err);
+            return { data: [] };
+          }),
+          db.query('SELECT * FROM topics').catch(err => {
+            console.error('Error loading topics:', err);
+            return { data: [] };
+          }),
+          db.query('SELECT * FROM questions').catch(err => {
+            console.error('Error loading questions:', err);
+            return { data: [] };
+          }),
+          db.query('SELECT * FROM user_progress').catch(err => {
+            console.error('Error loading progress:', err);
+            return { data: [] };
+          })
         ]);
 
-        console.log('Database responses:', { users, topics, questions, progress });
+        console.log('Database responses:', {
+          users: users?.data,
+          topics: topics?.data,
+          questions: questions?.data,
+          progress: progress?.data
+        });
 
         setTables({
           users: users?.data || [],
@@ -68,10 +86,13 @@ export function DatabaseTables() {
           data={tables.topics || []}
           columns={[
             { key: 'id', label: 'ID' },
+            { key: 'user_id', label: 'User ID' },
             { key: 'title', label: 'Title' },
             { key: 'description', label: 'Description' },
-            { key: 'created_at', label: 'Created' },
-            { key: 'updated_at', label: 'Updated' }
+            { key: 'progress', label: 'Progress' },
+            { key: 'lesson_plan', label: 'Lesson Plan', type: 'json' },
+            { key: 'created_at', label: 'Created', type: 'datetime' },
+            { key: 'updated_at', label: 'Updated', type: 'datetime' }
           ]}
         />
       </TabsContent>

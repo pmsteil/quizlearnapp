@@ -34,7 +34,10 @@ async def get_current_user(request: Request):
 async def require_admin(request: Request):
     """Require that the current user has admin role."""
     user = await get_current_user(request)
+    logger.info(f"Checking admin access for user: {user}")
     if "role_admin" not in user.get("roles", []):
+        logger.warning(f"User {user.get('email')} attempted admin access without role_admin")
+        logger.warning(f"User roles: {user.get('roles', [])}")
         raise HTTPException(status_code=403, detail="Admin role required")
     return user
 
