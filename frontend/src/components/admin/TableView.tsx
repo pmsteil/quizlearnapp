@@ -30,9 +30,15 @@ export function TableView({ title, data, columns }: TableViewProps) {
       case 'json':
         return <pre className="max-w-xs overflow-auto">{JSON.stringify(value, null, 2)}</pre>;
       default:
+        if (Array.isArray(value)) {
+          return value.join(', ');
+        }
         return String(value);
     }
   };
+
+  console.log('TableView data:', data);
+  console.log('TableView columns:', columns);
 
   return (
     <Card className="p-6">

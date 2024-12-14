@@ -27,7 +27,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       try {
         setLoading(true);
         const tokenData = TokenManager.getTokenData();
+        console.log('Auth Context - Token Data:', tokenData);
         if (tokenData?.user) {
+          console.log('Auth Context - Setting user:', tokenData.user);
           setUser(tokenData.user);
         }
       } catch (error) {
@@ -42,6 +44,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     const initAuth = async () => {
       const tokenData = TokenManager.getTokenData();
+      console.log('Auth Context - initAuth Token Data:', tokenData);
       if (!tokenData) {
         setLoading(false);
         return;
@@ -62,6 +65,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         } else {
           console.log('Token valid, getting user data');
           const user = await authService.getCurrentUser();
+          console.log('Auth Context - Current User:', user);
           setUser(user);
         }
       } catch (err) {
@@ -102,9 +106,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const register = async (name: string, email: string, password: string) => {
     try {
-      const { token, user } = await authService.register({ name, email, password });
-      TokenManager.setTokens(token);
-      setUser(user);
+      const response = await authService.register({ name, email, password });
+      TokenManager.setTokens(response.access_token, response.refresh_token, response.user);
+      setUser(response.user);
       setError(null);
       showToast({
         title: "Success",

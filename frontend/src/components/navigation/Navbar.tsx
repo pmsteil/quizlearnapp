@@ -23,6 +23,10 @@ export default function Navbar() {
   const [topic, setTopic] = useState<Topic | null>(null);
   const isAdmin = user?.roles?.includes('role_admin');
 
+  console.log('Navbar user:', user);
+  console.log('isAdmin:', isAdmin);
+  console.log('user roles:', user?.roles);
+
   useEffect(() => {
     const loadTopic = async () => {
       const topicMatch = location.pathname.match(/\/topic\/(.+)/);
@@ -128,16 +132,14 @@ export default function Navbar() {
               <TooltipProvider>
                 <Tooltip>
                   <TooltipTrigger asChild>
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      onClick={() => navigate('/admin')}
-                    >
-                      <ShieldCheck className="h-5 w-5" />
-                    </Button>
+                    <Link to="/admin">
+                      <Button variant="ghost" size="icon">
+                        <ShieldCheck className="h-5 w-5" />
+                      </Button>
+                    </Link>
                   </TooltipTrigger>
                   <TooltipContent>
-                    <p>Admin</p>
+                    <p>Admin Dashboard</p>
                   </TooltipContent>
                 </Tooltip>
               </TooltipProvider>

@@ -5,6 +5,7 @@ import logging
 import traceback
 from src.lib.auth.routes import router as auth_router
 from src.lib.topics.routes import router as topics_router
+from src.lib.admin import admin_router
 
 # Configure logging
 logging.basicConfig(
@@ -41,6 +42,7 @@ async def global_exception_handler(request: Request, exc: Exception):
 # Include routers
 app.include_router(auth_router, prefix="/api/v1")
 app.include_router(topics_router, prefix="/api/v1")
+app.include_router(admin_router, prefix="/api/v1")
 
 @app.get("/")
 async def root():

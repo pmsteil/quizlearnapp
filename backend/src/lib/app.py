@@ -13,6 +13,7 @@ from .auth.service import AuthService
 from .db import get_db, get_test_db
 from .topics.routes import router as topics_router
 from .routes.log import router as log_router
+from .admin.routes import router as admin_router
 import logging
 import sys
 
@@ -277,6 +278,7 @@ api_v1.include_router(auth_router)
 api_v1.include_router(users_router)
 api_v1.include_router(topics_router)
 api_v1.include_router(log_router)
+api_v1.include_router(admin_router)
 
 # Include API v1 router in main app
 app.include_router(api_v1)

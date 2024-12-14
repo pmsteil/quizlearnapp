@@ -12,22 +12,26 @@ export function DatabaseTables() {
   useEffect(() => {
     const loadTables = async () => {
       try {
-        const users = await db.execute('SELECT * FROM users');
-        const topics = await db.execute('SELECT * FROM topics');
-        const questions = await db.execute('SELECT * FROM questions');
-        const progress = await db.execute('SELECT * FROM user_progress');
+        const [users, topics, questions, progress] = await Promise.all([
+          db.query('SELECT * FROM users'),
+          db.query('SELECT * FROM topics'),
+          db.query('SELECT * FROM questions'),
+          db.query('SELECT * FROM user_progress')
+        ]);
+
+        console.log('Database responses:', { users, topics, questions, progress });
 
         setTables({
-          users: users.rows || [],
-          topics: topics.rows || [],
-          questions: questions.rows || [],
-          user_progress: progress.rows || []
+          users: users?.data || [],
+          topics: topics?.data || [],
+          questions: questions?.data || [],
+          user_progress: progress?.data || []
         });
       } catch (error) {
         console.error('Failed to load tables:', error);
         toast({
-          title: "Error",
-          description: "Failed to load database tables",
+          title: "Database Error",
+          description: error instanceof Error ? error.message : "Failed to load database tables",
           variant: "destructive"
         });
       }
@@ -51,10 +55,9 @@ export function DatabaseTables() {
           data={tables.users || []}
           columns={[
             { key: 'id', label: 'ID' },
-            { key: 'name', label: 'Name' },
             { key: 'email', label: 'Email' },
-            { key: 'created_at', label: 'Created At', type: 'datetime' },
-            { key: 'updated_at', label: 'Updated At', type: 'datetime' }
+            { key: 'name', label: 'Name' },
+            { key: 'roles', label: 'Roles', type: 'json' }
           ]}
         />
       </TabsContent>
@@ -65,13 +68,10 @@ export function DatabaseTables() {
           data={tables.topics || []}
           columns={[
             { key: 'id', label: 'ID' },
-            { key: 'user_id', label: 'User ID' },
             { key: 'title', label: 'Title' },
             { key: 'description', label: 'Description' },
-            { key: 'progress', label: 'Progress' },
-            { key: 'lesson_plan', label: 'Lesson Plan', type: 'json' },
-            { key: 'created_at', label: 'Created At', type: 'datetime' },
-            { key: 'updated_at', label: 'Updated At', type: 'datetime' }
+            { key: 'created_at', label: 'Created' },
+            { key: 'updated_at', label: 'Updated' }
           ]}
         />
       </TabsContent>
@@ -83,12 +83,8 @@ export function DatabaseTables() {
           columns={[
             { key: 'id', label: 'ID' },
             { key: 'topic_id', label: 'Topic ID' },
-            { key: 'text', label: 'Question Text' },
-            { key: 'options', label: 'Options', type: 'json' },
-            { key: 'correct_answer', label: 'Correct Answer' },
-            { key: 'explanation', label: 'Explanation' },
-            { key: 'created_at', label: 'Created At', type: 'datetime' },
-            { key: 'updated_at', label: 'Updated At', type: 'datetime' }
+            { key: 'question', label: 'Question' },
+            { key: 'answer', label: 'Answer' }
           ]}
         />
       </TabsContent>
@@ -101,9 +97,7 @@ export function DatabaseTables() {
             { key: 'id', label: 'ID' },
             { key: 'user_id', label: 'User ID' },
             { key: 'topic_id', label: 'Topic ID' },
-            { key: 'question_id', label: 'Question ID' },
-            { key: 'is_correct', label: 'Correct?' },
-            { key: 'created_at', label: 'Created At', type: 'datetime' }
+            { key: 'completed_at', label: 'Completed' }
           ]}
         />
       </TabsContent>

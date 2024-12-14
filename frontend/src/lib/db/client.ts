@@ -14,7 +14,8 @@ export class DatabaseClient {
   private baseUrl: string;
 
   private constructor() {
-    this.baseUrl = import.meta.env.VITE_API_URL || 'http://localhost:8000';
+    // Use the same base URL as the auth service
+    this.baseUrl = 'http://localhost:3000/api/v1';
   }
 
   public static getInstance(): DatabaseClient {
@@ -26,26 +27,38 @@ export class DatabaseClient {
 
   async query(sql: string, params?: any[]): Promise<any> {
     try {
-      const response = await fetch(`${this.baseUrl}/api/db/query`, {
+      const tokenData = localStorage.getItem('auth_token_data');
+      const token = tokenData ? JSON.parse(tokenData).access_token : null;
+
+      if (!token) {
+        throw new DatabaseError('Not authenticated');
+      }
+
+      const response = await fetch(`${this.baseUrl}/admin/db/query`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
         },
         body: JSON.stringify({ sql, params }),
       });
 
       if (!response.ok) {
+        const error = await response.json();
         throw new DatabaseError(
-          'Failed to execute query',
+          error.message || 'Failed to execute query',
           'Query Error',
-          await response.json()
+          error
         );
       }
 
       return response.json();
     } catch (error) {
+      console.error('Database query error:', error);
       if (error instanceof DatabaseError) throw error;
-      throw new DatabaseError('Database connection failed');
+      throw new DatabaseError(
+        error instanceof Error ? error.message : 'Database connection failed'
+      );
     }
   }
 }

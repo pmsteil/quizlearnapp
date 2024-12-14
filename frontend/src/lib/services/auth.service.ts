@@ -116,7 +116,7 @@ export class AuthService extends ApiClient {
     TokenManager.setTokens(
       response.access_token,
       response.refresh_token,
-      response.expires_in
+      response.user
     );
     return response;
   }
