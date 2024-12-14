@@ -29,8 +29,8 @@ export function NewTopicForm({ onSubmit, isCreating }: NewTopicFormProps) {
   const showButton = title.trim().length > 0;
 
   return (
-    <form onSubmit={handleSubmit} className="w-full">
-      <div className={`flex gap-6 transition-all duration-500 ease-in-out ${showButton ? 'pr-[160px]' : ''}`}>
+    <form onSubmit={handleSubmit} className="w-full max-w-5xl mx-auto">
+      <div className="flex items-center gap-4 px-6 transition-all duration-500 ease-in-out">
         <textarea
           id="title"
           value={title}
@@ -43,11 +43,11 @@ export function NewTopicForm({ onSubmit, isCreating }: NewTopicFormProps) {
           style={{ height: '44px' }}
           disabled={isCreating}
         />
-        <div className={`absolute right-0 transition-all duration-500 ease-in-out ${showButton ? 'translate-x-0 opacity-100' : 'translate-x-8 opacity-0'}`}>
+        <div className={`transition-all duration-500 ease-in-out ${showButton ? 'opacity-100 translate-x-0' : 'opacity-0 translate-x-4'}`}>
           <Button 
             type="submit" 
             disabled={isCreating || !title.trim()} 
-            className="h-[44px] px-8 text-lg whitespace-nowrap"
+            className="h-[44px] px-6 text-lg whitespace-nowrap"
           >
             {isCreating ? 'Creating...' : 'Create Topic'}
           </Button>

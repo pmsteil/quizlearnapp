@@ -49,56 +49,48 @@ export default function TopicsList() {
   } = useAsync(
     () => {
       if (!user?.id) throw new Error('User not authenticated');
-      console.log('Fetching topics for user:', user.id);
       return topicsService.getUserTopics(user.id);
     },
     {
-      onSuccess: (data) => {
-        console.log('Topics fetched successfully:', data);
-      },
       onError: (error) => {
-        console.error('Error loading topics:', error);
-        if (error.message.includes('not found')) {
-          showToast('Please log out and log back in', 'error');
+        if (error instanceof z.ZodError) {
+          const configError = validateConfig(error);
+          setConfigError(configError);
         } else {
-          showToast('Error loading topics', 'error');
+          showToast('Failed to load topics', 'error');
         }
       },
-    }
+    },
+    [user?.id]
   );
 
   const {
+    loading: isCreating,
     error: createError,
     execute: createTopic,
-    loading: isCreating,
   } = useAsync(
-    (data: { title: string; description: string; userId: string }) => {
-      return topicsService.createTopic(data);
+    async (data: CreateTopicData) => {
+      if (!user?.id) throw new Error('User not authenticated');
+      const topic = await topicsService.createTopic(data);
+      await fetchTopics();
+      return topic;
     },
     {
-      onSuccess: () => {
-        showToast('Topic created successfully', 'success');
-        fetchTopics();
-      },
       onError: (error) => {
-        showToast('Error creating topic', 'error');
+        showToast('Failed to create topic', 'error');
       },
     }
   );
 
   useEffect(() => {
     if (user?.id) {
-      console.log('Fetching topics for user:', user.id);
       fetchTopics();
     }
   }, [user?.id]);
 
   const sortedTopics = useMemo(() => {
-    if (!topics || !Array.isArray(topics)) {
-      console.log('Topics is not an array:', topics);
-      return [];
-    }
-    
+    if (!topics) return [];
+
     const topicsCopy = [...topics];
     console.log('Topics copy:', topicsCopy);
     switch (sortBy) {
@@ -156,26 +148,10 @@ export default function TopicsList() {
     return <TopicSkeleton />;
   }
 
-  if (topicsError) {
-    return (
-      <ErrorMessage
-        title="Failed to load topics"
-        message={topicsError.message}
-      />
-    );
-  }
-
-  console.log('Rendering topics:', {
-    topics,
-    sortedTopics,
-    isLoading,
-    topicsError
-  });
-
   return (
-    <div className="space-y-6">
+    <div className="space-y-4 px-6 max-w-5xl mx-auto">
       <div className="flex items-center justify-between">
-        <h2 className="text-3xl font-bold tracking-tight">Your Topics</h2>
+        <h2 className="text-3xl font-bold tracking-tight">Topics</h2>
         <div className="flex items-center gap-4">
           <Button
             size="icon"
@@ -201,7 +177,7 @@ export default function TopicsList() {
         </div>
       </div>
 
-      <div className="rounded-xl border-2 border-primary/20 bg-card p-6 shadow-sm hover:border-primary/30 transition-colors relative">
+      <div className="rounded-xl border-2 border-primary/20 bg-card px-6 py-6 shadow-sm hover:border-primary/30 transition-colors relative">
         <NewTopicForm onSubmit={handleCreateTopic} isCreating={isCreating} />
       </div>
 

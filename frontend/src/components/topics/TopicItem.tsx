@@ -50,7 +50,7 @@ export function TopicItem({ topic, onClick }: TopicItemProps) {
 
   return (
     <div 
-      className="group rounded-lg border p-4 transition-colors hover:bg-muted/50 cursor-pointer"
+      className="group rounded-lg border p-6 transition-colors hover:bg-muted/50 cursor-pointer"
       onClick={onClick}
     >
       <div className="flex items-center justify-between mb-2">

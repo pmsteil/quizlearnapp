@@ -87,17 +87,17 @@ export default function Navbar() {
 
   return (
     <div className="sticky top-0 z-50 w-full border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
-      <div className="container flex h-14 items-center">
-        <div className="mr-4 flex">
-          <Link className="mr-6 flex items-center space-x-2" to="/">
+      <div className="container flex h-14 max-w-screen-2xl items-center justify-between mx-auto px-4">
+        <div className="flex items-center gap-12">
+          <Link className="flex items-center space-x-2 shrink-0" to={user ? '/dashboard' : '/'}>
             <Brain className="h-6 w-6" />
             <span className="hidden font-bold sm:inline-block">
               QuizLearn
             </span>
           </Link>
           {user && (
-            <div className="min-w-0">
-              <h1 className="text-xl font-bold truncate">
+            <div className="hidden sm:block max-w-md">
+              <h1 className="text-lg font-semibold truncate">
                 {getWelcomeMessage()}
               </h1>
               <p className="text-sm text-muted-foreground truncate">
@@ -106,26 +106,8 @@ export default function Navbar() {
             </div>
           )}
         </div>
-        <div className="flex flex-1 items-center justify-end space-x-2">
-          <div className="flex items-center space-x-4">
-            {isNotHome && (
-              <TooltipProvider>
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      onClick={() => navigate('/dashboard')}
-                    >
-                      <LayoutDashboard className="h-5 w-5" />
-                    </Button>
-                  </TooltipTrigger>
-                  <TooltipContent>
-                    <p>Dashboard</p>
-                  </TooltipContent>
-                </Tooltip>
-              </TooltipProvider>
-            )}
+        <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2">
             {isAdmin && (
               <TooltipProvider>
                 <Tooltip>
