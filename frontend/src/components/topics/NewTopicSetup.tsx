@@ -2,13 +2,12 @@ import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Card } from '@/components/ui/card';
 import { useAuth } from '@/lib/contexts/auth.context';
-import { useToast } from '@/lib/contexts/toast.context';
+import { toast } from '@/components/ui/use-toast';
 import { topicsService } from '@/lib/services';
 
 export default function NewTopicSetup() {
   const navigate = useNavigate();
   const { user } = useAuth();
-  const { showToast } = useToast();
   const [title, setTitle] = useState('');
   const [isCreating, setIsCreating] = useState(false);
 
@@ -22,11 +21,18 @@ export default function NewTopicSetup() {
         title: title.trim(),
         description: title.trim()
       });
-      showToast('Topic created successfully', 'success');
+      toast({
+        title: "Success",
+        description: "Topic created successfully",
+      });
       navigate(`/topic/${topic.id}`);
     } catch (error) {
       console.error('Failed to create topic:', error);
-      showToast('Failed to create topic', 'error');
+      toast({
+        title: "Error",
+        description: "Failed to create topic",
+        variant: "destructive",
+      });
     } finally {
       setIsCreating(false);
     }

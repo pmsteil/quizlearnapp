@@ -1,17 +1,18 @@
 import { useEffect, useState, useRef } from 'react';
+import { useParams } from 'react-router-dom';
 import { Progress } from '@/components/ui/progress';
 import { Card } from '@/components/ui/card';
 import { CheckCircle, XCircle, MoreVertical, Trash2 } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Button } from '@/components/ui/button';
+import { toast } from '@/components/ui/use-toast';
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
-import { useToast } from '@/lib/contexts/toast.context';
 import { Topic } from '@/lib/types/database';
 
 interface LearningProgressProps {
@@ -26,7 +27,6 @@ export function LearningProgress({ topic, onDelete, onUpdate }: LearningProgress
     isEditingTitle: false,
     editedTitle: topic.title 
   });
-  const { showToast } = useToast();
   const [isEditingTitle, setIsEditingTitle] = useState(false);
   const [isEditingDescription, setIsEditingDescription] = useState(false);
   const [editedTitle, setEditedTitle] = useState(topic.title);
@@ -58,7 +58,11 @@ export function LearningProgress({ topic, onDelete, onUpdate }: LearningProgress
 
   const handleTitleSave = async () => {
     if (!editedTitle.trim()) {
-      showToast('Title cannot be empty', 'error');
+      toast({
+        title: "Error",
+        description: "Title cannot be empty",
+        variant: "destructive",
+      });
       setEditedTitle(topic.title);
       setIsEditingTitle(false);
       return;
@@ -72,9 +76,16 @@ export function LearningProgress({ topic, onDelete, onUpdate }: LearningProgress
     setIsUpdating(true);
     try {
       await onUpdate({ title: editedTitle });
-      showToast('Title updated successfully', 'success');
+      toast({
+        title: "Success",
+        description: "Title updated successfully",
+      });
     } catch (error) {
-      showToast('Failed to update title', 'error');
+      toast({
+        title: "Error",
+        description: "Failed to update title",
+        variant: "destructive",
+      });
       setEditedTitle(topic.title);
     } finally {
       setIsUpdating(false);
@@ -91,9 +102,16 @@ export function LearningProgress({ topic, onDelete, onUpdate }: LearningProgress
     setIsUpdating(true);
     try {
       await onUpdate({ description: editedDescription });
-      showToast('Description updated successfully', 'success');
+      toast({
+        title: "Success",
+        description: "Description updated successfully",
+      });
     } catch (error) {
-      showToast('Failed to update description', 'error');
+      toast({
+        title: "Error",
+        description: "Failed to update description",
+        variant: "destructive",
+      });
       setEditedDescription(topic.description || '');
     } finally {
       setIsUpdating(false);

@@ -11,24 +11,29 @@ export function ToastContainer() {
         <div
           key={toast.id}
           className={cn(
-            'group pointer-events-auto relative flex w-full items-center justify-between space-x-4 overflow-hidden rounded-md border p-6 pr-8 shadow-lg transition-all',
-            'bg-background text-foreground',
-            toast.variant === 'destructive' && 'border-destructive bg-destructive text-destructive-foreground'
+            'group pointer-events-auto relative flex w-full items-center justify-between space-x-4 overflow-hidden rounded-md border p-6 pr-8 shadow-lg transition-all mb-2',
+            toast.variant === 'destructive' 
+              ? 'bg-destructive text-destructive-foreground border-destructive'
+              : 'bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 border-gray-200 dark:border-gray-700'
           )}
           onClick={() => removeToast(toast.id)}
         >
           <div className="grid gap-1">
-            <p className="text-sm font-semibold user-select-text">
+            <p className="text-sm font-semibold">
               {toast.title}
             </p>
-            <p className="text-sm opacity-90 user-select-text">
-              {toast.description}
-            </p>
+            {toast.description && (
+              <p className="text-sm opacity-90">
+                {toast.description}
+              </p>
+            )}
           </div>
           <button 
             className={cn(
-              'absolute right-2 top-2 rounded-md p-1 text-foreground/50 opacity-0 transition-opacity hover:text-foreground focus:opacity-100 focus:outline-none group-hover:opacity-100',
-              toast.variant === 'destructive' && 'text-red-300 hover:text-red-50'
+              'absolute right-2 top-2 rounded-md p-1 opacity-70 transition-opacity hover:opacity-100 focus:opacity-100 focus:outline-none',
+              toast.variant === 'destructive' 
+                ? 'text-destructive-foreground hover:text-destructive-foreground'
+                : 'text-gray-500 hover:text-gray-900 dark:text-gray-400 dark:hover:text-gray-100'
             )}
             onClick={(e) => {
               e.stopPropagation();

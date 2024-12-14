@@ -6,7 +6,8 @@ import { ChatInterface } from '../shared/ChatInterface';
 import { LearningTree } from '../shared/LearningTree';
 import { LearningProgress } from './LearningProgress';
 import { Topic, topicsService } from '@/lib/services/topics.service';
-import { useToast } from '@/lib/contexts/toast.context';
+import { useAuth } from '@/lib/contexts/auth.context';
+import { toast } from '@/components/ui/use-toast';
 import type { Message } from '@/lib/types';
 import {
   AlertDialog,
@@ -22,7 +23,6 @@ import {
 export default function TopicLearning() {
   const { id } = useParams();
   const navigate = useNavigate();
-  const { showToast } = useToast();
   const [messages, setMessages] = useState<Message[]>([]);
   const [topic, setTopic] = useState<Topic | null>(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -35,7 +35,11 @@ export default function TopicLearning() {
       try {
         const loadedTopic = await topicsService.getTopic(id);
         if (!loadedTopic) {
-          showToast('Topic not found', 'error');
+          toast({
+            title: "Error",
+            description: "Topic not found",
+            variant: "destructive",
+          });
           return;
         }
         setTopic(loadedTopic);
@@ -46,14 +50,18 @@ export default function TopicLearning() {
         }]);
       } catch (error) {
         console.error('Error loading topic:', error);
-        showToast('Failed to load the topic. Please try again.', 'error');
+        toast({
+          title: "Error",
+          description: "Failed to load the topic. Please try again.",
+          variant: "destructive",
+        });
       } finally {
         setIsLoading(false);
       }
     };
 
     loadTopic();
-  }, [id, navigate, showToast]);
+  }, [id, navigate]);
 
   const handleUpdateTopic = async (updates: Partial<Topic>) => {
     if (!id || !topic) return;
@@ -61,10 +69,17 @@ export default function TopicLearning() {
     try {
       const updatedTopic = await topicsService.updateTopic(id, updates);
       setTopic(updatedTopic);
-      showToast('Topic updated successfully', 'success');
+      toast({
+        title: "Success",
+        description: "Topic updated successfully",
+      });
     } catch (error) {
       console.error('Error updating topic:', error);
-      showToast('Failed to update topic', 'error');
+      toast({
+        title: "Error",
+        description: "Failed to update topic",
+        variant: "destructive",
+      });
     }
   };
 
@@ -73,11 +88,18 @@ export default function TopicLearning() {
 
     try {
       await topicsService.deleteTopic(id);
-      showToast('Topic deleted successfully', 'success');
+      toast({
+        title: "Success",
+        description: "Topic deleted successfully",
+      });
       navigate('/dashboard');
     } catch (error) {
       console.error('Error deleting topic:', error);
-      showToast('Failed to delete topic', 'error');
+      toast({
+        title: "Error",
+        description: "Failed to delete topic",
+        variant: "destructive",
+      });
     }
   };
 

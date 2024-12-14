@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { useAuth } from '@/lib/contexts/auth.context';
-import { useToast } from '@/lib/contexts/toast.context';
+import { toast } from '@/components/ui/use-toast';
 import { TopicItem } from './TopicItem';
 import { Skeleton } from '@/components/ui/skeleton';
 import { RefreshCcw } from 'lucide-react';
@@ -38,7 +38,6 @@ function TopicSkeleton() {
 export default function TopicsList() {
   const navigate = useNavigate();
   const { user } = useAuth();
-  const { showToast } = useToast();
   const [sortBy, setSort] = useState<'recent' | 'progress' | 'name'>('recent');
   const [configError, setConfigError] = useState<{title: string; message: string} | null>(null);
 
@@ -58,7 +57,11 @@ export default function TopicsList() {
           const configError = validateConfig(error);
           setConfigError(configError);
         } else {
-          showToast('Failed to load topics', 'error');
+          toast({
+            title: "Error",
+            description: "Failed to load topics",
+            variant: "destructive",
+          });
         }
       },
     },
@@ -78,7 +81,11 @@ export default function TopicsList() {
     },
     {
       onError: (error) => {
-        showToast('Failed to create topic', 'error');
+        toast({
+          title: "Error",
+          description: "Failed to create topic",
+          variant: "destructive",
+        });
       },
     }
   );
@@ -110,7 +117,11 @@ export default function TopicsList() {
 
   const handleCreateTopic = async (title: string) => {
     if (!user?.id) {
-      showToast('Please log in to create a topic', 'error');
+      toast({
+        title: "Error",
+        description: "Please log in to create a topic",
+        variant: "destructive",
+      });
       return;
     }
 
@@ -130,14 +141,25 @@ export default function TopicsList() {
         title,
         description: title, // Use title as description for now
       });
-      showToast('Topic created successfully', 'success');
+      toast({
+        title: "Success",
+        description: "Topic created successfully",
+      });
       navigate(`/topic/${topic.id}`);
     } catch (error) {
       console.error('Error creating topic:', error);
       if (error instanceof AppError) {
-        showToast(error.message, 'error');
+        toast({
+          title: "Error",
+          description: error.message,
+          variant: "destructive",
+        });
       } else {
-        showToast('Failed to create topic', 'error');
+        toast({
+          title: "Error",
+          description: "Failed to create topic",
+          variant: "destructive",
+        });
       }
     }
   };
