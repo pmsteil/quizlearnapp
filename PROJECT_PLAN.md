@@ -239,6 +239,197 @@ Status: 🚧 In Progress
    - Implement keyboard navigation ⌛
    - Add high contrast mode ⌛
 
+## Phase 8: Database Schema Overhaul
+Status: 🚧 In Progress
+
+### Database Schema Details
+
+1. Core Content Tables
+   - `topic_lessons` ⌛
+     ```sql
+     CREATE TABLE topic_lessons (
+       lesson_id INTEGER PRIMARY KEY,
+       topic_id INTEGER NOT NULL,
+       title TEXT NOT NULL,
+       content TEXT NOT NULL,
+       order_index INTEGER NOT NULL,
+       parent_lesson_id INTEGER,
+       created_at INTEGER NOT NULL,
+       updated_at INTEGER NOT NULL,
+       FOREIGN KEY (topic_id) REFERENCES topics(topic_id) ON DELETE CASCADE,
+       FOREIGN KEY (parent_lesson_id) REFERENCES topic_lessons(lesson_id) ON DELETE SET NULL
+     );
+     CREATE INDEX idx_topic_lessons_topic ON topic_lessons(topic_id);
+     CREATE INDEX idx_topic_lessons_parent ON topic_lessons(parent_lesson_id);
+     ```
+
+2. User Learning Data Tables
+   - `user_lesson_progress` ⌛
+     ```sql
+     CREATE TABLE user_lesson_progress (
+       progress_id INTEGER PRIMARY KEY,
+       user_id INTEGER NOT NULL,
+       lesson_id INTEGER NOT NULL,
+       status TEXT NOT NULL CHECK (status IN ('not_started', 'in_progress', 'completed')),
+       last_interaction_at INTEGER NOT NULL,
+       completion_date INTEGER,
+       FOREIGN KEY (user_id) REFERENCES users(user_id) ON DELETE CASCADE,
+       FOREIGN KEY (lesson_id) REFERENCES topic_lessons(lesson_id) ON DELETE CASCADE
+     );
+     CREATE INDEX idx_lesson_progress_user ON user_lesson_progress(user_id);
+     CREATE INDEX idx_lesson_progress_lesson ON user_lesson_progress(lesson_id);
+     ```
+
+### Component Updates
+
+1. Existing Component Updates
+
+   a. LearningTree Component
+   ```typescript
+   interface LearningTreeProps {
+     topic: Topic;
+     lessons: TopicLesson[];          // Was questions
+     userProgress: UserLessonProgress[]; // Was userProgress
+   }
+   ```
+   Changes Needed:
+   - Update data fetching to use new lesson endpoints
+   - Modify tree rendering to handle parent/child relationships
+   - Update progress indicators to use new status enum
+   - Keep same UI/UX patterns
+
+   b. TopicLearning Component
+   ```typescript
+   // Main container component
+   // Updates needed:
+   - Replace question loading with lesson loading
+   - Update progress tracking to use new endpoints
+   - Keep same layout structure
+   ```
+
+2. New Components
+
+   a. LessonContent Component
+   ```typescript
+   interface LessonContentProps {
+     lesson: TopicLesson;
+     progress: UserLessonProgress;
+     onProgressUpdate: (status: ProgressStatus) => void;
+   }
+   ```
+   Features:
+   - Displays lesson content
+   - Shows/manages progress status
+   - Handles lesson completion
+
+### Backend Updates
+
+1. Model Updates ⌛
+   ```typescript
+   // models/TopicLesson.ts
+   interface TopicLesson {
+     lesson_id: number;
+     topic_id: number;
+     title: string;
+     content: string;
+     order_index: number;
+     parent_lesson_id: number | null;
+     created_at: number;
+     updated_at: number;
+     children?: TopicLesson[];
+   }
+
+   // models/UserLessonProgress.ts
+   interface UserLessonProgress {
+     progress_id: number;
+     user_id: number;
+     lesson_id: number;
+     status: 'not_started' | 'in_progress' | 'completed';
+     last_interaction_at: number;
+     completion_date: number | null;
+   }
+   ```
+
+2. API Routes ⌛
+   ```typescript
+   // routes/lessons.ts
+   router.get('/api/v1/topics/:topicId/lessons', getLessonsForTopic);
+   router.post('/api/v1/topics/:topicId/lessons', createLesson);
+   router.put('/api/v1/lessons/:lessonId', updateLesson);
+   router.delete('/api/v1/lessons/:lessonId', deleteLesson);
+   router.post('/api/v1/topics/:topicId/lessons/reorder', reorderLessons);
+
+   // routes/progress.ts - All require authenticated user
+   router.get('/api/v1/users/me/lessons/:lessonId/progress', getUserLessonProgress);
+   router.put('/api/v1/users/me/lessons/:lessonId/progress', updateUserLessonProgress);
+   router.get('/api/v1/users/me/topics/:topicId/progress', getUserTopicProgress);
+   ```
+
+### Implementation Plan
+
+1. Database Setup
+   - Create new tables
+   - Add indexes and constraints
+   - Verify schema integrity
+
+2. Backend Implementation
+   - Create new models and types
+   - Implement lesson endpoints
+   - Add progress tracking endpoints
+   - Add validation and error handling
+   - Write tests for new functionality
+
+3. Frontend Updates
+   - Update types and interfaces
+   - Modify LearningTree component
+   - Create LessonContent component
+   - Update TopicLearning container
+   - Update progress tracking
+   - Test all interactions
+
+4. Testing Strategy
+   - Unit tests for new models
+   - API endpoint testing
+   - Component integration tests
+   - End-to-end user flow testing
+   - Performance testing for new queries
+
+## Phase 9: Chat Integration
+Status: 📅 Planned
+
+### Overview
+Implement AI-powered chat functionality for interactive learning experiences.
+
+1. Database Schema
+   ```sql
+   CREATE TABLE user_lesson_chat_history (
+     chat_id INTEGER PRIMARY KEY,
+     user_id INTEGER NOT NULL,
+     lesson_id INTEGER NOT NULL,
+     message_type TEXT NOT NULL CHECK (message_type IN ('user', 'ai')),
+     content TEXT NOT NULL,
+     created_at INTEGER NOT NULL,
+     FOREIGN KEY (user_id) REFERENCES users(user_id) ON DELETE CASCADE,
+     FOREIGN KEY (lesson_id) REFERENCES topic_lessons(lesson_id) ON DELETE CASCADE
+   );
+   CREATE INDEX idx_chat_history_user ON user_lesson_chat_history(user_id);
+   CREATE INDEX idx_chat_history_lesson ON user_lesson_chat_history(lesson_id);
+   ```
+
+2. Components to Add
+   - ChatInterface component
+   - Message display
+   - Input handling
+   - Integration with LLM service (details TBD)
+
+3. API Routes
+   ```typescript
+   router.get('/api/v1/users/me/lessons/:lessonId/chat', getUserLessonChat);
+   router.post('/api/v1/users/me/lessons/:lessonId/chat', addUserLessonChat);
+   ```
+
+Details of LLM integration and specific chat features will be defined when we reach this phase.
+
 ## Testing Strategy
 Status: ✅ Done
 1. Unit tests for validation schemas ✅
