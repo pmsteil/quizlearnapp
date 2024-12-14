@@ -1,14 +1,15 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { Brain } from 'lucide-react';
 import { PageLayout } from '../shared/PageLayout';
-import { ChatInterface } from '../shared/ChatInterface';
 import { LearningTree } from '../shared/LearningTree';
+import { LessonContent } from '../lesson/LessonContent';
 import { LearningProgress } from './LearningProgress';
 import { Topic, topicsService } from '@/lib/services/topics.service';
+import { TopicLesson, UserLessonProgress, ProgressStatus } from '@/lib/types';
+import { lessonsService } from '@/lib/services/lessons.service';
 import { useAuth } from '@/lib/contexts/auth.context';
 import { toast } from '@/components/ui/use-toast';
-import type { Message } from '@/lib/types';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -23,10 +24,46 @@ import {
 export default function TopicLearning() {
   const { id } = useParams();
   const navigate = useNavigate();
-  const [messages, setMessages] = useState<Message[]>([]);
   const [topic, setTopic] = useState<Topic | null>(null);
+  const [lessons, setLessons] = useState<TopicLesson[]>([]);
+  const [progress, setProgress] = useState<UserLessonProgress[]>([]);
+  const [currentLessonId, setCurrentLessonId] = useState<number | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
+
+  useEffect(() => {
+    if (!id) return;
+
+    const loadData = async () => {
+      try {
+        setIsLoading(true);
+        const [topicData, lessonsData, progressData] = await Promise.all([
+          topicsService.getTopic(id),
+          lessonsService.getLessonsForTopic(id),
+          lessonsService.getTopicProgress(id)
+        ]);
+        
+        setTopic(topicData);
+        setLessons(lessonsData);
+        setProgress(progressData);
+
+        // Set current lesson to first incomplete lesson or first lesson
+        const firstIncomplete = progressData.find(p => p.status !== 'completed')?.lesson_id;
+        setCurrentLessonId(firstIncomplete || lessonsData[0]?.lesson_id || null);
+      } catch (error) {
+        console.error('Error loading topic data:', error);
+        toast({
+          title: "Error",
+          description: "Failed to load topic data",
+          variant: "destructive",
+        });
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    loadData();
+  }, [id]);
 
   const handleUpdateTopic = async (updates: Partial<Topic>) => {
     if (!id || !topic) return;
@@ -57,7 +94,7 @@ export default function TopicLearning() {
         title: "Success",
         description: "Topic deleted successfully",
       });
-      navigate('/dashboard');
+      navigate('/topics');
     } catch (error) {
       console.error('Error deleting topic:', error);
       toast({
@@ -68,101 +105,43 @@ export default function TopicLearning() {
     }
   };
 
-  const handleSendMessage = async (content: string) => {
-    if (!topic) return;
-
-    // Add user message
-    const userMessage: Message = {
-      id: messages.length + 1,
-      type: 'user',
-      content
-    };
-    setMessages(prev => [...prev, userMessage]);
-
-    // Simulate AI response (replace with actual AI integration)
-    const aiMessage: Message = {
-      id: messages.length + 2,
-      type: 'ai',
-      content: `I understand you want to learn about "${content}". Let me help you with that...`
-    };
-    setMessages(prev => [...prev, aiMessage]);
+  const handleLessonSelect = (lessonId: number) => {
+    setCurrentLessonId(lessonId);
   };
 
-  useEffect(() => {
-    const loadTopic = async () => {
-      if (!id) {
-        console.log('No id provided');
-        return;
-      }
-
-      console.log('Loading topic:', id);
-      setIsLoading(true);
-
-      try {
-        const loadedTopic = await topicsService.getTopic(id);
-        console.log('Loaded topic:', loadedTopic);
-        if (!loadedTopic) {
-          console.log('Topic not found');
-          toast({
-            title: "Error",
-            description: "Topic not found",
-            variant: "destructive",
-          });
-          return;
+  const handleProgressUpdate = async (lessonId: number, status: ProgressStatus) => {
+    try {
+      const updatedProgress = await lessonsService.updateLessonProgress(lessonId, status);
+      setProgress(prev => {
+        const index = prev.findIndex(p => p.lesson_id === lessonId);
+        if (index === -1) {
+          return [...prev, updatedProgress];
         }
-        setTopic(loadedTopic);
-        setMessages([{
-          id: 1,
-          type: 'ai',
-          content: `Welcome to ${loadedTopic.title}! I'm here to help you learn. What would you like to know about this topic?`
-        }]);
-      } catch (error) {
-        console.error('Error loading topic:', error);
-        toast({
-          title: "Error",
-          description: "Failed to load the topic. Please try again.",
-          variant: "destructive",
-        });
-      } finally {
-        console.log('Setting isLoading to false');
-        setIsLoading(false);
-      }
-    };
+        return [
+          ...prev.slice(0, index),
+          updatedProgress,
+          ...prev.slice(index + 1)
+        ];
+      });
+    } catch (error) {
+      console.error('Error updating lesson progress:', error);
+      throw error; // Let LessonContent handle the error
+    }
+  };
 
-    loadTopic();
-  }, [id, navigate]);
+  const currentLesson = currentLessonId 
+    ? lessons.find(l => l.lesson_id === currentLessonId)
+    : null;
 
-  console.log('Render state:', { id, isLoading, topic });
+  const currentProgress = currentLessonId
+    ? progress.find(p => p.lesson_id === currentLessonId)
+    : null;
 
-  if (!id) {
-    console.log('No id, returning null');
-    return null;
-  }
-
-  if (isLoading) {
-    console.log('Still loading, showing loading state');
+  if (!topic || isLoading) {
     return (
       <PageLayout>
-        <div className="flex items-center justify-center h-[calc(100vh-4rem)]">
-          <Brain className="w-8 h-8 animate-pulse" />
-        </div>
-      </PageLayout>
-    );
-  }
-
-  if (!topic) {
-    console.log('No topic, showing not found state');
-    return (
-      <PageLayout>
-        <div className="flex flex-col items-center justify-center h-[calc(100vh-4rem)]">
-          <h2 className="text-2xl font-semibold mb-2">Topic Not Found</h2>
-          <p className="text-muted-foreground mb-4">The requested topic could not be found.</p>
-          <button
-            className="px-4 py-2 bg-primary text-primary-foreground rounded-md hover:bg-primary/90"
-            onClick={() => navigate('/dashboard')}
-          >
-            Return to Dashboard
-          </button>
+        <div className="flex items-center justify-center min-h-[400px]">
+          <Brain className="h-8 w-8 animate-pulse text-muted-foreground" />
         </div>
       </PageLayout>
     );
@@ -170,32 +149,37 @@ export default function TopicLearning() {
 
   return (
     <PageLayout>
-      <div className="flex flex-col h-[calc(100vh-4rem)] overflow-hidden">
-        {/* Top Section */}
-        <div className="container mx-auto px-4 py-2">
-          <LearningProgress 
-            topic={topic} 
-            onUpdate={handleUpdateTopic}
+      <div className="container mx-auto py-6 grid grid-cols-12 gap-6">
+        {/* Left Sidebar */}
+        <div className="col-span-3 space-y-6">
+          <LearningProgress
+            topic={topic}
             onDelete={() => setShowDeleteDialog(true)}
+            onUpdate={handleUpdateTopic}
           />
+          <div className="bg-card rounded-lg border shadow-sm">
+            <LearningTree
+              lessons={lessons}
+              progress={progress}
+              onSelectLesson={handleLessonSelect}
+              currentLessonId={currentLessonId || undefined}
+            />
+          </div>
         </div>
 
         {/* Main Content */}
-        <div className="flex-1 container mx-auto px-4 min-h-0">
-          <div className="grid grid-cols-3 gap-8 h-full">
-            {/* Chat Interface */}
-            <div className="col-span-2 h-full">
-              <ChatInterface 
-                messages={messages} 
-                onSendMessage={handleSendMessage}
-              />
+        <div className="col-span-9">
+          {currentLesson ? (
+            <LessonContent
+              lesson={currentLesson}
+              progress={currentProgress}
+              onProgressUpdate={handleProgressUpdate}
+            />
+          ) : (
+            <div className="flex items-center justify-center min-h-[400px] text-muted-foreground">
+              Select a lesson to begin
             </div>
-
-            {/* Topic Tree */}
-            <div className="h-full overflow-auto bg-card rounded-xl p-4">
-              <LearningTree topic={topic} />
-            </div>
-          </div>
+          )}
         </div>
       </div>
 
@@ -204,13 +188,18 @@ export default function TopicLearning() {
           <AlertDialogHeader>
             <AlertDialogTitle>Are you sure?</AlertDialogTitle>
             <AlertDialogDescription>
-              This action cannot be undone. This will permanently delete the topic
-              and all associated data.
+              This will permanently delete this topic and all associated data.
+              This action cannot be undone.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel>Cancel</AlertDialogCancel>
-            <AlertDialogAction onClick={handleDeleteTopic}>Delete</AlertDialogAction>
+            <AlertDialogAction
+              onClick={handleDeleteTopic}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              Delete
+            </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>

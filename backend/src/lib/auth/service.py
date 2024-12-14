@@ -223,47 +223,60 @@ class AuthService:
         except LibsqlError as e:
             return False
 
-    def register_user(self, email: str, password: str, name: str) -> dict:
+    def register_user(self, username: str, password: str, name: str) -> dict:
         """Register a new user."""
         try:
             # Check if user exists
-            result = self.db.execute("SELECT user_id FROM users WHERE email = ?", [email])
+            result = self.db.execute("SELECT user_id FROM users WHERE email = ?", [username])
             if result.rows:
+                logger.warning(f"User already exists: {username}")
                 raise AuthenticationError("User already exists", "USER_EXISTS")
 
             # Hash password
-            password_hash = get_password_hash(password)
+            try:
+                password_hash = get_password_hash(password)
+            except Exception as e:
+                logger.error(f"Password hashing failed: {str(e)}")
+                raise AuthenticationError("Invalid password", "INVALID_PASSWORD")
 
             # Generate user ID and timestamps
             user_id = str(uuid.uuid4())
             current_time = int(time.time())
 
             # Insert user with clean slate (remove failed attempts fields)
-            self.db.execute("""
-                INSERT INTO users (
-                    user_id, email, name, password_hash, roles,
-                    created_at, updated_at
-                ) VALUES (?, ?, ?, ?, ?, ?, ?)
-            """, [user_id, email, name, password_hash, "role_user", current_time, current_time])
+            try:
+                self.db.execute("""
+                    INSERT INTO users (
+                        user_id, email, name, password_hash, roles,
+                        created_at, updated_at
+                    ) VALUES (?, ?, ?, ?, ?, ?, ?)
+                """, [user_id, username, name, password_hash, "role_user", current_time, current_time])
+            except LibsqlError as e:
+                logger.error(f"Database insert failed: {str(e)}")
+                raise AuthenticationError("Failed to create user", "DATABASE_ERROR")
 
             # Get the created user
-            result = self.db.execute("SELECT * FROM users WHERE user_id = ?", [user_id])
-            if not result.rows:
-                raise AuthenticationError("Failed to create user", "REGISTRATION_ERROR")
+            try:
+                result = self.db.execute("SELECT * FROM users WHERE user_id = ?", [user_id])
+                if not result.rows:
+                    logger.error("User not found after creation")
+                    raise AuthenticationError("Failed to create user", "USER_NOT_FOUND")
 
-            user = row_to_dict(result.rows[0])
-            if not user:
-                raise AuthenticationError("Failed to create user", "REGISTRATION_ERROR")
+                user = row_to_dict(result.rows[0])
+                if not user:
+                    logger.error("Failed to convert user row to dict")
+                    raise AuthenticationError("Failed to create user", "DATA_CONVERSION_ERROR")
 
-            # Create session and return token
-            return self._create_session(user)
+                # Create session and return token
+                return self._create_session(user)
+            except LibsqlError as e:
+                logger.error(f"Database select failed: {str(e)}")
+                raise AuthenticationError("Failed to retrieve user", "DATABASE_ERROR")
+
         except AuthenticationError:
             raise
-        except LibsqlError as e:
-            raise AuthenticationError("Failed to register user", "REGISTRATION_ERROR")
         except Exception as e:
-            if "User already exists" in str(e):
-                raise AuthenticationError("User already exists", "USER_EXISTS")
+            logger.error(f"Unexpected error in register_user: {str(e)}")
             raise AuthenticationError("Internal server error", "INTERNAL_ERROR")
 
     def list_users(self) -> list:

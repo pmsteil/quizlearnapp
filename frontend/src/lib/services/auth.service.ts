@@ -61,7 +61,7 @@ export class AuthService extends ApiClient {
         console.error('Login error response:', error);
         console.error('Login error status:', response.status);
         console.error('Login error detail:', error.detail);
-        
+
         // Handle the error based on the actual structure
         if (error.detail?.error_code) {
           throw new AppError(
@@ -89,13 +89,71 @@ export class AuthService extends ApiClient {
   }
 
   async register(data: RegisterData): Promise<TokenResponse> {
-    const response = await this.post<TokenResponse>('/auth/register', {
-      username: data.email,  // Backend expects username
+    const requestData = {
+      username: data.email,
       password: data.password,
       name: data.name,
+    };
+    console.log('Sending registration request:', {
+      url: `${this.baseUrl}/auth/register`,
+      data: { ...requestData, password: '***' },
     });
-    TokenManager.setTokenData(response);
-    return response;
+
+    const response = await fetch(`${this.baseUrl}/auth/register`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(requestData),
+    });
+
+    if (!response.ok) {
+      let errorMessage = 'Registration failed';
+      let errorCode = 'REGISTRATION_FAILED';
+      try {
+        const error = await response.json();
+
+        // sample error.detail:
+        // {
+        //   "error_code": "400",
+        //   "message": {
+        //       "error_code": "USER_EXISTS",
+        //       "message": "User already exists"
+        //   }
+        // }
+
+        if (error.detail?.message?.message) {
+          errorMessage = error.detail.message.message;
+          errorCode = error.detail.message.error_code;
+        }
+
+        if (error.detail?.message?.error_code === 'USER_EXISTS') {
+          errorMessage = 'This email is already registered. Please use a different email address or try logging in.';
+          errorCode = 'USER_EXISTS';
+        } else {
+          errorMessage = error.detail?.message || error.detail || errorMessage;
+          errorCode = error.detail?.error_code || errorCode;
+        }
+      } catch (e) {
+        console.error('Failed to parse error response:', e);
+        console.error('Response status:', response.status);
+        console.error('Response text:', await response.text());
+      }
+      throw new AppError(errorMessage, response.status, errorCode);
+    }
+
+    try {
+      const tokenData = await response.json();
+      if (!tokenData) {
+        throw new Error('Empty response from server');
+      }
+      console.log('Registration successful:', { ...tokenData, access_token: '***', refresh_token: '***' });
+      TokenManager.setTokenData(tokenData);
+      return tokenData;
+    } catch (e) {
+      console.error('Failed to parse response:', e);
+      throw new AppError('Invalid response from server', 500);
+    }
   }
 
   async refreshToken(refreshToken: string): Promise<TokenResponse> {

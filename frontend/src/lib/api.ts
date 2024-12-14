@@ -51,11 +51,15 @@ export class ApiClient {
       if (contentType && contentType.includes('application/json')) {
         const error = await response.json();
         console.error('API Error:', error);
-        throw new AppError(error.detail || 'An unexpected error occurred', response.status);
+        throw new AppError(
+          error.detail?.message || error.detail || 'An unexpected error occurred',
+          response.status,
+          error.detail?.code || 'UNKNOWN_ERROR'
+        );
       } else {
         const text = await response.text();
         console.error('API Error (non-JSON):', text);
-        throw new AppError('An unexpected error occurred', response.status);
+        throw new AppError(text || 'An unexpected error occurred', response.status, 'UNKNOWN_ERROR');
       }
     }
 

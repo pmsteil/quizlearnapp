@@ -13,7 +13,12 @@ SECRET_KEY = os.getenv("JWT_SECRET_KEY", "your-secret-key")  # In production, us
 ALGORITHM = "HS256"
 
 # Password hashing
-pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
+pwd_context = CryptContext(
+    schemes=["bcrypt"],
+    deprecated="auto",
+    bcrypt__rounds=12,  # Work factor
+    bcrypt__ident="2b"  # Force bcrypt 2b
+)
 
 def verify_password(plain_password: str, hashed_password: str) -> bool:
     """Verify a password against its hash."""

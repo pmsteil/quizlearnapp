@@ -15,7 +15,7 @@ interface AuthContextType {
   user: User | null;
   login: (email: string, password: string) => Promise<void>;
   logout: () => void;
-  signup: (email: string, password: string) => Promise<void>;
+  signup: (name: string, email: string, password: string) => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -87,21 +87,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   }, []);
 
-  const signup = useCallback(async (email: string, password: string) => {
+  const signup = useCallback(async (name: string, email: string, password: string) => {
     try {
-      const { user: newUser, token } = await authService.signup(email, password);
-      TokenManager.setToken(token);
-      setUser(newUser);
-      toast({
-        title: "Success",
-        description: "Successfully signed up",
-      });
+      const response = await authService.register({ name, email, password });
+      TokenManager.setTokenData(response);
+      setUser(response.user);
     } catch (error) {
-      toast({
-        title: "Error",
-        description: "Failed to sign up. Please try again.",
-        variant: "destructive",
-      });
       throw error;
     }
   }, []);

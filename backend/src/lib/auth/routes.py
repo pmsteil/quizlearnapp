@@ -31,6 +31,11 @@ class TokenData(BaseModel):
 class LogoutRequest(BaseModel):
     refresh_token: str
 
+class RegisterRequest(BaseModel):
+    username: str
+    password: str
+    name: str
+
 @router.options("/login")
 async def login_options():
     """Handle preflight requests for the login endpoint."""
@@ -107,38 +112,89 @@ async def login(request: Request, form_data: OAuth2PasswordRequestForm = Depends
         )
 
 @router.post("/register", response_model=Token)
-async def register(username: str, password: str, name: str):
+async def register(
+    request: Request,
+    data: RegisterRequest = None,
+    username: str = None,
+    password: str = None,
+    name: str = None,
+):
     """Register a new user."""
-    auth_service = AuthService()
-    user = await auth_service.register_user(username, password, name)
+    logger.info("=== Register attempt ===")
+    logger.info(f"Request headers: {request.headers}")
     
-    if not user:
+    # Log request body
+    try:
+        body = await request.body()
+        logger.info(f"Raw request body: {body}")
+    except Exception as e:
+        logger.error(f"Error reading body: {e}")
+
+    # Log query parameters
+    logger.info(f"Query params: {request.query_params}")
+    
+    # Handle both form data and JSON
+    if data is None:
+        if not all([username, password, name]):
+            logger.error("Missing required fields")
+            logger.error(f"Username: {username}, Password: {'*' * len(password) if password else None}, Name: {name}")
+            raise HTTPException(
+                status_code=400,
+                detail={
+                    "error_code": "INVALID_REQUEST",
+                    "message": "Missing required fields"
+                }
+            )
+        data = RegisterRequest(username=username, password=password, name=name)
+    
+    logger.info(f"Processed data: {data}")
+
+    try:
+        auth_service = AuthService(request.app.state.db)
+        user = auth_service.register_user(
+            data.username,
+            data.password,
+            data.name
+        )
+        
+        # Create tokens
+        access_token_expires = timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
+        refresh_token_expires = timedelta(days=REFRESH_TOKEN_EXPIRE_DAYS)
+        
+        access_token = create_access_token(
+            data={"sub": user["email"]},
+            expires_delta=access_token_expires
+        )
+        refresh_token = create_access_token(
+            data={"sub": user["email"], "refresh": True},
+            expires_delta=refresh_token_expires
+        )
+        
+        return {
+            "access_token": access_token,
+            "refresh_token": refresh_token,
+            "token_type": "bearer",
+            "expires_in": ACCESS_TOKEN_EXPIRE_MINUTES * 60,
+            "user": user
+        }
+    except AuthenticationError as e:
+        logger.error(f"Authentication error: {str(e)}")
         raise HTTPException(
             status_code=400,
-            detail="User registration failed",
+            detail={
+                "error_code": e.error_code,
+                "message": str(e)
+            }
         )
-
-    # Create access token
-    access_token_expires = timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
-    access_token = create_access_token(
-        data={"sub": user["user_id"], "user": user},
-        expires_delta=access_token_expires
-    )
-
-    # Create refresh token
-    refresh_token_expires = timedelta(days=REFRESH_TOKEN_EXPIRE_DAYS)
-    refresh_token = create_access_token(
-        data={"sub": user["user_id"], "type": "refresh"},
-        expires_delta=refresh_token_expires
-    )
-
-    return {
-        "access_token": access_token,
-        "refresh_token": refresh_token,
-        "token_type": "bearer",
-        "expires_in": ACCESS_TOKEN_EXPIRE_MINUTES * 60,  # Convert to seconds
-        "user": user
-    }
+    except Exception as e:
+        logger.error(f"Unexpected error during registration: {str(e)}")
+        raise HTTPException(
+            status_code=500,
+            detail={
+                "error_code": "REGISTRATION_FAILED",
+                "message": "An unexpected error occurred during registration"
+            }
+        )
 
 @router.post("/refresh", response_model=Token)
 async def refresh_token(refresh_token: str):

@@ -1,10 +1,11 @@
 export interface User {
-  id: string;
+  userId: string;
   email: string;
+  password: string;
   name: string;
-  role: string;
-  createdAt: Date;
-  updatedAt: Date;
+  createdAt: number;
+  updatedAt: number;
+  deleted: boolean;
 }
 
 export interface DatabaseConfig {
@@ -13,29 +14,53 @@ export interface DatabaseConfig {
 }
 
 export interface Topic {
-  id: string;
-  userId: string;
+  topicId: number;
   title: string;
   description: string;
-  progress: number;
-  lessonPlan: LessonPlan;
+  difficulty: string;
+  userId: string;
+  createdAt: number;
+  updatedAt: number;
+}
+
+export interface Lesson {
+  lessonId: number;
+  topicId: number;
+  title: string;
+  content: string;
+  orderIndex: number;
+  parentLessonId: number | null;
+  userId: string;
+  createdAt: number;
+  updatedAt: number;
+}
+
+export interface UserTopic {
+  userId: string;
+  topicId: number;
+  currentLessonId: number | null;
+  goalText: string;
+  targetDate: Date | null;
+  startedAt: Date;
+  lastAccessed: Date;
+}
+
+export interface UserLessonProgress {
+  lessonId: number;
+  userId: string;
+  status: string;
+  timeSpentMinutes: number;
+  lastInteractionAt: number;
+  createdAt: number;
+  updatedAt: number;
+}
+
+export interface UserLessonChatHistory {
+  chatId: number;
+  userId: string;
+  topicId: number;
+  lessonId: number;
+  isUserMessage: boolean;
+  messageText: string;
   createdAt: Date;
-  updatedAt: Date;
-}
-
-export interface LessonPlan {
-  mainTopics: MainTopic[];
-  currentTopic: string;
-  completedTopics: string[];
-}
-
-export interface MainTopic {
-  name: string;
-  subtopics: Subtopic[];
-}
-
-export interface Subtopic {
-  name: string;
-  status: 'not-started' | 'in-progress' | 'current' | 'completed' | 'upcoming';
-  icon?: string;
 }

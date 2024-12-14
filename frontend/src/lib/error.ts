@@ -2,10 +2,17 @@ export class AppError extends Error {
   constructor(
     message: string,
     public status: number,
-    public errorCode: string
+    public errorCode: string = 'UNKNOWN_ERROR'
   ) {
     super(message);
     this.name = 'AppError';
+  }
+
+  toString(): string {
+    if (typeof this.message === 'object') {
+      return JSON.stringify(this.message);
+    }
+    return this.message;
   }
 }
 

@@ -20,6 +20,7 @@ import { useAsync } from '@/lib/hooks/useAsync';
 import { topicsService } from '@/lib/services';
 import type { Topic, CreateTopicData } from '@/lib/services';
 import { TokenManager } from '@/lib/utils/token'; // Import TokenManager
+import { AppError } from '@/lib/error'; // Import AppError
 
 // Loading skeleton component
 function TopicSkeleton() {
@@ -155,13 +156,13 @@ export default function TopicsList() {
       if (error instanceof AppError) {
         toast({
           title: "Error",
-          description: error.message,
+          description: error.toString(),
           variant: "destructive",
         });
       } else {
         toast({
           title: "Error",
-          description: "Failed to create topic",
+          description: "An unexpected error occurred while creating the topic",
           variant: "destructive",
         });
       }

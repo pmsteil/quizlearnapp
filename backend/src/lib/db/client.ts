@@ -1,4 +1,5 @@
 import { createClient, LibsqlError } from '@libsql/client';
+import path from 'path';
 
 export class DatabaseError extends Error {
   constructor(
@@ -13,7 +14,7 @@ export class DatabaseError extends Error {
 
 // Validate URL format before creating client
 function validateDbUrl(url: string | undefined) {
-  console.log('Validating DB URL:', url?.substring(0, 8) + '...');
+  console.log('Validating DB URL:', url);
 
   if (!url) {
     throw new DatabaseError(
@@ -22,36 +23,21 @@ function validateDbUrl(url: string | undefined) {
       { url }
     );
   }
-
-  if (!url.startsWith('https://')) {
-    throw new DatabaseError(
-      'Database Configuration Error',
-      'Database URL must start with https://',
-      { url: url.substring(0, 8) + '...' }
-    );
-  }
 }
 
 let dbInstance: ReturnType<typeof createClient> | null = null;
 
 function getDbClient() {
   if (!dbInstance) {
-    // Try runtime config first, fall back to build-time env vars
-    const url = import.meta.env.VITE_LIBSQL_DB_URL;
-    const authToken = import.meta.env.VITE_LIBSQL_DB_AUTH_TOKEN;
+    // Use local SQLite database
+    const dbPath = path.resolve(process.cwd(), 'data/db/quizlearn.db');
+    const url = `file:${dbPath}`;
+    console.log('Using local database at:', dbPath);
 
     validateDbUrl(url);
 
-    if (!authToken) {
-      throw new DatabaseError(
-        'Database Configuration Error',
-        'Database auth token is missing. Please check your environment variables.'
-      );
-    }
-
     dbInstance = createClient({
-      url,
-      authToken
+      url
     });
   }
   return dbInstance;
@@ -59,63 +45,57 @@ function getDbClient() {
 
 // Wrap the client methods to handle errors consistently
 export const dbClient = {
-  execute: async (...args: Parameters<ReturnType<typeof createClient>['execute']>) => {
+  async execute(...args: Parameters<ReturnType<typeof createClient>['execute']>) {
     try {
-      const client = getDbClient();
-      return await client.execute(...args);
+      return await getDbClient().execute(...args);
     } catch (error) {
       throw handleDbError(error);
     }
   },
-  batch: async (...args: Parameters<ReturnType<typeof createClient>['batch']>) => {
+
+  async batch(...args: Parameters<ReturnType<typeof createClient>['batch']>) {
     try {
-      const client = getDbClient();
-      return await client.batch(...args);
+      return await getDbClient().batch(...args);
     } catch (error) {
       throw handleDbError(error);
     }
   }
 };
 
-export const handleDbError = (error: unknown) => {
+function handleDbError(error: unknown) {
   console.error('=== Database Error Details ===');
-  console.error('Error:', error);
-  console.error('Current DB URL:', import.meta.env.VITE_LIBSQL_DB_URL?.substring(0, 8) + '...');
-  console.error('Auth Token Set:', !!import.meta.env.VITE_LIBSQL_DB_AUTH_TOKEN);
-  console.error('===========================');
+  console.error(error);
 
   if (error instanceof LibsqlError) {
-    if (error.code === 'URL_INVALID') {
-      throw new DatabaseError(
-        'Database Configuration Error',
-        'The database URL is not in the correct format. It should start with "https://".',
-        error
-      );
+    switch (error.code) {
+      case 'SQLITE_CONSTRAINT':
+        return new DatabaseError(
+          'Constraint Violation',
+          'A database constraint was violated. This usually means a unique value already exists.',
+          error
+        );
+      default:
+        return new DatabaseError(
+          'Database Error',
+          'An error occurred while accessing the database.',
+          error
+        );
     }
   }
 
-  if (error instanceof DatabaseError) {
-    throw error;
-  }
-
-  throw new DatabaseError(
-    'Database Error',
-    'An unexpected error occurred while connecting to the database.',
-    error
-  );
-};
+  return error;
+}
 
 // Initialize database connection
-export const initializeDb = async () => {
+export async function initializeDb() {
   try {
-    console.log('Testing database connection...');
-    await dbClient.execute('SELECT 1');
-    console.log('Database connection successful');
+    await dbClient.execute({ sql: 'SELECT 1', args: [] });
+    console.log('Database connection initialized successfully');
   } catch (error) {
-    console.error('Database initialization failed:', error);
-    throw handleDbError(error);
+    console.error('Failed to initialize database connection:', error);
+    throw error;
   }
-};
+}
 
 // For backward compatibility
 export const db = dbClient;

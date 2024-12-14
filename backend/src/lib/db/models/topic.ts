@@ -1,23 +1,19 @@
 import { dbClient } from '../client';
-import { generateId } from '../../utils/auth';
-import type { Topic, LessonPlan } from '../../types/database';
+import type { Topic } from '../../types/database';
 
 export class TopicModel {
   static async create(
-    userId: string,
     title: string,
-    description: string,
-    lessonPlan: LessonPlan
+    description?: string
   ): Promise<Topic> {
-    const id = generateId();
     const timestamp = Math.floor(Date.now() / 1000);
 
     try {
       const result = await dbClient.execute({
-        sql: `INSERT INTO topics (id, user_id, title, description, lesson_plan, created_at, updated_at)
-              VALUES (?, ?, ?, ?, ?, ?, ?)
+        sql: `INSERT INTO topics (title, description, created_at, updated_at)
+              VALUES (?, ?, ?, ?)
               RETURNING *`,
-        args: [id, userId, title, description, JSON.stringify(lessonPlan), timestamp, timestamp]
+        args: [title, description || null, timestamp, timestamp]
       });
 
       if (!result.rows?.[0]) {
@@ -31,11 +27,10 @@ export class TopicModel {
     }
   }
 
-  static async getByUserId(userId: string): Promise<Topic[]> {
+  static async getAll(): Promise<Topic[]> {
     try {
       const result = await dbClient.execute({
-        sql: 'SELECT * FROM topics WHERE user_id = ? ORDER BY created_at DESC',
-        args: [userId]
+        sql: 'SELECT * FROM topics ORDER BY created_at DESC'
       });
 
       return (result.rows || []).map(this.mapTopic);
@@ -45,10 +40,10 @@ export class TopicModel {
     }
   }
 
-  static async getById(id: string): Promise<Topic | null> {
+  static async getById(id: number): Promise<Topic | null> {
     try {
       const result = await dbClient.execute({
-        sql: 'SELECT * FROM topics WHERE id = ?',
+        sql: 'SELECT * FROM topics WHERE topic_id = ?',
         args: [id]
       });
 
@@ -60,34 +55,53 @@ export class TopicModel {
     }
   }
 
-  private static mapTopic(row: any): Topic {
-    let lessonPlan: LessonPlan;
-    try {
-      lessonPlan = JSON.parse(row.lesson_plan);
-    } catch {
-      lessonPlan = {
-        mainTopics: [{
-          name: "Learning Path",
-          subtopics: [
-            { name: 'Introduction', status: 'current' },
-            { name: 'Basic Concepts', status: 'upcoming' },
-            { name: 'Practice Exercises', status: 'upcoming' },
-            { name: 'Advanced Topics', status: 'upcoming' },
-            { name: 'Final Review', status: 'upcoming' }
-          ]
-        }],
-        currentTopic: 'Introduction',
-        completedTopics: []
-      };
+  static async update(
+    id: number,
+    updates: Partial<Pick<Topic, 'title' | 'description'>>
+  ): Promise<Topic | null> {
+    const timestamp = Math.floor(Date.now() / 1000);
+    const updateFields: string[] = [];
+    const args: any[] = [];
+
+    if (updates.title !== undefined) {
+      updateFields.push('title = ?');
+      args.push(updates.title);
+    }
+    if (updates.description !== undefined) {
+      updateFields.push('description = ?');
+      args.push(updates.description);
     }
 
+    if (updateFields.length === 0) {
+      return this.getById(id);
+    }
+
+    updateFields.push('updated_at = ?');
+    args.push(timestamp);
+    args.push(id);
+
+    try {
+      const result = await dbClient.execute({
+        sql: `UPDATE topics 
+              SET ${updateFields.join(', ')}
+              WHERE topic_id = ?
+              RETURNING *`,
+        args
+      });
+
+      const topic = result.rows?.[0];
+      return topic ? this.mapTopic(topic) : null;
+    } catch (error) {
+      console.error('Error updating topic:', error);
+      throw error;
+    }
+  }
+
+  private static mapTopic(row: any): Topic {
     return {
-      id: row.id,
-      userId: row.user_id,
+      id: row.topic_id,
       title: row.title,
       description: row.description,
-      progress: row.progress || 0,
-      lessonPlan,
       createdAt: new Date(row.created_at * 1000),
       updatedAt: new Date(row.updated_at * 1000)
     };

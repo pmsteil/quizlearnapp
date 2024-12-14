@@ -10,56 +10,34 @@ export interface User {
 }
 
 export interface Topic {
-    id: string;
+    topic_id: number;
     user_id: string;
     title: string;
     description: string;
-    progress: number;
-    lesson_plan: LessonPlan;
-    created_at: DateTime;
-    updated_at: DateTime;
+    difficulty: string;
+    created_at: number;
+    updated_at: number;
 }
 
-export interface LessonPlan {
-    main_topics: MainTopic[];
-    current_topic: string;
-    completed_topics: string[];
+export interface TopicLesson {
+    lesson_id: number;
+    topic_id: number;
+    title: string;
+    content: string;
+    order_index: number;
+    parent_lesson_id: number | null;
+    created_at: number;
+    updated_at: number;
+    children?: TopicLesson[];
 }
 
-export interface MainTopic {
-    name: string;
-    subtopics: Subtopic[];
+export interface UserLessonProgress {
+    progress_id: number;
+    user_id: number;
+    lesson_id: number;
+    status: ProgressStatus;
+    last_interaction_at: number;
+    completion_date: number | null;
 }
 
-export interface Subtopic {
-    name: string;
-    status: 'not-started' | 'in-progress' | 'current' | 'completed' | 'upcoming';
-    icon?: string;
-}
-
-export interface Question {
-    id: string;
-    topic_id: string;
-    text: string;
-    options: string[];
-    correct_answer: number;
-    explanation: string;
-    created_at: DateTime;
-    updated_at: DateTime;
-}
-
-export interface Progress {
-    id: string;
-    user_id: string;
-    topic_id: string;
-    question_id: string;
-    is_correct: boolean;
-    created_at: DateTime;
-}
-
-export interface TopicProgress {
-    correct_answers: number;
-    incorrect_answers: number;
-    total_questions: number;
-    time_spent_minutes: number;
-}
+export type ProgressStatus = 'not_started' | 'in_progress' | 'completed';

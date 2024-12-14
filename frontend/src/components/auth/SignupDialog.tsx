@@ -10,7 +10,7 @@ import { Button } from '@/components/ui/button';
 import { useToast } from '@/components/ui/use-toast';
 
 export function SignupDialog() {
-  const { register } = useAuth();
+  const { signup } = useAuth();
   const { toast } = useToast();
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
@@ -22,16 +22,36 @@ export function SignupDialog() {
     setIsLoading(true);
 
     try {
-      await register(name, email, password);
+      await signup(name, email, password);
       toast({
         title: "Account Created",
         description: "Welcome to QuizLearn!",
         variant: "default"
       });
-    } catch (error) {
+    } catch (error: any) {
+      // console.error('Signup error:', error);
+      // Convert error object to string for display
+      let errorMessage = "Failed to create account";
+
+      if (error instanceof Error) {
+        // console.error('Error message:', error.message);
+        errorMessage = error.message;
+      } else if (error && typeof error === 'object' && 'toString' in error) {
+        // console.error('Error message:', error.toString());
+        errorMessage = error.toString();
+      }
+
+      // if errorMessage is still an object, convert it to a string
+      if (typeof errorMessage === 'object') {
+        errorMessage = JSON.stringify(errorMessage);
+        // console.error('Error message converted to string:', errorMessage);
+      }
+
+      console.log('Error during signup:', errorMessage);
+
       toast({
-        title: "Error",
-        description: error instanceof Error ? error.message : "Failed to create account",
+        title: "Registration Failed!",
+        description: errorMessage,
         variant: "destructive"
       });
     } finally {

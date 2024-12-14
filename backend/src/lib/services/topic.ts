@@ -1,74 +1,147 @@
-import { TopicModel } from '../db/models/topic';
-import type { Topic, LessonPlan } from '../types/database';
-import { dbClient } from '../db/client';
-import { QuestionService } from './question';
+import { db } from '../db';
+import { Topic } from '@shared/types';
+import { ProgressModel } from '../db/models/progress';
+import type { UserTopic, UserLessonProgress } from '../types/database';
+
+export interface CreateTopicParams {
+  title: string;
+  description?: string;
+  difficulty: string;
+  user_id: string;
+}
 
 export interface TopicProgress {
-  correctAnswers: number;
-  incorrectAnswers: number;
-  totalQuestions: number;
+  totalLessons: number;
+  completedLessons: number;
+  inProgressLessons: number;
+  notStartedLessons: number;
   timeSpentMinutes: number;
 }
 
 export class TopicService {
-  static async createTopic(
+  static async createTopic(params: CreateTopicParams): Promise<Topic> {
+    const result = await db.execute({
+      sql: `INSERT INTO topics (title, description, difficulty, user_id, created_at, updated_at)
+            VALUES (?, ?, ?, ?, ?, ?)
+            RETURNING *`,
+      args: [
+        params.title,
+        params.description || '',
+        params.difficulty,
+        params.user_id,
+        Date.now(),
+        Date.now()
+      ]
+    });
+
+    return result.rows[0] as unknown as Topic;
+  }
+
+  static async getAllTopics(): Promise<Topic[]> {
+    const result = await db.execute({
+      sql: 'SELECT * FROM topics ORDER BY created_at DESC',
+      args: []
+    });
+
+    return result.rows as unknown as Topic[];
+  }
+
+  static async getTopic(id: number): Promise<Topic | null> {
+    const result = await db.execute({
+      sql: 'SELECT * FROM topics WHERE topic_id = ?',
+      args: [id]
+    });
+
+    return result.rows[0] ? (result.rows[0] as unknown as Topic) : null;
+  }
+
+  static async updateTopic(id: number, updates: Partial<Topic>): Promise<Topic | null> {
+    const fields: string[] = [];
+    const values: any[] = [];
+
+    if (updates.title) {
+      fields.push('title = ?');
+      values.push(updates.title);
+    }
+
+    if (updates.description) {
+      fields.push('description = ?');
+      values.push(updates.description);
+    }
+
+    if (updates.difficulty) {
+      fields.push('difficulty = ?');
+      values.push(updates.difficulty);
+    }
+
+    if (fields.length === 0) {
+      return null;
+    }
+
+    fields.push('updated_at = ?');
+    values.push(Date.now());
+
+    values.push(id);
+    values.push(updates.user_id);
+
+    const result = await db.execute({
+      sql: `UPDATE topics 
+            SET ${fields.join(', ')}
+            WHERE topic_id = ? AND user_id = ?
+            RETURNING *`,
+      args: values
+    });
+
+    return result.rows[0] ? (result.rows[0] as unknown as Topic) : null;
+  }
+
+  static async startUserTopic(
     userId: string,
-    title: string,
-    description: string,
-    lessonPlan: LessonPlan
-  ): Promise<Topic> {
-    try {
-      const topic = await TopicModel.create(userId, title, description, lessonPlan);
-
-      // Add initial questions for the topic
-      await QuestionService.addInitialQuestions(topic.id);
-
-      return topic;
-    } catch (error) {
-      console.error('Error creating topic:', error);
-      throw error;
-    }
+    topicId: number,
+    goalText: string,
+    targetDate?: Date
+  ): Promise<UserTopic> {
+    return await ProgressModel.createUserTopic(userId, topicId, goalText, targetDate);
   }
 
-  static async getUserTopics(userId: string): Promise<Topic[]> {
-    try {
-      const topics = await TopicModel.getByUserId(userId);
-      return topics;
-    } catch (error) {
-      console.error('Error getting user topics:', error);
-      throw error;
-    }
+  static async getUserTopic(userId: string, topicId: number): Promise<UserTopic | null> {
+    return await ProgressModel.getUserTopic(userId, topicId);
   }
 
-  static async getTopic(id: string): Promise<Topic | null> {
-    try {
-      return await TopicModel.getById(id);
-    } catch (error) {
-      console.error('Error getting topic:', error);
-      throw error;
-    }
+  static async updateUserTopic(
+    userId: string,
+    topicId: number,
+    updates: Partial<Pick<UserTopic, 'currentLessonId' | 'goalText' | 'targetDate'>>
+  ): Promise<UserTopic | null> {
+    return await ProgressModel.updateUserTopic(userId, topicId, updates);
   }
 
-  static async getTopicProgress(topicId: string): Promise<TopicProgress> {
+  static async getTopicProgress(userId: string, topicId: number): Promise<TopicProgress> {
     try {
-      const result = await dbClient.execute({
+      const result = await db.execute({
         sql: `
-          SELECT
-            (SELECT COUNT(*) FROM user_progress WHERE topic_id = ? AND is_correct = 1) as correct_answers,
-            (SELECT COUNT(*) FROM user_progress WHERE topic_id = ? AND is_correct = 0) as incorrect_answers,
-            (SELECT COUNT(*) FROM questions WHERE topic_id = ?) as total_questions,
-            (SELECT ROUND((julianday('now') - julianday(MIN(created_at))) * 24 * 60)
-             FROM user_progress
-             WHERE topic_id = ?) as time_spent_minutes
+          WITH lesson_stats AS (
+            SELECT
+              COUNT(*) as total_lessons,
+              SUM(CASE WHEN ulp.status = 'completed' THEN 1 ELSE 0 END) as completed_lessons,
+              SUM(CASE WHEN ulp.status = 'in_progress' THEN 1 ELSE 0 END) as in_progress_lessons,
+              SUM(CASE WHEN ulp.status = 'not_started' OR ulp.status IS NULL THEN 1 ELSE 0 END) as not_started_lessons,
+              ROUND((MAX(ulp.last_interaction_at) - MIN(ulp.last_interaction_at)) / 60) as time_spent_minutes
+            FROM topic_lessons tl
+            LEFT JOIN user_lesson_progress ulp ON tl.lesson_id = ulp.lesson_id AND ulp.user_id = ?
+            WHERE tl.topic_id = ?
+          )
+          SELECT * FROM lesson_stats
         `,
-        args: [topicId, topicId, topicId, topicId]
+        args: [userId, topicId]
       });
 
       const row = result.rows?.[0];
       return {
-        correctAnswers: Number(row?.correct_answers || 0),
-        incorrectAnswers: Number(row?.incorrect_answers || 0),
-        totalQuestions: Number(row?.total_questions || 0),
+        totalLessons: Number(row?.total_lessons || 0),
+        completedLessons: Number(row?.completed_lessons || 0),
+        inProgressLessons: Number(row?.in_progress_lessons || 0),
+        notStartedLessons: Number(row?.not_started_lessons || 0),
         timeSpentMinutes: Number(row?.time_spent_minutes || 0)
       };
     } catch (error) {

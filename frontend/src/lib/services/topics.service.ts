@@ -1,4 +1,5 @@
 import { ApiClient } from '../api';
+import { AppError } from '../error'; // Assuming AppError is defined in this file
 
 export interface Topic {
   user_id: string;
@@ -78,16 +79,7 @@ export class TopicsService extends ApiClient {
           name: "Getting Started",
           subtopics: [
             { name: "Introduction", status: "current" },
-            { name: "Basic Concepts", status: "upcoming" },
-            { name: "Key Terms", status: "upcoming" }
-          ]
-        },
-        {
-          name: "Core Concepts",
-          subtopics: [
-            { name: "Overview", status: "upcoming" },
-            { name: "Fundamentals", status: "upcoming" },
-            { name: "Advanced Topics", status: "upcoming" }
+            { name: "Basic Concepts", status: "upcoming" }
           ]
         }
       ],
@@ -107,7 +99,14 @@ export class TopicsService extends ApiClient {
       return response;
     } catch (error) {
       console.error('Error creating topic:', error);
-      throw error;
+      if (error instanceof AppError) {
+        throw error;
+      }
+      throw new AppError(
+        'Failed to create topic. Please try again later.',
+        500,
+        'TOPIC_CREATE_ERROR'
+      );
     }
   }
 
