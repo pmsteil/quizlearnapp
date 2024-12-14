@@ -28,8 +28,6 @@ interface TokenResponse {
 
 export class AuthService extends ApiClient {
   private static instance: AuthService;
-  private static readonly TOKEN_KEY = 'auth_token';
-  private static readonly USER_KEY = 'auth_user';
 
   private constructor() {
     super('http://localhost:3000/api/v1');
@@ -40,31 +38,6 @@ export class AuthService extends ApiClient {
       AuthService.instance = new AuthService();
     }
     return AuthService.instance;
-  }
-
-  private saveToStorage(token: string, user: User) {
-    localStorage.setItem(AuthService.TOKEN_KEY, token);
-    localStorage.setItem(AuthService.USER_KEY, JSON.stringify(user));
-  }
-
-  private clearStorage() {
-    localStorage.removeItem(AuthService.TOKEN_KEY);
-    localStorage.removeItem(AuthService.USER_KEY);
-  }
-
-  public getStoredAuth(): { token: string; user: User } | null {
-    const token = localStorage.getItem(AuthService.TOKEN_KEY);
-    const userStr = localStorage.getItem(AuthService.USER_KEY);
-    
-    if (token && userStr) {
-      try {
-        const user = JSON.parse(userStr);
-        return { token, user };
-      } catch (e) {
-        this.clearStorage();
-      }
-    }
-    return null;
   }
 
   async login(credentials: LoginCredentials) {
@@ -94,7 +67,6 @@ export class AuthService extends ApiClient {
 
       const data = await response.json();
       console.log('Login successful, setting tokens');
-      this.saveToStorage(data.access_token, data.user);
       TokenManager.setTokenData(data);
       return data;
     } catch (error) {
@@ -112,12 +84,7 @@ export class AuthService extends ApiClient {
       password: data.password,
       name: data.name,
     });
-    this.saveToStorage(response.access_token, response.user);
-    TokenManager.setTokens(
-      response.access_token,
-      response.refresh_token,
-      response.user
-    );
+    TokenManager.setTokenData(response);
     return response;
   }
 
@@ -179,7 +146,6 @@ export class AuthService extends ApiClient {
         });
       }
     } finally {
-      this.clearStorage();
       TokenManager.clearTokens();
     }
   }

@@ -87,7 +87,7 @@ export default function Navbar() {
 
   return (
     <div className="sticky top-0 z-50 w-full border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
-      <div className="container flex h-14 max-w-screen-2xl items-center justify-between mx-auto px-4">
+      <div className="container flex h-20 max-w-screen-2xl items-center justify-between mx-auto px-6">
         <div className="flex items-center gap-12">
           <Link className="flex items-center space-x-2 shrink-0" to={user ? '/dashboard' : '/'}>
             <Brain className="h-6 w-6" />
@@ -96,11 +96,11 @@ export default function Navbar() {
             </span>
           </Link>
           {user && (
-            <div className="hidden sm:block max-w-md">
-              <h1 className="text-lg font-semibold truncate">
+            <div className="block max-w-[150px] sm:max-w-md">
+              <h1 className="text-sm sm:text-lg font-semibold truncate">
                 {getWelcomeMessage()}
               </h1>
-              <p className="text-sm text-muted-foreground truncate">
+              <p className="text-xs sm:text-sm text-muted-foreground truncate">
                 {getDescription()}
               </p>
             </div>

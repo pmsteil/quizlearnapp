@@ -19,6 +19,7 @@ import { NewTopicForm } from './NewTopicForm';
 import { useAsync } from '@/lib/hooks/useAsync';
 import { topicsService } from '@/lib/services';
 import type { Topic, CreateTopicData } from '@/lib/services';
+import { TokenManager } from '@/lib/utils/token'; // Import TokenManager
 
 // Loading skeleton component
 function TopicSkeleton() {
@@ -114,14 +115,20 @@ export default function TopicsList() {
     }
 
     try {
+      const tokenData = TokenManager.getTokenData();
+      console.log('Token data when creating topic:', {
+        hasToken: !!tokenData?.access_token,
+        user: tokenData?.user
+      });
+      
       console.log('Creating topic:', {
         title,
         userId: user.id
       });
       const topic = await createTopic({
+        userId: user.id,
         title,
         description: title, // Use title as description for now
-        userId: user.id
       });
       showToast('Topic created successfully', 'success');
       navigate(`/topic/${topic.id}`);
