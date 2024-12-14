@@ -92,8 +92,8 @@ export default function Navbar() {
       <div className="container flex h-20 max-w-screen-2xl items-center justify-between mx-auto px-6">
         <div className="flex items-center gap-12">
           <Link className="flex items-center space-x-2 shrink-0" to={user ? '/dashboard' : '/'}>
-            <Brain className="h-6 w-6" />
-            <span className="hidden font-bold sm:inline-block">
+            <Brain className="h-7 w-7" />
+            <span className="hidden font-bold text-xl sm:inline-block">
               QuizLearn
             </span>
           </Link>
