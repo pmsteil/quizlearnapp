@@ -157,92 +157,93 @@ export function LearningProgress({ topic, onDelete, onUpdate }: LearningProgress
   const completionPercentage = totalTopics ? Math.round((completedTopics / totalTopics) * 100) : 0;
 
   return (
-    <div className="space-y-6">
-      <Card className="p-6">
-        <div className="flex items-start justify-between mb-6">
-          <div className="space-y-4 flex-1 mr-4">
-            <div>
-              {isEditingTitle ? (
-                <Input
-                  ref={titleInputRef}
-                  value={editedTitle}
-                  onChange={(e) => setEditedTitle(e.target.value)}
-                  onBlur={handleTitleBlur}
-                  onKeyDown={(e) => handleKeyDown(e, handleTitleSave)}
-                  className="text-2xl font-semibold"
-                  disabled={isUpdating}
-                />
-              ) : (
-                <h2
-                  className="text-2xl font-semibold cursor-pointer hover:text-primary"
-                  onClick={() => {
-                    console.log('Title clicked, setting isEditingTitle to true');
-                    setIsEditingTitle(true);
-                  }}
-                >
-                  {editedTitle}
-                </h2>
-              )}
-            </div>
-
-            <div>
-              {isEditingDescription ? (
-                <Textarea
-                  ref={descriptionTextareaRef}
-                  value={editedDescription}
-                  onChange={(e) => setEditedDescription(e.target.value)}
-                  onBlur={handleDescriptionBlur}
-                  onKeyDown={(e) => handleKeyDown(e, handleDescriptionSave)}
-                  className="text-muted-foreground resize-none"
-                  placeholder="Add a description..."
-                  disabled={isUpdating}
-                />
-              ) : (
-                <p
-                  className="text-muted-foreground cursor-pointer hover:text-foreground min-h-[1.5rem]"
-                  onClick={() => setIsEditingDescription(true)}
-                >
-                  {editedDescription || 'Click to add a description...'}
-                </p>
-              )}
-            </div>
+    <Card className="p-4">
+      <div className="flex items-start justify-between gap-4">
+        <div className="space-y-2 flex-1">
+          <div>
+            {isEditingTitle ? (
+              <Input
+                ref={titleInputRef}
+                value={editedTitle}
+                onChange={(e) => setEditedTitle(e.target.value)}
+                onBlur={handleTitleBlur}
+                onKeyDown={(e) => handleKeyDown(e, handleTitleSave)}
+                className="text-xl font-semibold"
+                disabled={isUpdating}
+              />
+            ) : (
+              <h2
+                className="text-xl font-semibold cursor-pointer hover:text-primary"
+                onClick={() => {
+                  console.log('Title clicked, setting isEditingTitle to true');
+                  setIsEditingTitle(true);
+                }}
+              >
+                {editedTitle}
+              </h2>
+            )}
           </div>
 
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button variant="ghost" size="icon">
-                <MoreVertical className="h-4 w-4" />
-              </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end">
-              <DropdownMenuItem 
-                onSelect={() => onDelete()}
-                className="text-destructive"
+          <div>
+            {isEditingDescription ? (
+              <Textarea
+                ref={descriptionTextareaRef}
+                value={editedDescription}
+                onChange={(e) => setEditedDescription(e.target.value)}
+                onBlur={handleDescriptionBlur}
+                onKeyDown={(e) => handleKeyDown(e, handleDescriptionSave)}
+                className="text-sm text-muted-foreground resize-none"
+                placeholder="Add a description..."
+                disabled={isUpdating}
+                rows={2}
+              />
+            ) : (
+              <p
+                className="text-sm text-muted-foreground cursor-pointer hover:text-foreground"
+                onClick={() => setIsEditingDescription(true)}
               >
-                <Trash2 className="mr-2 h-4 w-4" />
-                Delete Topic
-              </DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
+                {editedDescription || 'Click to add a description...'}
+              </p>
+            )}
+          </div>
         </div>
 
-        <div className="flex items-center justify-between mb-4">
-          <div className="flex items-center gap-2">
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button variant="ghost" size="icon" className="h-8 w-8">
+              <MoreVertical className="h-4 w-4" />
+            </Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end">
+            <DropdownMenuItem 
+              onSelect={() => onDelete()}
+              className="text-destructive"
+            >
+              <Trash2 className="mr-2 h-4 w-4" />
+              Delete Topic
+            </DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
+      </div>
+
+      <div className="mt-4">
+        <div className="flex items-center justify-between mb-2 text-sm">
+          <div className="flex items-center gap-1.5">
             {completionPercentage === 100 ? (
-              <CheckCircle className="h-5 w-5 text-green-500" />
+              <CheckCircle className="h-4 w-4 text-green-500" />
             ) : (
-              <XCircle className="h-5 w-5 text-destructive" />
+              <XCircle className="h-4 w-4 text-destructive" />
             )}
             <span className="font-medium">
               {completionPercentage === 100 ? 'Completed' : 'In Progress'}
             </span>
           </div>
-          <span className="text-sm text-muted-foreground">
+          <span className="text-muted-foreground">
             {completedTopics} of {totalTopics} topics completed
           </span>
         </div>
-        <Progress value={completionPercentage} className="h-2" />
-      </Card>
-    </div>
+        <Progress value={completionPercentage} className="h-1.5" />
+      </div>
+    </Card>
   );
 }

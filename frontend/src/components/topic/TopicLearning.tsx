@@ -159,13 +159,11 @@ export default function TopicLearning() {
       <div className="flex flex-col h-[calc(100vh-4rem)] overflow-hidden">
         {/* Top Section */}
         <div className="container mx-auto px-4 py-2">
-          <div className="bg-card rounded-xl p-6 shadow-sm">
-            <LearningProgress 
-              topic={topic} 
-              onUpdate={handleUpdateTopic}
-              onDelete={() => setShowDeleteDialog(true)}
-            />
-          </div>
+          <LearningProgress 
+            topic={topic} 
+            onUpdate={handleUpdateTopic}
+            onDelete={() => setShowDeleteDialog(true)}
+          />
         </div>
 
         {/* Main Content */}
