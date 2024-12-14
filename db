@@ -1,1 +1,3 @@
-turso db shell quizlearn
+
+# turso db shell quizlearn
+sqlite3 ./backend/data/db/quizlearn.db

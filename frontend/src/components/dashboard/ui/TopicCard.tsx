@@ -1,5 +1,5 @@
 import { cn } from "@/lib/utils";
-import type { Topic } from "@/lib/types";
+import type { Topic } from "@/lib/services";
 import { formatDistanceToNow } from "date-fns";
 import { Card, CardHeader, CardContent, CardFooter } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
@@ -38,7 +38,7 @@ export function TopicCard({ topic, className, onClick }: TopicCardProps) {
         <div className="flex items-center text-sm text-muted-foreground">
           <Clock className="w-4 h-4 mr-2" />
           <span>
-            Last updated {formatDistanceToNow(new Date(topic.updated_at * 1000), { addSuffix: true })}
+            Last updated {formatDistanceToNow(new Date(topic.updatedAt * 1000), { addSuffix: true })}
           </span>
         </div>
       </CardContent>

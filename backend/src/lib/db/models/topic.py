@@ -14,17 +14,17 @@ class TopicModel:
         description: str,
         lessonPlan: LessonPlan
     ) -> Topic:
-        id = generateId()
+        topic_id = generateId()
         timestamp = to_unix_timestamp(now())
 
         try:
             result = await dbClient.execute(
                 sql="""
-                    INSERT INTO topics (id, user_id, title, description, lesson_plan, created_at, updated_at)
+                    INSERT INTO topics (topic_id, user_id, title, description, lesson_plan, created_at, updated_at)
                     VALUES (?, ?, ?, ?, ?, ?, ?)
                     RETURNING *
                 """,
-                args=[id, userId, title, description, json.dumps(lessonPlan), timestamp, timestamp]
+                args=[topic_id, userId, title, description, json.dumps(lessonPlan), timestamp, timestamp]
             )
 
             if not result.rows or len(result.rows) == 0:
@@ -49,11 +49,11 @@ class TopicModel:
             raise e
 
     @staticmethod
-    async def getById(id: str) -> Optional[Topic]:
+    async def getById(topic_id: str) -> Optional[Topic]:
         try:
             result = await dbClient.execute(
-                sql='SELECT * FROM topics WHERE id = ?',
-                args=[id]
+                sql='SELECT * FROM topics WHERE topic_id = ?',
+                args=[topic_id]
             )
 
             if not result.rows or len(result.rows) == 0:
@@ -66,7 +66,7 @@ class TopicModel:
 
     @staticmethod
     async def update(
-        id: str,
+        topic_id: str,
         title: Optional[str] = None,
         description: Optional[str] = None,
         lessonPlan: Optional[LessonPlan] = None
@@ -75,7 +75,7 @@ class TopicModel:
 
         try:
             # First get the existing topic
-            existing = await TopicModel.getById(id)
+            existing = await TopicModel.getById(topic_id)
             if not existing:
                 raise Exception('Topic not found')
 
@@ -96,8 +96,8 @@ class TopicModel:
             updates.append("updated_at = ?")
             params.append(timestamp)
 
-            # Add id as the last parameter for WHERE clause
-            params.append(id)
+            # Add topic_id as the last parameter for WHERE clause
+            params.append(topic_id)
 
             # If no fields to update, return existing topic
             if not updates:
@@ -110,7 +110,7 @@ class TopicModel:
                 "sql": f"""
                     UPDATE topics
                     SET {", ".join(updates)}
-                    WHERE id = ?
+                    WHERE topic_id = ?
                     RETURNING *
                 """
             })
@@ -119,7 +119,7 @@ class TopicModel:
                 sql=f"""
                     UPDATE topics
                     SET {", ".join(updates)}
-                    WHERE id = ?
+                    WHERE topic_id = ?
                     RETURNING *
                 """,
                 args=params
@@ -134,11 +134,11 @@ class TopicModel:
             raise e
 
     @staticmethod
-    async def delete(id: str) -> bool:
+    async def delete(topic_id: str) -> bool:
         try:
             result = await dbClient.execute(
-                sql='DELETE FROM topics WHERE id = ?',
-                args=[id]
+                sql='DELETE FROM topics WHERE topic_id = ?',
+                args=[topic_id]
             )
 
             return result.rowcount > 0
@@ -150,7 +150,7 @@ class TopicModel:
     def mapTopic(row: any) -> Topic:
         try:
             return {
-                'id': row.id,
+                'topic_id': row.topic_id,
                 'userId': row.user_id,
                 'title': row.title,
                 'description': row.description,

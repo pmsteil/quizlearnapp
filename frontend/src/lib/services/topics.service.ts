@@ -2,9 +2,10 @@ import { ApiClient } from '../api';
 
 export interface Topic {
   user_id: string;
-  id: string;
+  topic_id: string;
   title: string;
   description: string;
+  progress: number;
   lessonPlan: LessonPlan;
   createdAt: number;
   updatedAt: number;
@@ -54,22 +55,19 @@ export class TopicsService extends ApiClient {
     return this.get(`/topics/user/${user_id}`);
   }
 
-  async getTopic(id: string): Promise<Topic> {
-    console.log(`Fetching topic with id: ${id}`);
+  async getTopic(topic_id: string): Promise<Topic | null> {
+    console.log('Getting topic:', topic_id);
     try {
-      const response = await this.get(`/topics/${id}`);
-      console.log('Topic fetch successful:', response);
+      const response = await this.get(`/topics/${topic_id}`);
+      console.log('Response:', response);
+      if (!response) {
+        console.error('No response received');
+        return null;
+      }
       return response;
     } catch (error) {
-      console.error('Error fetching topic:', {
-        topicId: id,
-        error: error instanceof Error ? {
-          name: error.name,
-          message: error.message,
-          stack: error.stack
-        } : error
-      });
-      throw error;
+      console.error('Error getting topic:', error);
+      return null;
     }
   }
 
@@ -113,7 +111,7 @@ export class TopicsService extends ApiClient {
     }
   }
 
-  async updateTopic(id: string, data: UpdateTopicData): Promise<Topic> {
+  async updateTopic(topic_id: string, data: UpdateTopicData): Promise<Topic> {
     // Convert from camelCase to snake_case for the backend
     const payload = {
       ...data,
@@ -123,7 +121,7 @@ export class TopicsService extends ApiClient {
 
     console.log('Updating topic with payload:', payload);
     try {
-      const response = await this.put(`/topics/${id}`, payload);
+      const response = await this.put(`/topics/${topic_id}`, payload);
       console.log('Topic updated:', response);
       return response;
     } catch (error) {
@@ -132,8 +130,8 @@ export class TopicsService extends ApiClient {
     }
   }
 
-  async deleteTopic(id: string): Promise<void> {
-    return this.delete(`/topics/${id}`);
+  async deleteTopic(topic_id: string): Promise<void> {
+    return this.delete(`/topics/${topic_id}`);
   }
 }
 

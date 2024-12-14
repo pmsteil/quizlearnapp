@@ -28,41 +28,6 @@ export default function TopicLearning() {
   const [isLoading, setIsLoading] = useState(true);
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
 
-  useEffect(() => {
-    const loadTopic = async () => {
-      if (!id) return;
-
-      try {
-        const loadedTopic = await topicsService.getTopic(id);
-        if (!loadedTopic) {
-          toast({
-            title: "Error",
-            description: "Topic not found",
-            variant: "destructive",
-          });
-          return;
-        }
-        setTopic(loadedTopic);
-        setMessages([{
-          id: 1,
-          type: 'ai',
-          content: `Welcome to ${loadedTopic.title}! I'm here to help you learn. What would you like to know about this topic?`
-        }]);
-      } catch (error) {
-        console.error('Error loading topic:', error);
-        toast({
-          title: "Error",
-          description: "Failed to load the topic. Please try again.",
-          variant: "destructive",
-        });
-      } finally {
-        setIsLoading(false);
-      }
-    };
-
-    loadTopic();
-  }, [id, navigate]);
-
   const handleUpdateTopic = async (updates: Partial<Topic>) => {
     if (!id || !topic) return;
 
@@ -123,11 +88,59 @@ export default function TopicLearning() {
     setMessages(prev => [...prev, aiMessage]);
   };
 
+  useEffect(() => {
+    const loadTopic = async () => {
+      if (!id) {
+        console.log('No id provided');
+        return;
+      }
+
+      console.log('Loading topic:', id);
+      setIsLoading(true);
+
+      try {
+        const loadedTopic = await topicsService.getTopic(id);
+        console.log('Loaded topic:', loadedTopic);
+        if (!loadedTopic) {
+          console.log('Topic not found');
+          toast({
+            title: "Error",
+            description: "Topic not found",
+            variant: "destructive",
+          });
+          return;
+        }
+        setTopic(loadedTopic);
+        setMessages([{
+          id: 1,
+          type: 'ai',
+          content: `Welcome to ${loadedTopic.title}! I'm here to help you learn. What would you like to know about this topic?`
+        }]);
+      } catch (error) {
+        console.error('Error loading topic:', error);
+        toast({
+          title: "Error",
+          description: "Failed to load the topic. Please try again.",
+          variant: "destructive",
+        });
+      } finally {
+        console.log('Setting isLoading to false');
+        setIsLoading(false);
+      }
+    };
+
+    loadTopic();
+  }, [id, navigate]);
+
+  console.log('Render state:', { id, isLoading, topic });
+
   if (!id) {
+    console.log('No id, returning null');
     return null;
   }
 
   if (isLoading) {
+    console.log('Still loading, showing loading state');
     return (
       <PageLayout>
         <div className="flex items-center justify-center h-[calc(100vh-4rem)]">
@@ -138,6 +151,7 @@ export default function TopicLearning() {
   }
 
   if (!topic) {
+    console.log('No topic, showing not found state');
     return (
       <PageLayout>
         <div className="flex flex-col items-center justify-center h-[calc(100vh-4rem)]">

@@ -47,7 +47,7 @@ class TopicUpdate(BaseModel):
     lesson_plan: LessonPlan | None = None
 
 class Topic(BaseModel):
-    id: str
+    topic_id: str
     user_id: str
     title: str
     description: str | None = None
@@ -81,7 +81,7 @@ class TopicService:
             result = get_db().execute("""
                 SELECT 
                     t.user_id,
-                    t.id,
+                    t.topic_id,
                     t.title,
                     t.description,
                     t.lesson_plan,
@@ -99,7 +99,7 @@ class TopicService:
                     # Convert row tuple to dict with proper field names
                     topic_dict = {
                         "user_id": row[0],
-                        "id": row[1],
+                        "topic_id": row[1],
                         "title": row[2],
                         "description": row[3],
                         "lessonPlan": json.loads(row[4]) if row[4] else {"mainTopics": [], "currentTopic": "", "completedTopics": []},
@@ -130,14 +130,14 @@ class TopicService:
             result = get_db().execute("""
                 SELECT 
                     t.user_id,
-                    t.id,
+                    t.topic_id,
                     t.title,
                     t.description,
                     t.lesson_plan,
                     t.created_at,
                     t.updated_at
                 FROM topics t
-                WHERE t.id = ?
+                WHERE t.topic_id = ?
             """, [topic_id])
 
             if not result.rows:
@@ -146,7 +146,7 @@ class TopicService:
             row = result.rows[0]
             return {
                 "user_id": row[0],
-                "id": row[1],
+                "topic_id": row[1],
                 "title": row[2],
                 "description": row[3],
                 "lessonPlan": json.loads(row[4]) if row[4] else {"mainTopics": [], "currentTopic": "", "completedTopics": []},
@@ -173,7 +173,7 @@ class TopicService:
             
             logger.info("Executing insert query")
             result = get_db().execute("""
-                INSERT INTO topics (id, user_id, title, description, progress, lesson_plan, created_at, updated_at)
+                INSERT INTO topics (topic_id, user_id, title, description, progress, lesson_plan, created_at, updated_at)
                 VALUES (?, ?, ?, ?, ?, ?, ?, ?)
             """, [
                 topic_id,
@@ -190,7 +190,7 @@ class TopicService:
             # Return the created topic
             return {
                 "user_id": topic.user_id,
-                "id": topic_id,
+                "topic_id": topic_id,
                 "title": topic.title,
                 "description": topic.description,
                 "progress": 0,
@@ -240,8 +240,8 @@ class TopicService:
             result = db.execute(f"""
                 UPDATE topics
                 SET {", ".join(updates)}
-                WHERE id = ? 
-                RETURNING id, user_id, title, description, lesson_plan, created_at, updated_at
+                WHERE topic_id = ? 
+                RETURNING topic_id, user_id, title, description, lesson_plan, created_at, updated_at
             """, params)
 
             if not result.rows:
@@ -253,7 +253,7 @@ class TopicService:
             
             return {
                 "user_id": row[1],
-                "id": row[0],
+                "topic_id": row[0],
                 "title": row[2],
                 "description": row[3],
                 "lesson_plan": json.loads(row[4]) if row[4] else {
@@ -282,8 +282,8 @@ class TopicService:
             
             # First check if the topic exists
             result = db.execute("""
-                SELECT id FROM topics 
-                WHERE id = ?
+                SELECT topic_id FROM topics 
+                WHERE topic_id = ?
             """, [topic_id])
             
             if not result.rows:
@@ -292,7 +292,7 @@ class TopicService:
             # Delete the topic
             db.execute("""
                 DELETE FROM topics
-                WHERE id = ?
+                WHERE topic_id = ?
             """, [topic_id])
             
         except Exception as e:

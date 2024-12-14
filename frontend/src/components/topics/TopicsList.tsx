@@ -41,6 +41,10 @@ export default function TopicsList() {
   const [sortBy, setSort] = useState<'recent' | 'progress' | 'name'>('recent');
   const [configError, setConfigError] = useState<{title: string; message: string} | null>(null);
 
+  const handleTopicClick = (topic: Topic) => {
+    navigate(`/topic/${topic.topic_id}`);
+  };
+
   const {
     data: topics,
     error: topicsError,
@@ -145,7 +149,7 @@ export default function TopicsList() {
         title: "Success",
         description: "Topic created successfully",
       });
-      navigate(`/topic/${topic.id}`);
+      navigate(`/topic/${topic.topic_id}`);
     } catch (error) {
       console.error('Error creating topic:', error);
       if (error instanceof AppError) {
@@ -218,9 +222,9 @@ export default function TopicsList() {
         <div className="grid gap-4">
           {sortedTopics.map((topic) => (
             <TopicItem
-              key={topic.id}
+              key={topic.topic_id}
               topic={topic}
-              onClick={() => navigate(`/topic/${topic.id}`)}
+              onClick={() => handleTopicClick(topic)}
             />
           ))}
         </div>
