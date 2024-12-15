@@ -92,14 +92,9 @@ async def login(request: Request, credentials: LoginRequest = Body(...)):
         logger.info(f"Creating session for user: {credentials.email}")
         session = auth_service.create_session(user["user_id"])
         
-        # Generate token
+        # Create token
         token = create_access_token(
-            data={
-                "user": {
-                    **user,
-                    "session_id": session["session_id"]
-                }
-            },
+            data={"user": user},
             expires_delta=timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
         )
         
@@ -110,7 +105,7 @@ async def login(request: Request, credentials: LoginRequest = Body(...)):
                 id=user["user_id"],
                 email=user["email"],
                 name=user["name"],
-                roles=user["roles"]
+                roles=user["roles"].split(",")
             )
         )
         logger.info(f"Login successful for user: {credentials.email}")
