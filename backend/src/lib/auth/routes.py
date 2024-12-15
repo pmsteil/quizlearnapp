@@ -52,43 +52,23 @@ async def login(request: Request, form_data: OAuth2PasswordRequestForm = Depends
         # Log form data for debugging
         logger.info(f"Form data - username: {form_data.username}, password length: {len(form_data.password)}")
         
-        user = await auth_service.authenticate_user(form_data.username, form_data.password)
+        result = await auth_service.authenticate_user(form_data.username, form_data.password)
         
-        if not user:
-            logger.warning(f"Authentication failed: user not found or invalid password for {form_data.username}")
-            raise HTTPException(
-                status_code=401,
-                detail={
-                    "error_code": "INVALID_CREDENTIALS",
-                    "message": "Incorrect username or password"
-                },
-                headers={"WWW-Authenticate": "Bearer"},
-            )
-
-        logger.info(f"Authentication successful for user: {user['email']}")
-
-        # Create access token
-        access_token_expires = timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
-        access_token = create_access_token(
-            data={"sub": user["user_id"], "user": user},
-            expires_delta=access_token_expires
-        )
-
         # Create refresh token
         refresh_token_expires = timedelta(days=REFRESH_TOKEN_EXPIRE_DAYS)
         refresh_token = create_access_token(
-            data={"sub": user["user_id"], "type": "refresh"},
+            data={"sub": result["user"]["user_id"], "type": "refresh"},
             expires_delta=refresh_token_expires
         )
 
         response_data = {
-            "access_token": access_token,
+            "access_token": result["access_token"],
             "refresh_token": refresh_token,
-            "token_type": "bearer",
+            "token_type": result["token_type"],
             "expires_in": ACCESS_TOKEN_EXPIRE_MINUTES * 60,  # Convert to seconds
-            "user": user
+            "user": result["user"]
         }
-        logger.info(f"Login successful for user: {user['email']}")
+        logger.info(f"Login successful for user: {result['user']['email']}")
         return response_data
 
     except AuthenticationError as e:

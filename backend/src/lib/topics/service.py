@@ -171,32 +171,47 @@ class TopicService:
             current_time = int(time.time())
             lesson_plan = topic.get_lesson_plan()
             
-            logger.info("Executing insert query")
-            result = get_db().execute("""
-                INSERT INTO topics (topic_id, user_id, title, description, progress, lesson_plan, created_at, updated_at)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-            """, [
-                topic_id,
-                topic.user_id,
-                topic.title,
-                topic.description,
-                0,  # Initial progress
-                json.dumps(lesson_plan.dict()),
-                current_time,
-                current_time
-            ])
-            logger.info("Insert successful")
+            db = get_db()
+            
+            # Start a transaction
+            with db.transaction():
+                # First create the topic
+                logger.info("Creating topic")
+                db.execute("""
+                    INSERT INTO topics (topic_id, title, description, progress, lesson_plan, created_at, updated_at)
+                    VALUES (?, ?, ?, ?, ?, ?, ?)
+                """, [
+                    topic_id,
+                    topic.title,
+                    topic.description,
+                    0,  # Initial progress
+                    json.dumps(lesson_plan.dict()),
+                    current_time,
+                    current_time
+                ])
+                
+                # Then create the user-topic relationship
+                logger.info("Creating user-topic relationship")
+                db.execute("""
+                    INSERT INTO user_topics (user_id, topic_id, goal_text)
+                    VALUES (?, ?, ?)
+                """, [
+                    topic.user_id,
+                    topic_id,
+                    f"Learn {topic.title}"  # Default goal text
+                ])
+            
+            logger.info("Topic creation successful")
             
             # Return the created topic
             return {
-                "user_id": topic.user_id,
                 "topic_id": topic_id,
+                "user_id": topic.user_id,
                 "title": topic.title,
                 "description": topic.description,
-                "progress": 0,
-                "lessonPlan": lesson_plan.dict(),
-                "createdAt": current_time,
-                "updatedAt": current_time
+                "lesson_plan": lesson_plan.dict(),
+                "created_at": current_time,
+                "updated_at": current_time
             }
             
         except Exception as e:

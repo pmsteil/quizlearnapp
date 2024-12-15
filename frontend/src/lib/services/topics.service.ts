@@ -56,7 +56,7 @@ export class TopicsService extends ApiClient {
     return this.get(`/topics/user/${user_id}`);
   }
 
-  async getTopic(topic_id: string): Promise<Topic | null> {
+  async getTopic(topic_id: string | number): Promise<Topic | null> {
     console.log('Getting topic:', topic_id);
     try {
       const response = await this.get(`/topics/${topic_id}`);

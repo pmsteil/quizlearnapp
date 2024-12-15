@@ -20,36 +20,69 @@ export interface TopicProgress {
 
 export class TopicService {
   static async createTopic(params: CreateTopicParams): Promise<Topic> {
-    const result = await db.execute({
-      sql: `INSERT INTO topics (title, description, difficulty, user_id, created_at, updated_at)
-            VALUES (?, ?, ?, ?, ?, ?)
-            RETURNING *`,
-      args: [
-        params.title,
-        params.description || '',
-        params.difficulty,
-        params.user_id,
-        Date.now(),
-        Date.now()
-      ]
+    // Start a transaction since we need to insert into two tables
+    const result = await db.transaction(async (tx) => {
+      // First create the topic
+      const topicResult = await tx.execute({
+        sql: `INSERT INTO topics (title, description, difficulty, created_at, updated_at)
+              VALUES (?, ?, ?, ?, ?)
+              RETURNING *`,
+        args: [
+          params.title,
+          params.description || '',
+          params.difficulty,
+          Date.now(),
+          Date.now()
+        ]
+      });
+
+      const topic = topicResult.rows[0];
+      if (!topic) {
+        throw new Error('Failed to create topic');
+      }
+
+      // Then create the user_topics relationship
+      await tx.execute({
+        sql: `INSERT INTO user_topics (user_id, topic_id, goal_text)
+              VALUES (?, ?, ?)`,
+        args: [
+          params.user_id,
+          topic.topic_id,
+          'Learn ' + params.title // Default goal text
+        ]
+      });
+
+      // Return the topic with user_id
+      return {
+        ...topic,
+        user_id: params.user_id
+      };
     });
 
-    return result.rows[0] as unknown as Topic;
+    return result as unknown as Topic;
   }
 
   static async getAllTopics(): Promise<Topic[]> {
     const result = await db.execute({
-      sql: 'SELECT * FROM topics ORDER BY created_at DESC',
+      sql: `
+        SELECT t.*, ut.user_id
+        FROM topics t
+        LEFT JOIN user_topics ut ON t.topic_id = ut.topic_id
+        ORDER BY t.created_at DESC`,
       args: []
     });
 
     return result.rows as unknown as Topic[];
   }
 
-  static async getTopic(id: number): Promise<Topic | null> {
+  static async getTopic(id: string | number): Promise<Topic | null> {
     const result = await db.execute({
-      sql: 'SELECT * FROM topics WHERE topic_id = ?',
-      args: [id]
+      sql: `
+        SELECT t.*, ut.user_id
+        FROM topics t
+        LEFT JOIN user_topics ut ON t.topic_id = ut.topic_id
+        WHERE t.topic_id = ?`,
+      args: [id.toString()]
     });
 
     return result.rows[0] ? (result.rows[0] as unknown as Topic) : null;

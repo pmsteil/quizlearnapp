@@ -5,8 +5,8 @@ CREATE TABLE IF NOT EXISTS user_progress (
     question_id TEXT NOT NULL,
     is_correct BOOLEAN NOT NULL,
     created_at INTEGER,
-    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
-    FOREIGN KEY (topic_id) REFERENCES topics(id) ON DELETE CASCADE,
+    FOREIGN KEY (user_id) REFERENCES users(user_id) ON DELETE CASCADE,
+    FOREIGN KEY (topic_id) REFERENCES topics(topic_id) ON DELETE CASCADE,
     FOREIGN KEY (question_id) REFERENCES questions(id) ON DELETE CASCADE
 );
 
