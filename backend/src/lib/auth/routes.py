@@ -28,12 +28,18 @@ ACCESS_TOKEN_EXPIRE_MINUTES = 30
 REFRESH_TOKEN_EXPIRE_DAYS = 30
 
 # Pydantic models
+class UserResponse(BaseModel):
+    id: str  # Changed from int to str to handle UUID
+    email: str
+    name: str
+    roles: List[str]
+
 class Token(BaseModel):
     access_token: str
     refresh_token: str
     token_type: str
     expires_in: int
-    user: dict
+    user: UserResponse
 
 class TokenData(BaseModel):
     username: Optional[str] = None
@@ -45,16 +51,6 @@ class LoginRequest(BaseModel):
     email: str
     password: str
 
-class UserResponse(BaseModel):
-    id: str  # Changed from int to str to handle UUID
-    email: str
-    name: str
-    roles: List[str]
-
-class LoginResponse(BaseModel):
-    token: str
-    user: UserResponse
-
 class RegisterRequest(BaseModel):
     email: str
     password: str
@@ -65,7 +61,7 @@ async def login_options():
     """Handle preflight requests for the login endpoint."""
     return {}
 
-@router.post("/login", response_model=LoginResponse)
+@router.post("/login", response_model=Token)
 async def login(request: Request, credentials: LoginRequest = Body(...)):
     """Login endpoint that authenticates a user and returns a session token."""
     # Log request details
@@ -96,23 +92,39 @@ async def login(request: Request, credentials: LoginRequest = Body(...)):
         session = auth_service.create_session(user["user_id"])
         
         # Create token
-        token = create_access_token(
-            data={"user": user},
+        access_token = create_access_token(
+            data={"user": {
+                "user_id": user["user_id"],
+                "email": user["email"],
+                "name": user["name"],
+                "roles": user["roles"] if isinstance(user["roles"], list) else user["roles"].split(",")
+            }},
             expires_delta=timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
+        )
+
+        # Create refresh token
+        refresh_token = create_access_token(
+            data={"user": user, "refresh": True},
+            expires_delta=timedelta(days=REFRESH_TOKEN_EXPIRE_DAYS)
+        )
+        
+        user_response = UserResponse(
+            id=user["user_id"],
+            email=user["email"],
+            name=user["name"],
+            roles=user["roles"] if isinstance(user["roles"], list) else user["roles"].split(",")
         )
         
         # Prepare response
-        response_data = LoginResponse(
-            token=token,
-            user=UserResponse(
-                id=user["user_id"],
-                email=user["email"],
-                name=user["name"],
-                roles=user["roles"] if isinstance(user["roles"], list) else user["roles"].split(",")
-            )
-        )
+        response_data = {
+            "access_token": access_token,
+            "refresh_token": refresh_token,
+            "token_type": "bearer",
+            "expires_in": ACCESS_TOKEN_EXPIRE_MINUTES * 60,
+            "user": user_response
+        }
         logger.info(f"Login successful for user: {credentials.email}")
-        logger.debug(f"Response data: {json.dumps({k: v for k, v in response_data.dict().items() if k != 'token'})}")
+        logger.debug(f"Response data: {json.dumps({k: v.dict() if isinstance(v, BaseModel) else v for k, v in response_data.items() if k != 'access_token' and k != 'refresh_token'})}")
         return response_data
         
     except AuthenticationError as e:
@@ -141,10 +153,7 @@ async def login(request: Request, credentials: LoginRequest = Body(...)):
 @router.post("/register", response_model=Token)
 async def register(
     request: Request,
-    data: RegisterRequest = None,
-    email: str = None,
-    password: str = None,
-    name: str = None,
+    data: RegisterRequest = Body(...),
 ):
     """Register a new user."""
     logger.info("=== Register attempt ===")
@@ -159,20 +168,6 @@ async def register(
 
     # Log query parameters
     logger.info(f"Query params: {request.query_params}")
-    
-    # Handle both form data and JSON
-    if data is None:
-        if not all([email, password, name]):
-            logger.error("Missing required fields")
-            logger.error(f"Email: {email}, Password: {'*' * len(password) if password else None}, Name: {name}")
-            raise HTTPException(
-                status_code=400,
-                detail={
-                    "error_code": "INVALID_REQUEST",
-                    "message": "Missing required fields"
-                }
-            )
-        data = RegisterRequest(email=email, password=password, name=name)
     
     logger.info(f"Processed data: {data}")
 
@@ -212,12 +207,19 @@ async def register(
             expires_delta=refresh_token_expires
         )
         
+        user_response = UserResponse(
+            id=user["user_id"],
+            email=user["email"],
+            name=user["name"],
+            roles=user["roles"]  # Already a list from register_user
+        )
+        
         return {
             "access_token": access_token,
             "refresh_token": refresh_token,
             "token_type": "bearer",
             "expires_in": ACCESS_TOKEN_EXPIRE_MINUTES * 60,
-            "user": user
+            "user": user_response
         }
     except AuthenticationError as e:
         logger.error(f"Authentication error: {str(e)}")
@@ -282,12 +284,19 @@ async def refresh_token(refresh_token: str):
             expires_delta=refresh_token_expires
         )
 
+        user_response = UserResponse(
+            id=user["user_id"],
+            email=user["email"],
+            name=user["name"],
+            roles=user["roles"] if isinstance(user["roles"], list) else user["roles"].split(",")
+        )
+        
         return {
             "access_token": access_token,
             "refresh_token": new_refresh_token,
             "token_type": "bearer",
             "expires_in": ACCESS_TOKEN_EXPIRE_MINUTES * 60,  # Convert to seconds
-            "user": user
+            "user": user_response
         }
 
     except Exception:

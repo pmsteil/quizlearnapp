@@ -4,7 +4,7 @@ import type { TopicLesson, UserLessonProgress, ProgressStatus } from '../types';
 class LessonsService {
   async getLessonsForTopic(topicId: string | number): Promise<TopicLesson[]> {
     const response = await apiClient.get(`/topics/${topicId}/lessons`);
-    return response.data;
+    return response.data?.data || [];
   }
 
   async getLesson(lessonId: string | number): Promise<TopicLesson> {
@@ -44,7 +44,7 @@ class LessonsService {
 
   async getTopicProgress(topicId: string | number): Promise<UserLessonProgress[]> {
     const response = await apiClient.get(`/topics/${topicId}/progress`);
-    return response.data;
+    return response.data?.data || [];
   }
 }
 

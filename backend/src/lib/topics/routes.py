@@ -19,6 +19,24 @@ class TopicResponse(BaseModel):
     createdAt: int
     updatedAt: int
 
+class TopicLessonResponse(BaseModel):
+    lesson_id: str
+    topic_id: str
+    title: str
+    content: str
+    order_index: int
+    parent_lesson_id: str | None = None
+    created_at: int
+    updated_at: int
+
+class UserLessonProgressResponse(BaseModel):
+    progress_id: str
+    user_id: str
+    lesson_id: str
+    status: str
+    last_interaction_at: int
+    completion_date: int | None = None
+
 @router.get("/user/{user_id}", response_model=List[TopicResponse])
 async def get_user_topics(user_id: str, request: Request, current_user = Depends(get_current_user)):
     """Get all topics for a specific user."""
@@ -69,6 +87,68 @@ async def get_topic(topic_id: str, request: Request, current_user = Depends(get_
     except Exception as e:
         logger.error(f"Error getting topic {topic_id}: {str(e)}")
         logger.error(f"Unexpected error in get_topic endpoint for topic {topic_id}")
+        logger.error(f"Error type: {type(e)}")
+        logger.error(f"Error message: {str(e)}")
+        logger.exception(e)
+        raise HTTPException(status_code=500, detail={"error": str(e), "type": str(type(e))})
+
+@router.get("/{topic_id}/lessons")
+async def get_topic_lessons(topic_id: str, request: Request, current_user = Depends(get_current_user)):
+    """Get all lessons for a specific topic."""
+    try:
+        logger.info(f"Getting lessons for topic {topic_id}")
+        topic_service = TopicService(request.app.state.db)
+        
+        # First check if topic exists and user has access
+        topic = await topic_service.get_topic_by_id(topic_id, request.app.state.db)
+        if not topic:
+            logger.warning(f"Topic not found: {topic_id}")
+            raise HTTPException(status_code=404, detail="Topic not found")
+            
+        if topic["user_id"] != current_user["user_id"] and "role_admin" not in current_user.get("roles", []):
+            logger.warning(f"User {current_user['user_id']} attempted to access lessons for topic {topic_id}")
+            raise HTTPException(status_code=403, detail="Not authorized to view these lessons")
+        
+        # Get lessons
+        lessons = await topic_service.get_topic_lessons(topic_id, request.app.state.db)
+        logger.info(f"Successfully retrieved {len(lessons)} lessons")
+        return {"data": [TopicLessonResponse(**lesson) for lesson in lessons]}
+    except HTTPException as e:
+        logger.error(f"HTTP error in get_topic_lessons endpoint: {str(e)}")
+        raise e
+    except Exception as e:
+        logger.error(f"Error getting lessons for topic {topic_id}")
+        logger.error(f"Error type: {type(e)}")
+        logger.error(f"Error message: {str(e)}")
+        logger.exception(e)
+        raise HTTPException(status_code=500, detail={"error": str(e), "type": str(type(e))})
+
+@router.get("/{topic_id}/progress")
+async def get_topic_progress(topic_id: str, request: Request, current_user = Depends(get_current_user)):
+    """Get progress for all lessons in a topic."""
+    try:
+        logger.info(f"Getting progress for topic {topic_id}")
+        topic_service = TopicService(request.app.state.db)
+        
+        # First check if topic exists and user has access
+        topic = await topic_service.get_topic_by_id(topic_id, request.app.state.db)
+        if not topic:
+            logger.warning(f"Topic not found: {topic_id}")
+            raise HTTPException(status_code=404, detail="Topic not found")
+            
+        if topic["user_id"] != current_user["user_id"] and "role_admin" not in current_user.get("roles", []):
+            logger.warning(f"User {current_user['user_id']} attempted to access progress for topic {topic_id}")
+            raise HTTPException(status_code=403, detail="Not authorized to view this progress")
+        
+        # Get progress
+        progress = await topic_service.get_topic_progress(topic_id, current_user["user_id"], request.app.state.db)
+        logger.info(f"Successfully retrieved progress for {len(progress)} lessons")
+        return {"data": [UserLessonProgressResponse(**p) for p in progress]}
+    except HTTPException as e:
+        logger.error(f"HTTP error in get_topic_progress endpoint: {str(e)}")
+        raise e
+    except Exception as e:
+        logger.error(f"Error getting progress for topic {topic_id}")
         logger.error(f"Error type: {type(e)}")
         logger.error(f"Error message: {str(e)}")
         logger.exception(e)

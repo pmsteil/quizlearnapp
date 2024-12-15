@@ -153,32 +153,159 @@ class TopicService:
                     t.topic_id,
                     t.title,
                     t.description,
-                    t.lesson_plan,
+                    t.progress,
                     t.created_at,
                     t.updated_at
                 FROM topics t
                 WHERE t.topic_id = ?
             """, [topic_id])
 
-            if not result.fetchall():
+            row = result.fetchone()
+            if not row:
                 return None
 
-            row = result.fetchone()
             return {
                 "user_id": row[0],
                 "topic_id": row[1],
                 "title": row[2],
                 "description": row[3],
-                "lessonPlan": json.loads(row[4]) if row[4] else {"mainTopics": [], "currentTopic": "", "completedTopics": []},
+                "progress": row[4],
                 "createdAt": row[5],
-                "updatedAt": row[6]
+                "updatedAt": row[6],
+                "lessonPlan": {
+                    "mainTopics": [],
+                    "currentTopic": "",
+                    "completedTopics": []
+                }
             }
         except Exception as e:
             logger.error(f"Error getting topic {topic_id}")
             logger.error(f"Error type: {type(e)}")
             logger.error(f"Error message: {str(e)}")
             logger.exception(e)
+            raise HTTPException(
+                status_code=500,
+                detail={"error": str(e), "type": str(type(e))}
+            )
+
+    @staticmethod
+    def build_lesson_tree(lessons: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
+        """Build a tree structure from a flat list of lessons."""
+        lesson_map = {lesson["lesson_id"]: {**lesson, "children": []} for lesson in lessons}
+        root_lessons = []
+
+        for lesson in lessons:
+            if lesson["parent_lesson_id"] is None:
+                root_lessons.append(lesson_map[lesson["lesson_id"]])
+            else:
+                parent = lesson_map.get(lesson["parent_lesson_id"])
+                if parent:
+                    parent["children"].append(lesson_map[lesson["lesson_id"]])
+
+        return root_lessons
+
+    @staticmethod
+    async def get_topic_lessons(topic_id: str, db) -> List[Dict[str, Any]]:
+        """Get all lessons for a topic."""
+        try:
+            result = db.execute("""
+                WITH RECURSIVE lesson_tree AS (
+                    -- Base case: Get root lessons (no parent)
+                    SELECT 
+                        lesson_id,
+                        topic_id,
+                        title,
+                        content,
+                        order_index,
+                        parent_lesson_id,
+                        created_at,
+                        updated_at,
+                        0 as level
+                    FROM topic_lessons
+                    WHERE topic_id = ? AND parent_lesson_id IS NULL
+                    
+                    UNION ALL
+                    
+                    -- Recursive case: Get child lessons
+                    SELECT 
+                        t.lesson_id,
+                        t.topic_id,
+                        t.title,
+                        t.content,
+                        t.order_index,
+                        t.parent_lesson_id,
+                        t.created_at,
+                        t.updated_at,
+                        lt.level + 1
+                    FROM topic_lessons t
+                    JOIN lesson_tree lt ON t.parent_lesson_id = lt.lesson_id
+                )
+                SELECT * FROM lesson_tree
+                ORDER BY level, order_index;
+            """, [topic_id])
+            
+            lessons = []
+            for row in result.fetchall():
+                lesson = {
+                    "lesson_id": row[0],
+                    "topic_id": row[1],
+                    "title": row[2],
+                    "content": row[3],
+                    "order_index": row[4],
+                    "parent_lesson_id": row[5],
+                    "created_at": row[6],
+                    "updated_at": row[7]
+                }
+                lessons.append(lesson)
+            
+            # Build the lesson tree
+            return TopicService.build_lesson_tree(lessons)
+        except Exception as e:
+            logger.error(f"Error getting lessons for topic {topic_id}")
+            logger.error(f"Error type: {type(e)}")
+            logger.error(f"Error message: {str(e)}")
+            logger.exception(e)
             raise HTTPException(status_code=500, detail={"error": str(e), "type": str(type(e))})
+
+    @staticmethod
+    async def get_topic_progress(topic_id: str, user_id: str, db) -> List[Dict[str, Any]]:
+        """Get progress for all lessons in a topic."""
+        try:
+            result = db.execute("""
+                SELECT 
+                    p.progress_id,
+                    p.user_id,
+                    p.lesson_id,
+                    p.status,
+                    p.last_interaction_at,
+                    p.completion_date
+                FROM user_lesson_progress p
+                JOIN topic_lessons l ON l.lesson_id = p.lesson_id
+                WHERE l.topic_id = ? AND p.user_id = ?
+            """, [topic_id, user_id])
+            
+            progress = []
+            for row in result.fetchall():
+                progress_item = {
+                    "progress_id": row[0],
+                    "user_id": row[1],
+                    "lesson_id": row[2],
+                    "status": row[3],
+                    "last_interaction_at": row[4],
+                    "completion_date": row[5]
+                }
+                progress.append(progress_item)
+            
+            return progress
+        except Exception as e:
+            logger.error(f"Error getting progress for topic {topic_id}")
+            logger.error(f"Error type: {type(e)}")
+            logger.error(f"Error message: {str(e)}")
+            logger.exception(e)
+            raise HTTPException(
+                status_code=500,
+                detail={"error": str(e), "type": str(type(e))}
+            )
 
     @staticmethod
     def create_topic(topic: TopicCreate, db) -> Dict[str, Any]:

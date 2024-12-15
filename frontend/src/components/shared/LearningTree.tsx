@@ -10,7 +10,7 @@ interface LearningTreeProps {
   currentLessonId?: number;
 }
 
-export function LearningTree({ lessons, progress, onSelectLesson, currentLessonId }: LearningTreeProps) {
+export function LearningTree({ lessons = [], progress, onSelectLesson, currentLessonId }: LearningTreeProps) {
   const [expandedLessons, setExpandedLessons] = useState<number[]>([]);
 
   const toggleLesson = (lessonId: number) => {
@@ -82,7 +82,7 @@ export function LearningTree({ lessons, progress, onSelectLesson, currentLessonI
   };
 
   // Filter root-level lessons (those without parent)
-  const rootLessons = lessons.filter(lesson => !lesson.parent_lesson_id);
+  const rootLessons = Array.isArray(lessons) ? lessons.filter(lesson => !lesson.parent_lesson_id) : [];
 
   return (
     <div className="p-4 space-y-2">
