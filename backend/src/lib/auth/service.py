@@ -109,11 +109,20 @@ class AuthService:
     async def authenticate_user(self, email: str, password: str) -> Dict[str, Any]:
         """Authenticate a user with email and password."""
         try:
+            logger.info(f"Looking up user with email: {email}")
             user = self._find_user(email)
+            logger.info(f"Found user: {bool(user)}")
+            if user:
+                logger.info(f"User data: {json.dumps({k:v for k,v in user.items() if k != 'password_hash'})}")
+                logger.info(f"Stored password hash: {user['password_hash']}")
+            
             if not user:
+                logger.warning(f"User not found: {email}")
                 raise AuthenticationError("Invalid email or password", "INVALID_CREDENTIALS")
 
-            if not self._verify_password(password, user["password_hash"]):
+            logger.info(f"Verifying password (hash: {user['password_hash']})")
+            if not verify_password(password, user["password_hash"]):  # Use the JWT module's verify_password
+                logger.warning(f"Invalid password for user: {email}")
                 raise AuthenticationError("Invalid email or password", "INVALID_CREDENTIALS")
 
             # Don't include password hash in response
@@ -277,58 +286,43 @@ class AuthService:
     async def register_user(self, email: str, name: str, password: str, roles: str = "role_user") -> Dict[str, Any]:
         """Register a new user."""
         try:
-            logger.info(f"Registering user: {email}, {name}")
+            logger.info(f"Registering user: {email}, password")
             # Check if user already exists
-            cursor = self.db.execute(
-                "SELECT COUNT(*) as count FROM users WHERE email = ?",
-                [email]
-            )
-            count = cursor.fetchone()["count"]
-            logger.info(f"Existing users with email {email}: {count}")
-            if count > 0:
+            existing_users = self.db.execute(
+                "SELECT COUNT(*) as count FROM users WHERE email = ?", (email,)
+            ).fetchone()
+            logger.info(f"Existing users with email {email}: {existing_users['count']}")
+
+            if existing_users["count"] > 0:
                 raise AuthenticationError("User already exists", "USER_EXISTS")
 
-            # Create user
             user_id = str(uuid.uuid4())
-            current_time = int(time.time())
             password_hash = get_password_hash(password)
             logger.info(f"Generated user_id: {user_id}, password_hash: {password_hash[:20]}...")
 
-            try:
-                logger.info("Inserting user into database")
-                self.db.execute("""
-                    INSERT INTO users (
-                        user_id, email, name, password_hash, roles,
-                        created_at, updated_at
-                    ) VALUES (?, ?, ?, ?, ?, ?, ?)
-                """, [
-                    user_id, email, name, password_hash, roles,
-                    current_time, current_time
-                ])
-                self.db.commit()
-                logger.info("User inserted successfully")
+            logger.info("Inserting user into database")
+            self.db.execute(
+                """
+                INSERT INTO users (user_id, email, name, password_hash, roles)
+                VALUES (?, ?, ?, ?, ?)
+                """,
+                (user_id, email, name, password_hash, roles),
+            )
+            self.db.commit()
+            logger.info("User inserted successfully")
 
-                # Return user data
-                return {
-                    "user_id": user_id,
-                    "email": email,
-                    "name": name,
-                    "roles": roles.split(",")
-                }
+            # Return the user data without password hash
+            user = {
+                "user_id": user_id,
+                "email": email,
+                "name": name,
+                "roles": roles.split(",") if isinstance(roles, str) else roles
+            }
+            return user
 
-            except sqlite3.Error as e:
-                logger.error(f"Database error in register_user: {str(e)}")
-                logger.error(f"Error type: {type(e)}")
-                logger.exception(e)
-                raise AuthenticationError("Failed to create user", "DATABASE_ERROR")
-
-        except AuthenticationError:
-            raise
-        except Exception as e:
-            logger.error(f"Unexpected error in register_user: {str(e)}")
-            logger.error(f"Error type: {type(e)}")
-            logger.exception(e)
-            raise AuthenticationError("Internal server error", "INTERNAL_ERROR")
+        except sqlite3.Error as e:
+            logger.error(f"Database error in register_user: {str(e)}")
+            raise DatabaseError("Database error occurred")
 
     def list_users(self) -> list:
         """List all users."""

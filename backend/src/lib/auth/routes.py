@@ -14,6 +14,9 @@ import traceback
 logging.basicConfig(level=logging.DEBUG)
 logger = logging.getLogger(__name__)
 
+# Suppress bcrypt warning
+logging.getLogger("passlib.handlers.bcrypt").setLevel(logging.ERROR)
+
 # Create router with prefix
 router = APIRouter(prefix="/auth", tags=["auth"])
 
@@ -43,7 +46,7 @@ class LoginRequest(BaseModel):
     password: str
 
 class UserResponse(BaseModel):
-    id: int
+    id: str  # Changed from int to str to handle UUID
     email: str
     name: str
     roles: List[str]
@@ -105,7 +108,7 @@ async def login(request: Request, credentials: LoginRequest = Body(...)):
                 id=user["user_id"],
                 email=user["email"],
                 name=user["name"],
-                roles=user["roles"].split(",")
+                roles=user["roles"] if isinstance(user["roles"], list) else user["roles"].split(",")
             )
         )
         logger.info(f"Login successful for user: {credentials.email}")
@@ -181,9 +184,9 @@ async def register(
             
         auth_service = AuthService(request.app.state.db)
         user = await auth_service.register_user(
-            data.email,
-            data.password,
-            data.name
+            email=data.email,
+            name=data.name,
+            password=data.password
         )
         
         # Create tokens
@@ -195,7 +198,7 @@ async def register(
                 "user_id": user["user_id"],
                 "email": user["email"],
                 "name": user["name"],
-                "roles": user["roles"].split(",")
+                "roles": user["roles"]  # Already a list from register_user
             }},
             expires_delta=access_token_expires
         )
@@ -204,7 +207,7 @@ async def register(
                 "user_id": user["user_id"],
                 "email": user["email"],
                 "name": user["name"],
-                "roles": user["roles"].split(",")
+                "roles": user["roles"]  # Already a list from register_user
             }, "refresh": True},
             expires_delta=refresh_token_expires
         )
