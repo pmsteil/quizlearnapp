@@ -1,23 +1,30 @@
-from fastapi import APIRouter, Depends, HTTPException, Request
+from fastapi import APIRouter, Depends, HTTPException, Request, Body, status
 from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
-from typing import Optional
-from .service import AuthService, get_current_user, require_admin, AuthenticationError, row_to_dict, verify_password
+from typing import Optional, List
+from .service import AuthService, get_current_user, require_admin, AuthenticationError, row_to_dict, verify_password, get_password_hash
 from .jwt import create_access_token, decode_access_token
+from ..db import DatabaseError
 from datetime import timedelta
 from pydantic import BaseModel
 import logging
+import json
+import traceback
 
+# Configure route-specific logging
+logging.basicConfig(level=logging.DEBUG)
 logger = logging.getLogger(__name__)
 
+# Create router with prefix
 router = APIRouter(prefix="/auth", tags=["auth"])
 
 # OAuth2 configuration
-oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/api/v1/auth/login")
+oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/auth/login")
 
 # Token expiration settings
 ACCESS_TOKEN_EXPIRE_MINUTES = 30
 REFRESH_TOKEN_EXPIRE_DAYS = 30
 
+# Pydantic models
 class Token(BaseModel):
     access_token: str
     refresh_token: str
@@ -31,8 +38,22 @@ class TokenData(BaseModel):
 class LogoutRequest(BaseModel):
     refresh_token: str
 
+class LoginRequest(BaseModel):
+    email: str
+    password: str
+
+class UserResponse(BaseModel):
+    id: int
+    email: str
+    name: str
+    roles: List[str]
+
+class LoginResponse(BaseModel):
+    token: str
+    user: UserResponse
+
 class RegisterRequest(BaseModel):
-    username: str
+    email: str
     password: str
     name: str
 
@@ -41,61 +62,89 @@ async def login_options():
     """Handle preflight requests for the login endpoint."""
     return {}
 
-@router.post("/login", response_model=Token)
-async def login(request: Request, form_data: OAuth2PasswordRequestForm = Depends()):
-    """Login endpoint that returns an access token."""
+@router.post("/login", response_model=LoginResponse)
+async def login(request: Request, credentials: LoginRequest = Body(...)):
+    """Login endpoint that authenticates a user and returns a session token."""
+    # Log request details
+    logger.info(f"Login attempt received")
+    logger.debug(f"Login credentials: email={credentials.email}")
+    logger.debug(f"Request method: {request.method}")
+    logger.debug(f"Request URL: {request.url}")
+    logger.debug(f"Request headers: {dict(request.headers)}")
+    
     try:
-        logger.info(f"Login attempt for username: {form_data.username}")
-        logger.info(f"Raw form data: username={form_data.username}, password length={len(form_data.password)}")
+        # Check database connection
+        logger.debug("Checking database connection")
+        if not hasattr(request.app.state, "db"):
+            logger.error("Database connection not initialized in app state")
+            logger.debug(f"Available app state attributes: {dir(request.app.state)}")
+            raise DatabaseError("Database not initialized")
+        
+        logger.debug("Creating AuthService instance")
         auth_service = AuthService(request.app.state.db)
         
-        # Log form data for debugging
-        logger.info(f"Form data - username: {form_data.username}, password length: {len(form_data.password)}")
+        # Authenticate user
+        logger.info(f"Attempting to authenticate user: {credentials.email}")
+        user = await auth_service.authenticate_user(credentials.email, credentials.password)
+        logger.debug(f"User authenticated successfully: {json.dumps({k: v for k, v in user.items() if k != 'password_hash'})}")
         
-        result = await auth_service.authenticate_user(form_data.username, form_data.password)
+        # Create session
+        logger.info(f"Creating session for user: {credentials.email}")
+        session = auth_service.create_session(user["user_id"])
         
-        # Create refresh token
-        refresh_token_expires = timedelta(days=REFRESH_TOKEN_EXPIRE_DAYS)
-        refresh_token = create_access_token(
-            data={"sub": result["user"]["user_id"], "type": "refresh"},
-            expires_delta=refresh_token_expires
-        )
-
-        response_data = {
-            "access_token": result["access_token"],
-            "refresh_token": refresh_token,
-            "token_type": result["token_type"],
-            "expires_in": ACCESS_TOKEN_EXPIRE_MINUTES * 60,  # Convert to seconds
-            "user": result["user"]
-        }
-        logger.info(f"Login successful for user: {result['user']['email']}")
-        return response_data
-
-    except AuthenticationError as e:
-        logger.warning(f"Authentication failed: {e.message} (code: {e.error_code})")
-        raise HTTPException(
-            status_code=401,
-            detail={
-                "error_code": e.error_code,
-                "message": e.message
+        # Generate token
+        token = create_access_token(
+            data={
+                "user": {
+                    **user,
+                    "session_id": session["session_id"]
+                }
             },
-            headers={"WWW-Authenticate": "Bearer"},
+            expires_delta=timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
         )
-    except Exception as e:
-        logger.error(f"Unexpected error during login for {form_data.username}: {str(e)}")
+        
+        # Prepare response
+        response_data = LoginResponse(
+            token=token,
+            user=UserResponse(
+                id=user["user_id"],
+                email=user["email"],
+                name=user["name"],
+                roles=user["roles"]
+            )
+        )
+        logger.info(f"Login successful for user: {credentials.email}")
+        logger.debug(f"Response data: {json.dumps({k: v for k, v in response_data.dict().items() if k != 'token'})}")
+        return response_data
+        
+    except AuthenticationError as e:
+        logger.warning(f"Authentication failed for user {credentials.email}")
+        logger.debug(f"Authentication error details: {str(e)}")
+        logger.debug(f"Error traceback:\n{traceback.format_exc()}")
         raise HTTPException(
-            status_code=500,
-            detail={
-                "error_code": "LOGIN_FAILED",
-                "message": str(e)
-            }
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail=str(e)
+        )
+    except DatabaseError as e:
+        logger.error(f"Database error during login")
+        logger.debug(f"Database error details: {str(e)}")
+        logger.debug(f"Error traceback:\n{traceback.format_exc()}")
+        raise
+    except Exception as e:
+        logger.error(f"Unexpected error during login")
+        logger.debug(f"Error type: {type(e)}")
+        logger.debug(f"Error details: {str(e)}")
+        logger.debug(f"Error traceback:\n{traceback.format_exc()}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="An unexpected error occurred"
         )
 
 @router.post("/register", response_model=Token)
 async def register(
     request: Request,
     data: RegisterRequest = None,
-    username: str = None,
+    email: str = None,
     password: str = None,
     name: str = None,
 ):
@@ -115,9 +164,9 @@ async def register(
     
     # Handle both form data and JSON
     if data is None:
-        if not all([username, password, name]):
+        if not all([email, password, name]):
             logger.error("Missing required fields")
-            logger.error(f"Username: {username}, Password: {'*' * len(password) if password else None}, Name: {name}")
+            logger.error(f"Email: {email}, Password: {'*' * len(password) if password else None}, Name: {name}")
             raise HTTPException(
                 status_code=400,
                 detail={
@@ -125,14 +174,19 @@ async def register(
                     "message": "Missing required fields"
                 }
             )
-        data = RegisterRequest(username=username, password=password, name=name)
+        data = RegisterRequest(email=email, password=password, name=name)
     
     logger.info(f"Processed data: {data}")
 
     try:
+        # Get database connection from request state
+        if not hasattr(request.app.state, "db"):
+            logger.error("Database connection not initialized")
+            raise DatabaseError("Database not initialized")
+            
         auth_service = AuthService(request.app.state.db)
-        user = auth_service.register_user(
-            data.username,
+        user = await auth_service.register_user(
+            data.email,
             data.password,
             data.name
         )
@@ -142,11 +196,21 @@ async def register(
         refresh_token_expires = timedelta(days=REFRESH_TOKEN_EXPIRE_DAYS)
         
         access_token = create_access_token(
-            data={"sub": user["email"]},
+            data={"user": {
+                "user_id": user["user_id"],
+                "email": user["email"],
+                "name": user["name"],
+                "roles": user["roles"].split(",")
+            }},
             expires_delta=access_token_expires
         )
         refresh_token = create_access_token(
-            data={"sub": user["email"], "refresh": True},
+            data={"user": {
+                "user_id": user["user_id"],
+                "email": user["email"],
+                "name": user["name"],
+                "roles": user["roles"].split(",")
+            }, "refresh": True},
             expires_delta=refresh_token_expires
         )
         
@@ -166,6 +230,9 @@ async def register(
                 "message": str(e)
             }
         )
+    except DatabaseError:
+        # Let the global error handler handle database errors
+        raise
     except Exception as e:
         logger.error(f"Unexpected error during registration: {str(e)}")
         raise HTTPException(
@@ -187,7 +254,15 @@ async def refresh_token(refresh_token: str):
                 detail="Invalid refresh token",
             )
 
-        auth_service = AuthService()
+        # Get database connection from request state
+        if not hasattr(refresh_token, "app"):
+            logger.error("Request object not found")
+            raise Exception("Request object not found")
+        if not hasattr(refresh_token.app.state, "db"):
+            logger.error("Database connection not initialized")
+            raise DatabaseError("Database not initialized")
+            
+        auth_service = AuthService(refresh_token.app.state.db)
         user = await auth_service.get_user_by_id(payload["sub"])
         if not user:
             raise HTTPException(
@@ -233,6 +308,11 @@ async def logout(request: LogoutRequest):
 async def list_users(request: Request):
     """List all users (for debugging)."""
     try:
+        # Get database connection from request state
+        if not hasattr(request.app.state, "db"):
+            logger.error("Database connection not initialized")
+            raise DatabaseError("Database not initialized")
+            
         result = request.app.state.db.execute(
             "SELECT user_id, email, name, roles FROM users"
         )
@@ -258,41 +338,54 @@ async def get_user_debug(email: str, request: Request):
     """Get user details for debugging."""
     try:
         result = request.app.state.db.execute(
-            "SELECT user_id, email, name, password_hash, roles FROM users WHERE email = ?",
+            "SELECT * FROM users WHERE email = ?",
             [email]
         )
-        if not result.rows:
-            raise HTTPException(status_code=404, detail="User not found")
-        user = row_to_dict(result.rows[0])
-        return user
-    except Exception as e:
-        logger.error(f"Error getting user debug info: {str(e)}")
-        raise HTTPException(
-            status_code=500,
-            detail={
-                "error_code": "DATABASE_ERROR",
-                "message": str(e)
+        user = result.fetchone()
+        if not user:
+            return {"message": "User not found"}
+        
+        user_dict = row_to_dict(user)
+        return {
+            "user": {
+                "email": user_dict["email"],
+                "name": user_dict["name"],
+                "roles": user_dict["roles"],
+                "password_hash": user_dict["password_hash"][:20] + "..."  # Only show start of hash
             }
-        )
+        }
+    except Exception as e:
+        logger.error(f"Error in get_user_debug: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
 
 @router.get("/debug/verify/{email}/{password}")
 async def verify_password_debug(email: str, password: str, request: Request):
     """Verify password for debugging."""
     try:
-        result = request.app.state.db.execute(
+        cursor = request.app.state.db.cursor()
+        cursor.execute(
             "SELECT password_hash FROM users WHERE email = ?",
             [email]
         )
-        if not result.rows:
-            return {"verified": False, "error": "User not found"}
+        user = cursor.fetchone()
+        if not user:
+            return {"message": "User not found"}
         
-        password_hash = result.rows[0][0]
-        verified = verify_password(password, password_hash)
+        password_hash = user[0]  # Get first column
+        is_valid = verify_password(password, password_hash)
+        new_hash = get_password_hash(password)  # Generate new hash for comparison
         return {
-            "verified": verified,
+            "email": email,
+            "stored_hash": password_hash,
+            "new_hash": new_hash,
             "password": password,
-            "hash": password_hash
+            "is_valid": is_valid
         }
     except Exception as e:
-        logger.error(f"Error verifying password: {str(e)}")
-        return {"verified": False, "error": str(e)}
+        logger.error(f"Error in verify_password_debug: {str(e)}")
+        logger.error(f"Error type: {type(e)}")
+        logger.exception(e)
+        return {
+            "error": str(e),
+            "type": str(type(e))
+        }

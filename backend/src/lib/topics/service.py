@@ -61,50 +61,69 @@ class Topic(BaseModel):
         }
 
 class TopicService:
-    db = get_db()
+    def __init__(self, db_client=None):
+        """Initialize TopicService with optional database client."""
+        if db_client is None:
+            raise Exception("Database connection required")
+        self.db = db_client
 
     @staticmethod
-    def get_user_topics(user_id: str) -> List[Dict[str, Any]]:
+    def get_user_topics(user_id: str, db) -> List[Dict[str, Any]]:
         """Get all topics for a user."""
         try:
             logger.info(f"Getting topics for user {user_id}")
             
             # First check if user exists
-            user_result = get_db().execute("SELECT user_id FROM users WHERE user_id = ?", [user_id])
-            user = user_result.rows
+            user_result = db.execute("SELECT user_id FROM users WHERE user_id = ?", [user_id])
+            user = user_result.fetchone()
             if not user:
                 logger.error(f"User {user_id} not found")
                 raise HTTPException(status_code=404, detail=f"User {user_id} not found")
 
             # Get topics
             logger.info(f"User found, fetching their topics")
-            result = get_db().execute("""
+            cursor = db.execute("""
                 SELECT 
-                    t.user_id,
                     t.topic_id,
+                    t.user_id,
                     t.title,
                     t.description,
-                    t.lesson_plan,
                     t.created_at,
-                    t.updated_at 
+                    t.updated_at,
+                    (
+                        SELECT json_group_array(
+                            json_object(
+                                'id', l.lesson_id,
+                                'title', l.title,
+                                'content', l.content,
+                                'orderIndex', l.order_index
+                            )
+                        )
+                        FROM topic_lessons l
+                        WHERE l.topic_id = t.topic_id
+                        ORDER BY l.order_index
+                    ) as lessons
                 FROM topics t
                 WHERE t.user_id = ?
                 ORDER BY t.created_at DESC
             """, [user_id])
-            logger.info(f"Found {len(result.rows)} topics")
-
+            
             topics = []
-            for row in result.rows:
+            for row in cursor.fetchall():
                 try:
                     # Convert row tuple to dict with proper field names
                     topic_dict = {
-                        "user_id": row[0],
-                        "topic_id": row[1],
+                        "topic_id": row[0],
+                        "user_id": row[1],
                         "title": row[2],
                         "description": row[3],
-                        "lessonPlan": json.loads(row[4]) if row[4] else {"mainTopics": [], "currentTopic": "", "completedTopics": []},
-                        "createdAt": row[5],
-                        "updatedAt": row[6]
+                        "createdAt": row[4],
+                        "updatedAt": row[5],
+                        "lessonPlan": {
+                            "mainTopics": json.loads(row[6]) if row[6] else [],
+                            "currentTopic": "",
+                            "completedTopics": []
+                        }
                     }
                     topics.append(topic_dict)
                 except Exception as e:
@@ -114,6 +133,7 @@ class TopicService:
                     logger.exception(e)
                     continue
 
+            logger.info(f"Found {len(topics)} topics")
             return topics
 
         except Exception as e:
@@ -124,10 +144,10 @@ class TopicService:
             raise HTTPException(status_code=500, detail={"error": str(e), "type": str(type(e))})
 
     @staticmethod
-    async def get_topic_by_id(topic_id: str) -> Optional[Dict[str, Any]]:
+    async def get_topic_by_id(topic_id: str, db) -> Optional[Dict[str, Any]]:
         """Get a specific topic by ID."""
         try:
-            result = get_db().execute("""
+            result = db.execute("""
                 SELECT 
                     t.user_id,
                     t.topic_id,
@@ -140,10 +160,10 @@ class TopicService:
                 WHERE t.topic_id = ?
             """, [topic_id])
 
-            if not result.rows:
+            if not result.fetchall():
                 return None
 
-            row = result.rows[0]
+            row = result.fetchone()
             return {
                 "user_id": row[0],
                 "topic_id": row[1],
@@ -161,7 +181,7 @@ class TopicService:
             raise HTTPException(status_code=500, detail={"error": str(e), "type": str(type(e))})
 
     @staticmethod
-    def create_topic(topic: TopicCreate) -> Dict[str, Any]:
+    def create_topic(topic: TopicCreate, db) -> Dict[str, Any]:
         """Create a new topic."""
         try:
             logger.info(f"Creating topic for user {topic.user_id}")
@@ -169,23 +189,21 @@ class TopicService:
             
             topic_id = str(uuid.uuid4())
             current_time = int(time.time())
-            lesson_plan = topic.get_lesson_plan()
             
-            db = get_db()
-            
-            # Start a transaction
-            with db.transaction():
+            try:
+                # Start a transaction
+                db.execute("BEGIN TRANSACTION")
+                
                 # First create the topic
                 logger.info("Creating topic")
                 db.execute("""
-                    INSERT INTO topics (topic_id, title, description, progress, lesson_plan, created_at, updated_at)
-                    VALUES (?, ?, ?, ?, ?, ?, ?)
+                    INSERT INTO topics (topic_id, user_id, title, description, created_at, updated_at)
+                    VALUES (?, ?, ?, ?, ?, ?)
                 """, [
                     topic_id,
+                    topic.user_id,
                     topic.title,
                     topic.description,
-                    0,  # Initial progress
-                    json.dumps(lesson_plan.dict()),
                     current_time,
                     current_time
                 ])
@@ -200,8 +218,15 @@ class TopicService:
                     topic_id,
                     f"Learn {topic.title}"  # Default goal text
                 ])
-            
-            logger.info("Topic creation successful")
+                
+                # Commit the transaction
+                db.execute("COMMIT")
+                logger.info("Topic creation successful")
+                
+            except Exception as e:
+                # Rollback on error
+                db.execute("ROLLBACK")
+                raise e
             
             # Return the created topic
             return {
@@ -209,9 +234,13 @@ class TopicService:
                 "user_id": topic.user_id,
                 "title": topic.title,
                 "description": topic.description,
-                "lesson_plan": lesson_plan.dict(),
-                "created_at": current_time,
-                "updated_at": current_time
+                "lessonPlan": {
+                    "mainTopics": [],
+                    "currentTopic": "",
+                    "completedTopics": []
+                },
+                "createdAt": current_time,
+                "updatedAt": current_time
             }
             
         except Exception as e:
@@ -225,9 +254,8 @@ class TopicService:
             )
 
     @staticmethod
-    async def update_topic(topic_id: str, data: TopicUpdate) -> Optional[Dict[str, Any]]:
+    async def update_topic(topic_id: str, data: TopicUpdate, db) -> Optional[Dict[str, Any]]:
         try:
-            db = get_db()
             current_time = int(time.time())
 
             # Build update query dynamically based on provided fields
@@ -259,10 +287,10 @@ class TopicService:
                 RETURNING topic_id, user_id, title, description, lesson_plan, created_at, updated_at
             """, params)
 
-            if not result.rows:
+            if not result.fetchall():
                 raise HTTPException(status_code=404, detail="Topic not found")
 
-            row = result.rows[0]
+            row = result.fetchone()
             # Log the row data for debugging
             logger.debug(f"Row data: {row}")
             
@@ -290,18 +318,16 @@ class TopicService:
             )
 
     @staticmethod
-    async def delete_topic(topic_id: str) -> None:
+    async def delete_topic(topic_id: str, db) -> None:
         """Delete a topic."""
         try:
-            db = get_db()
-            
             # First check if the topic exists
             result = db.execute("""
                 SELECT topic_id FROM topics 
                 WHERE topic_id = ?
             """, [topic_id])
             
-            if not result.rows:
+            if not result.fetchone():
                 raise HTTPException(status_code=404, detail="Topic not found")
             
             # Delete the topic

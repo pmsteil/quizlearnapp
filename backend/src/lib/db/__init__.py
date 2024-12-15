@@ -4,48 +4,94 @@ from dotenv import load_dotenv
 import uuid
 import time
 import logging
-from .migrations import run_migrations
+from pathlib import Path
+from typing import Optional
+import traceback
+from .migrations import run_migrations as _run_migrations
 
 # Set up logging
+logging.basicConfig(
+    level=logging.DEBUG,
+    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+)
 logger = logging.getLogger(__name__)
 
 # Load environment variables
 load_dotenv()
+logger.debug("Environment variables loaded")
 
 # Database client instance
-_db_client = None
 _test_db_client = None
 
-def initialize_db(db):
-    """Initialize database with required tables."""
-    # Enable WAL mode for better concurrency
-    db.execute('PRAGMA journal_mode=WAL')
-    # Enable foreign keys
-    db.execute('PRAGMA foreign_keys=ON')
+class DatabaseError(Exception):
+    """Custom exception for database errors"""
+    pass
+
+def get_db_path():
+    """Get database path from environment variables"""
+    try:
+        db_path = os.environ['LOCAL_DB_PATH']
+        logger.debug(f"Retrieved database path from LOCAL_DB_PATH: {db_path}")
+        return db_path
+    except KeyError:
+        logger.error("LOCAL_DB_PATH environment variable not set")
+        logger.debug(f"Available environment variables: {list(os.environ.keys())}")
+        raise DatabaseError("Database configuration error: LOCAL_DB_PATH environment variable not set")
+
+def initialize_db(db_path: str) -> sqlite3.Connection:
+    """Initialize the database connection."""
+    try:
+        logger.debug(f"Initializing database connection to {db_path}")
+        db = sqlite3.connect(db_path)
+        db.row_factory = sqlite3.Row
+
+        # Enable WAL mode for better concurrency
+        db.execute('PRAGMA journal_mode=WAL')
+        logger.debug("WAL mode enabled")
+
+        # Enable foreign keys
+        db.execute('PRAGMA foreign_keys=ON')
+        logger.debug("Foreign keys enabled")
+
+        # Count number of users for verification
+        cursor = db.cursor()
+        cursor.execute("SELECT COUNT(*) as user_count FROM users")
+        user_count = cursor.fetchone()['user_count']
+        logger.info(f"Current number of users in database: {user_count}")
+
+        return db
+    except Exception as e:
+        logger.error(f"Error initializing database: {str(e)}")
+        raise DatabaseError(f"Failed to initialize database: {str(e)}")
 
 def get_db():
-    """Get the database client instance."""
-    global _db_client
-    if _db_client is None:
-        try:
-            logger.info("Creating new database connection")
-            db_path = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..', 'data', 'db', 'quizlearn.db'))
-            logger.info(f"Using database path: {db_path}")
-            
-            # Ensure directory exists
-            os.makedirs(os.path.dirname(db_path), exist_ok=True)
-            
-            _db_client = sqlite3.connect(db_path)
-            _db_client.row_factory = sqlite3.Row  # This lets us access columns by name
-            
-            initialize_db(_db_client)
-            logger.info("Database connection created successfully")
-        except Exception as e:
-            logger.error("Error creating database connection")
-            logger.error(f"Error type: {type(e)}")
-            logger.error(f"Error message: {str(e)}")
-            raise e
-    return _db_client
+    """Get a new database connection."""
+    try:
+        logger.info("Creating new database connection")
+
+        # Get database path
+        db_path = get_db_path()
+        logger.debug(f"Using absolute database path: {os.path.abspath(db_path)}")
+
+        # Create the database directory if it doesn't exist
+        db_dir = os.path.dirname(db_path)
+        logger.debug(f"Ensuring database directory exists: {db_dir}")
+        os.makedirs(db_dir, exist_ok=True)
+
+        logger.info(f"Using database path: {db_path}")
+
+        # Initialize database
+        db = initialize_db(db_path)
+        logger.info("Database connection created successfully")
+
+        return db
+
+    except (sqlite3.Error, OSError) as e:
+        logger.error("Error creating database connection")
+        logger.error(f"Error type: {type(e)}")
+        logger.error(f"Error message: {str(e)}")
+        logger.debug(f"Full traceback:\n{traceback.format_exc()}")
+        raise DatabaseError("Unable to connect to database")
 
 def get_test_db():
     """Get the test database client instance."""
@@ -114,3 +160,18 @@ def row_to_dict(row):
         }
     else:
         raise ValueError(f"Unexpected number of columns in row: {len(row)}")
+
+def run_migrations():
+    """Run database migrations."""
+    try:
+        # Create a new connection just for migrations
+        db = get_db()
+        try:
+            _run_migrations(db)
+        finally:
+            db.close()
+    except Exception as e:
+        logger.error("Error running migrations")
+        logger.error(f"Error type: {type(e)}")
+        logger.error(f"Error message: {str(e)}")
+        raise

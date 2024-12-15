@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Request
 from typing import List
 from src.lib.auth.service import get_current_user, require_admin
 from src.lib.topics.service import TopicService, TopicCreate, TopicUpdate, LessonPlan
@@ -20,15 +20,16 @@ class TopicResponse(BaseModel):
     updatedAt: int
 
 @router.get("/user/{user_id}", response_model=List[TopicResponse])
-async def get_user_topics(user_id: str, current_user = Depends(get_current_user)):
+async def get_user_topics(user_id: str, request: Request, current_user = Depends(get_current_user)):
     """Get all topics for a specific user."""
     if current_user["user_id"] != user_id and "role_admin" not in current_user.get("roles", []):
         raise HTTPException(status_code=403, detail="Not authorized to view these topics")
     try:
         logger.info(f"Getting topics for user {user_id}")
-        topics = TopicService.get_user_topics(user_id)
+        topic_service = TopicService(request.app.state.db)
+        topics = topic_service.get_user_topics(user_id, request.app.state.db)
         logger.info(f"Successfully retrieved {len(topics)} topics")
-        return topics
+        return [TopicResponse(**topic) for topic in topics]
     except HTTPException as e:
         logger.error(f"HTTP error in get_user_topics endpoint: {str(e)}")
         raise e
@@ -40,12 +41,13 @@ async def get_user_topics(user_id: str, current_user = Depends(get_current_user)
         raise HTTPException(status_code=500, detail={"error": str(e), "type": str(type(e))})
 
 @router.get("/{topic_id}", response_model=TopicResponse)
-async def get_topic(topic_id: str, current_user = Depends(get_current_user)):
+async def get_topic(topic_id: str, request: Request, current_user = Depends(get_current_user)):
     """Get a specific topic by ID."""
     logger.info(f"Getting topic with ID: {topic_id}")
     try:
         logger.info(f"Fetching topic {topic_id} for user {current_user['user_id']}")
-        topic = await TopicService.get_topic_by_id(topic_id)
+        topic_service = TopicService(request.app.state.db)
+        topic = await topic_service.get_topic_by_id(topic_id, request.app.state.db)
         
         if not topic:
             logger.warning(f"Topic not found: {topic_id}")
@@ -60,7 +62,7 @@ async def get_topic(topic_id: str, current_user = Depends(get_current_user)):
         logger.info(f"Topic data retrieved: {topic}")
         
         logger.info(f"Successfully returning topic {topic_id}")
-        return topic
+        return TopicResponse(**topic)
     except HTTPException as e:
         logger.error(f"HTTP error in get_topic endpoint: {str(e)}")
         raise e
@@ -73,16 +75,17 @@ async def get_topic(topic_id: str, current_user = Depends(get_current_user)):
         raise HTTPException(status_code=500, detail={"error": str(e), "type": str(type(e))})
 
 @router.post("", response_model=TopicResponse)
-def create_topic(topic: TopicCreate, current_user = Depends(get_current_user)):
+async def create_topic(topic: TopicCreate, request: Request, current_user = Depends(get_current_user)):
     """Create a new topic."""
     try:
         logger.info(f"Creating topic for user {current_user['user_id']}")
         topic.user_id = current_user["user_id"]
         logger.info(f"Topic data: {topic.dict()}")
         
-        new_topic = TopicService.create_topic(topic)
+        topic_service = TopicService(request.app.state.db)
+        new_topic = topic_service.create_topic(topic, request.app.state.db)
         logger.info(f"Topic created successfully: {new_topic}")
-        return new_topic
+        return TopicResponse(**new_topic)
     except HTTPException as e:
         logger.error(f"HTTP error in create_topic endpoint: {str(e)}")
         raise e
@@ -94,27 +97,29 @@ def create_topic(topic: TopicCreate, current_user = Depends(get_current_user)):
         raise HTTPException(status_code=500, detail={"error": str(e), "type": str(type(e))})
 
 @router.put("/{topic_id}", response_model=TopicResponse)
-async def update_topic(topic_id: str, topic: TopicUpdate, current_user = Depends(get_current_user)):
+async def update_topic(topic_id: str, topic: TopicUpdate, request: Request, current_user = Depends(get_current_user)):
     """Update a topic."""
-    existing_topic = await TopicService.get_topic_by_id(topic_id)
+    existing_topic = await TopicService(request.app.state.db).get_topic_by_id(topic_id, request.app.state.db)
     if not existing_topic:
         raise HTTPException(status_code=404, detail="Topic not found")
     if existing_topic["user_id"] != current_user["user_id"] and "role_admin" not in current_user.get("roles", []):
         raise HTTPException(status_code=403, detail="Not authorized to update this topic")
     
-    updated_topic = await TopicService.update_topic(topic_id, topic)
+    topic_service = TopicService(request.app.state.db)
+    updated_topic = await topic_service.update_topic(topic_id, topic, request.app.state.db)
     if not updated_topic:
         raise HTTPException(status_code=400, detail="No fields to update")
-    return updated_topic
+    return TopicResponse(**updated_topic)
 
 @router.delete("/{topic_id}")
-async def delete_topic(topic_id: str, current_user = Depends(get_current_user)):
+async def delete_topic(topic_id: str, request: Request, current_user = Depends(get_current_user)):
     """Delete a topic."""
-    existing_topic = await TopicService.get_topic_by_id(topic_id)
+    existing_topic = await TopicService(request.app.state.db).get_topic_by_id(topic_id, request.app.state.db)
     if not existing_topic:
         raise HTTPException(status_code=404, detail="Topic not found")
     if existing_topic["user_id"] != current_user["user_id"] and "role_admin" not in current_user.get("roles", []):
         raise HTTPException(status_code=403, detail="Not authorized to delete this topic")
     
-    await TopicService.delete_topic(topic_id)
+    topic_service = TopicService(request.app.state.db)
+    await topic_service.delete_topic(topic_id, request.app.state.db)
     return {"message": "Topic deleted successfully"}

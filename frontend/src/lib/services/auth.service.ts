@@ -12,10 +12,15 @@ interface RegisterData extends LoginCredentials {
 }
 
 interface User {
-  user_id: string;
+  id: number;
   email: string;
   name: string;
   roles: string[];
+}
+
+interface LoginResponse {
+  token: string;
+  user: User;
 }
 
 interface TokenResponse {
@@ -41,19 +46,17 @@ export class AuthService extends ApiClient {
   }
 
   async login(credentials: LoginCredentials) {
-    // Convert credentials to URLSearchParams for OAuth2 compatibility
-    const formData = new URLSearchParams();
-    formData.append('username', credentials.email);
-    formData.append('password', credentials.password);
-
     try {
       console.log('Attempting login with:', { email: credentials.email });
       const response = await fetch(`${this.baseUrl}/auth/login`, {
         method: 'POST',
         headers: {
-          'Content-Type': 'application/x-www-form-urlencoded',
+          'Content-Type': 'application/json',
         },
-        body: formData,
+        body: JSON.stringify({
+          email: credentials.email,
+          password: credentials.password
+        }),
       });
 
       if (!response.ok) {
@@ -90,7 +93,7 @@ export class AuthService extends ApiClient {
 
   async register(data: RegisterData): Promise<TokenResponse> {
     const requestData = {
-      username: data.email,
+      email: data.email,
       password: data.password,
       name: data.name,
     };

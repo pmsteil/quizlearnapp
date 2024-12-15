@@ -1,9 +1,8 @@
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Request
 from src.lib.auth.service import get_current_user, require_admin
 from pydantic import BaseModel
 from typing import Optional, List, Any
 import logging
-from src.lib.db import get_db
 
 logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/admin", tags=["admin"])
@@ -13,14 +12,12 @@ class DatabaseQuery(BaseModel):
     params: Optional[List[Any]] = None
 
 @router.post("/db/query")
-async def execute_query(query: DatabaseQuery, current_user = Depends(require_admin)):
+async def execute_query(query: DatabaseQuery, request: Request, current_user = Depends(require_admin)):
     """Execute a database query. Only accessible by admin users."""
     try:
-        db = get_db()
-        
         logger.info(f"Executing query: {query.sql} with params: {query.params}")
         try:
-            result = db.execute(
+            result = request.app.state.db.execute(
                 query.sql,
                 query.params or []
             )

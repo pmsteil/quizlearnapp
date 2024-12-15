@@ -171,11 +171,10 @@ async def error_handling_middleware(request: Request, call_next):
 # Database connection middleware
 @app.middleware("http")
 async def db_session_middleware(request: Request, call_next):
+    # Use the app-level database connection
     if not hasattr(request.app.state, "db"):
-        # Use test database if it's set in dependency overrides
-        db_func = app.dependency_overrides.get(get_db, get_db)
-        request.app.state.db = db_func()
-        request.app.state.auth_service = AuthService(request.app.state.db)
+        request.app.state.db = get_db()
+        logger.info("Created new database connection in app state")
 
     try:
         response = await call_next(request)

@@ -50,19 +50,59 @@ def run_migrations(db):
                 with open(migration_path, 'r') as f:
                     migration = f.read()
 
-                # Split migration into individual statements
-                statements = [stmt.strip() for stmt in migration.split(';') if stmt.strip()]
-                
+                # Split migration into up and down sections
+                sections = {}
+                current_section = None
+                current_statements = []
+                current_statement = []
+
+                for line in migration.split('\n'):
+                    line = line.strip()
+                    
+                    if line.startswith('-- migrate:'):
+                        if current_section and current_statements:
+                            sections[current_section] = current_statements
+                        current_section = line.replace('-- migrate:', '').strip()
+                        current_statements = []
+                        current_statement = []
+                    elif line and not line.startswith('--'):
+                        current_statement.append(line)
+                        if line.endswith(';'):
+                            stmt = ' '.join(current_statement)  # Use space instead of newline
+                            logger.info(f"Found statement in {migration_file}:")
+                            logger.info(stmt)
+                            current_statements.append(stmt)
+                            current_statement = []
+
+                if current_section and current_statements:
+                    sections[current_section] = current_statements
+
                 try:
-                    # Execute each statement
-                    for stmt in statements:
-                        try:
-                            db.execute(stmt)
-                        except sqlite3.OperationalError as e:
-                            # Skip errors about existing objects
-                            if "already exists" not in str(e):
-                                raise
-                            logger.warning(f"Skipping existing object in {migration_file}: {str(e)}")
+                    # Execute up migration
+                    if 'up' in sections:
+                        logger.info(f"Found {len(sections['up'])} statements in {migration_file}")
+                        for i, stmt in enumerate(sections['up']):
+                            try:
+                                logger.info(f"Executing statement {i + 1} in {migration_file}:")
+                                logger.info(stmt)
+                                db.execute(stmt)
+                                db.commit()  # Commit after each statement
+                                
+                                # Verify table creation
+                                if stmt.strip().upper().startswith('CREATE TABLE'):
+                                    table_name = stmt.split('(')[0].split()[-1]
+                                    logger.info(f"Verifying table {table_name}")
+                                    cursor = db.execute(f"SELECT sql FROM sqlite_master WHERE type='table' AND name=?", (table_name,))
+                                    schema = cursor.fetchone()
+                                    if schema:
+                                        logger.info(f"Table {table_name} schema: {schema[0]}")
+                                    else:
+                                        logger.error(f"Table {table_name} not found after creation!")
+                            except sqlite3.OperationalError as e:
+                                # Skip errors about existing objects
+                                if "already exists" not in str(e):
+                                    raise
+                                logger.warning(f"Skipping existing object in {migration_file}: {str(e)}")
                     
                     # Record migration as applied
                     db.execute(
