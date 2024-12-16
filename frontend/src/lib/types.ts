@@ -8,12 +8,12 @@ export interface Topic {
 }
 
 export interface TopicLesson {
-  lesson_id: number;
-  topic_id: number;
+  lesson_id: string;
+  topic_id: string;
   title: string;
   content: string;
   order_index: number;
-  parent_lesson_id: number | null;
+  parent_lesson_id: string | null;
   created_at: number;
   updated_at: number;
   children?: TopicLesson[];

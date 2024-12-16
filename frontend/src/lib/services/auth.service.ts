@@ -1,4 +1,4 @@
-import { ApiClient } from '../api';
+import { api } from '../api';
 import { TokenManager } from '../utils/token';
 import { AppError } from '../error';
 
@@ -31,12 +31,10 @@ interface TokenResponse {
   user: User;
 }
 
-export class AuthService extends ApiClient {
+export class AuthService {
   private static instance: AuthService;
 
-  private constructor() {
-    super('http://localhost:3000/api/v1');
-  }
+  private constructor() {}
 
   public static getInstance(): AuthService {
     if (!AuthService.instance) {
@@ -48,46 +46,14 @@ export class AuthService extends ApiClient {
   async login(credentials: LoginCredentials) {
     try {
       console.log('Attempting login with:', { email: credentials.email });
-      const response = await fetch(`${this.baseUrl}/auth/login`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          email: credentials.email,
-          password: credentials.password
-        }),
-      });
-
-      if (!response.ok) {
-        const error = await response.json();
-        console.error('Login error response:', error);
-        console.error('Login error status:', response.status);
-        console.error('Login error detail:', error.detail);
-
-        // Handle the error based on the actual structure
-        if (error.detail?.error_code) {
-          throw new AppError(
-            error.detail.message || 'Login failed',
-            response.status,
-            error.detail.error_code
-          );
-        } else if (typeof error.detail === 'string') {
-          throw new AppError(error.detail, response.status, 'LOGIN_FAILED');
-        }
-        throw new AppError('Login failed', response.status, 'LOGIN_FAILED');
-      }
-
-      const data = await response.json();
-      console.log('Login successful, setting tokens');
-      TokenManager.setTokenData(data);
-      return data;
+      const response = await api.post<TokenResponse>('/auth/login', credentials);
+      TokenManager.setToken(response.data.access_token);
+      return response.data;
     } catch (error) {
-      console.error('Login error:', error);
       if (error instanceof AppError) {
         throw error;
       }
-      throw new AppError('Login failed', 500, 'LOGIN_FAILED');
+      throw new AppError('AUTH_ERROR', 'Failed to login. Please check your credentials.');
     }
   }
 
@@ -98,17 +64,11 @@ export class AuthService extends ApiClient {
       name: data.name,
     };
     console.log('Sending registration request:', {
-      url: `${this.baseUrl}/auth/register`,
+      url: '/auth/register',
       data: { ...requestData, password: '***' },
     });
 
-    const response = await fetch(`${this.baseUrl}/auth/register`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify(requestData),
-    });
+    const response = await api.post<TokenResponse>('/auth/register', requestData);
 
     if (!response.ok) {
       let errorMessage = 'Registration failed';
@@ -165,12 +125,10 @@ export class AuthService extends ApiClient {
       const formData = new URLSearchParams();
       formData.append('refresh_token', refreshToken);
 
-      const response = await fetch(`${this.baseUrl}/auth/refresh`, {
-        method: 'POST',
+      const response = await api.post<TokenResponse>('/auth/refresh', formData.toString(), {
         headers: {
           'Content-Type': 'application/x-www-form-urlencoded',
         },
-        body: formData,
       });
 
       if (!response.ok) {
@@ -194,9 +152,7 @@ export class AuthService extends ApiClient {
   async getCurrentUser(): Promise<User> {
     try {
       console.log('Getting current user');
-      const response = await this.request<User>('/auth/me', {
-        method: 'GET',
-      });
+      const response = await api.get<User>('/auth/me');
       console.log('Got current user:', response);
       return response;
     } catch (error) {
@@ -209,7 +165,7 @@ export class AuthService extends ApiClient {
     try {
       const refreshToken = TokenManager.getRefreshToken();
       if (refreshToken) {
-        await this.post('/auth/logout', { refresh_token: refreshToken }, {
+        await api.post('/auth/logout', { refresh_token: refreshToken }, {
           headers: {
             'Content-Type': 'application/json',
           },

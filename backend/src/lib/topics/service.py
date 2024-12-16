@@ -164,6 +164,9 @@ class TopicService:
             if not row:
                 return None
 
+            # Ensure topic has lessons
+            TopicService.ensure_topic_has_lessons(topic_id, db)
+
             return {
                 "user_id": row[0],
                 "topic_id": row[1],
@@ -187,6 +190,23 @@ class TopicService:
                 status_code=500,
                 detail={"error": str(e), "type": str(type(e))}
             )
+
+    @staticmethod
+    def ensure_topic_has_lessons(topic_id: str, db) -> None:
+        """Ensure a topic has lessons, create default ones if none exist."""
+        logger.info(f"Checking lessons for topic {topic_id}")
+        
+        # Check if topic has any lessons
+        result = db.execute("""
+            SELECT COUNT(*) FROM topic_lessons WHERE topic_id = ?
+        """, [topic_id])
+        count = result.fetchone()[0]
+        
+        if count == 0:
+            logger.info(f"No lessons found for topic {topic_id}, creating defaults")
+            TopicService.create_default_lessons(topic_id, db)
+        else:
+            logger.info(f"Topic {topic_id} already has {count} lessons")
 
     @staticmethod
     def build_lesson_tree(lessons: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
@@ -308,6 +328,116 @@ class TopicService:
             )
 
     @staticmethod
+    def create_default_lessons(topic_id: str, db) -> None:
+        """Create default lessons for a new topic."""
+        logger.info(f"Creating default lessons for topic {topic_id}")
+        current_time = int(time.time())
+        
+        # Define default lessons structure
+        default_lessons = [
+            {
+                "id": str(uuid.uuid4()),
+                "title": "Getting Started",
+                "content": "Welcome to your new topic! Let's begin learning.",
+                "order_index": 0,
+                "parent_id": None,
+                "created_at": current_time,
+                "updated_at": current_time,
+                "children": [
+                    {
+                        "id": str(uuid.uuid4()),
+                        "title": "Introduction",
+                        "content": "This is an introduction to your topic.",
+                        "order_index": 0,
+                        "created_at": current_time,
+                        "updated_at": current_time
+                    },
+                    {
+                        "id": str(uuid.uuid4()),
+                        "title": "Key Concepts",
+                        "content": "Here are the key concepts you'll learn.",
+                        "order_index": 1,
+                        "created_at": current_time,
+                        "updated_at": current_time
+                    }
+                ]
+            },
+            {
+                "id": str(uuid.uuid4()),
+                "title": "Core Material",
+                "content": "Let's dive into the main content.",
+                "order_index": 1,
+                "parent_id": None,
+                "created_at": current_time,
+                "updated_at": current_time,
+                "children": [
+                    {
+                        "id": str(uuid.uuid4()),
+                        "title": "Basic Principles",
+                        "content": "Understanding the fundamentals.",
+                        "order_index": 0,
+                        "created_at": current_time,
+                        "updated_at": current_time
+                    },
+                    {
+                        "id": str(uuid.uuid4()),
+                        "title": "Advanced Topics",
+                        "content": "Exploring more complex ideas.",
+                        "order_index": 1,
+                        "created_at": current_time,
+                        "updated_at": current_time
+                    }
+                ]
+            }
+        ]
+
+        # Insert lessons into database
+        try:
+            for main_lesson in default_lessons:
+                # Insert main lesson
+                db.execute("""
+                    INSERT INTO topic_lessons (
+                        lesson_id, topic_id, title, content, 
+                        order_index, parent_lesson_id, created_at, updated_at
+                    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+                """, [
+                    main_lesson["id"],
+                    topic_id,
+                    main_lesson["title"],
+                    main_lesson["content"],
+                    main_lesson["order_index"],
+                    None,
+                    main_lesson["created_at"],
+                    main_lesson["updated_at"]
+                ])
+
+                # Insert child lessons
+                for child in main_lesson["children"]:
+                    db.execute("""
+                        INSERT INTO topic_lessons (
+                            lesson_id, topic_id, title, content, 
+                            order_index, parent_lesson_id, created_at, updated_at
+                        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+                    """, [
+                        child["id"],
+                        topic_id,
+                        child["title"],
+                        child["content"],
+                        child["order_index"],
+                        main_lesson["id"],
+                        child["created_at"],
+                        child["updated_at"]
+                    ])
+            
+            logger.info("Successfully created default lessons")
+        except Exception as e:
+            logger.error("Error creating default lessons")
+            logger.error(f"Error type: {type(e)}")
+            logger.error(f"Error message: {str(e)}")
+            logger.exception(e)
+            raise e
+
+    @staticmethod
     def create_topic(topic: TopicCreate, db) -> Dict[str, Any]:
         """Create a new topic."""
         try:
@@ -345,6 +475,9 @@ class TopicService:
                     topic_id,
                     f"Learn {topic.title}"  # Default goal text
                 ])
+                
+                # Create default lessons
+                TopicService.create_default_lessons(topic_id, db)
                 
                 # Commit the transaction
                 db.execute("COMMIT")

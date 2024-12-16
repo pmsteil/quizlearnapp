@@ -97,3 +97,8 @@ export class ApiClient {
     return this.request<T>(path, { ...options, method: 'DELETE' });
   }
 }
+
+// Create and export default API instance
+const api = new ApiClient('http://localhost:3000/api/v1');
+export { api };
+export default api;

@@ -46,12 +46,15 @@ CREATE TABLE IF NOT EXISTS topic_lessons (
     title TEXT NOT NULL,
     content TEXT NOT NULL,
     order_index INTEGER NOT NULL,
+    parent_lesson_id TEXT,
     created_at INTEGER,
     updated_at INTEGER,
-    FOREIGN KEY (topic_id) REFERENCES topics(topic_id) ON DELETE CASCADE
+    FOREIGN KEY (topic_id) REFERENCES topics(topic_id) ON DELETE CASCADE,
+    FOREIGN KEY (parent_lesson_id) REFERENCES topic_lessons(lesson_id) ON DELETE CASCADE
 );
 
 CREATE INDEX IF NOT EXISTS idx_topic_lessons_topic_id ON topic_lessons(topic_id);
+CREATE INDEX IF NOT EXISTS idx_topic_lessons_parent_id ON topic_lessons(parent_lesson_id);
 
 -- User Topics
 CREATE TABLE IF NOT EXISTS user_topics (

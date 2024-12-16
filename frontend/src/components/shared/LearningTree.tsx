@@ -1,19 +1,17 @@
 import { useState } from 'react';
 import { ChevronDown, ChevronRight, Circle, CheckCircle2, Clock } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import type { TopicLesson, UserLessonProgress } from '@/lib/types';
+import type { Topic, TopicLesson } from '@/lib/types';
 
 interface LearningTreeProps {
-  lessons: TopicLesson[];
-  progress: UserLessonProgress[];
-  onSelectLesson: (lessonId: number) => void;
-  currentLessonId?: number;
+  topic: Topic;
+  onSelectLesson?: (lessonId: number) => void;
 }
 
-export function LearningTree({ lessons = [], progress, onSelectLesson, currentLessonId }: LearningTreeProps) {
-  const [expandedLessons, setExpandedLessons] = useState<number[]>([]);
+export function LearningTree({ topic, onSelectLesson }: LearningTreeProps) {
+  const [expandedLessons, setExpandedLessons] = useState<string[]>([]);
 
-  const toggleLesson = (lessonId: number) => {
+  const toggleLesson = (lessonId: string) => {
     setExpandedLessons(prev => 
       prev.includes(lessonId)
         ? prev.filter(id => id !== lessonId)
@@ -21,12 +19,7 @@ export function LearningTree({ lessons = [], progress, onSelectLesson, currentLe
     );
   };
 
-  const getLessonStatus = (lessonId: number): 'completed' | 'in_progress' | 'not_started' => {
-    const lessonProgress = progress.find(p => p.lesson_id === lessonId);
-    return lessonProgress?.status || 'not_started';
-  };
-
-  const getStatusIcon = (status: 'completed' | 'in_progress' | 'not_started') => {
+  const getStatusIcon = (status: 'not_started' | 'in_progress' | 'completed') => {
     switch (status) {
       case 'completed':
         return <CheckCircle2 className="h-4 w-4 text-green-500" />;
@@ -40,22 +33,20 @@ export function LearningTree({ lessons = [], progress, onSelectLesson, currentLe
   const renderLesson = (lesson: TopicLesson, depth: number = 0) => {
     const hasChildren = lesson.children && lesson.children.length > 0;
     const isExpanded = expandedLessons.includes(lesson.lesson_id);
-    const status = getLessonStatus(lesson.lesson_id);
-    const isCurrentLesson = currentLessonId === lesson.lesson_id;
 
     return (
-      <div key={lesson.lesson_id} className="space-y-1" style={{ marginLeft: `${depth * 1.5}rem` }}>
+      <div key={lesson.lesson_id} className="space-y-1">
         <Button
-          variant={isCurrentLesson ? "secondary" : "ghost"}
+          variant="ghost"
           className="w-full justify-start px-2 py-1 h-auto font-medium"
           onClick={() => {
             if (hasChildren) {
               toggleLesson(lesson.lesson_id);
             }
-            onSelectLesson(lesson.lesson_id);
+            onSelectLesson?.(lesson.lesson_id);
           }}
         >
-          <div className="flex items-center gap-2 flex-1">
+          <div className="flex items-center gap-2 flex-1 min-w-0" style={{ paddingLeft: `${depth * 1}rem` }}>
             {hasChildren && (
               <span className="flex-shrink-0">
                 {isExpanded ? (
@@ -66,27 +57,24 @@ export function LearningTree({ lessons = [], progress, onSelectLesson, currentLe
               </span>
             )}
             <span className="flex-shrink-0">
-              {getStatusIcon(status)}
+              {getStatusIcon('not_started')}
             </span>
             <span className="truncate">{lesson.title}</span>
           </div>
         </Button>
-
+        
         {hasChildren && isExpanded && (
-          <div className="space-y-1">
-            {lesson.children!.map(child => renderLesson(child, depth + 1))}
+          <div className="ml-4 space-y-1">
+            {lesson.children.map(child => renderLesson(child, depth + 1))}
           </div>
         )}
       </div>
     );
   };
 
-  // Filter root-level lessons (those without parent)
-  const rootLessons = Array.isArray(lessons) ? lessons.filter(lesson => !lesson.parent_lesson_id) : [];
-
   return (
     <div className="p-4 space-y-2">
-      {rootLessons.map(lesson => renderLesson(lesson))}
+      {topic.lessons?.map(lesson => renderLesson(lesson))}
     </div>
   );
 }
