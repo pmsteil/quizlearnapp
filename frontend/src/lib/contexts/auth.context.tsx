@@ -52,8 +52,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             logout();
             return;
           }
+          console.log('Token expired, refreshing...');
           const response = await authService.refreshToken(refreshToken);
-          TokenManager.setToken(response.token);
+          TokenManager.setTokenData(response);
+          setUser(response.user);
         } else {
           console.log('Token valid, getting user data');
           const user = await authService.getCurrentUser();
