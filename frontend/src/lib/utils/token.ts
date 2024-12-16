@@ -10,8 +10,27 @@ export class TokenManager {
   private static TOKEN_KEY = 'auth_token_data';
 
   static setTokenData(data: TokenData) {
-    console.log('Setting token data:', { ...data, access_token: '[REDACTED]' });
-    localStorage.setItem(this.TOKEN_KEY, JSON.stringify(data));
+    // Log the full data structure (without sensitive values)
+    console.log('Setting token data:', {
+      ...data,
+      access_token: data.access_token ? '[REDACTED]' : undefined,
+      refresh_token: data.refresh_token ? '[REDACTED]' : undefined
+    });
+    
+    try {
+      // Store the actual data
+      const jsonData = JSON.stringify(data);
+      console.log('Token data stringified successfully');
+      localStorage.setItem(this.TOKEN_KEY, jsonData);
+      console.log('Token data stored in localStorage');
+      
+      // Verify storage
+      const stored = localStorage.getItem(this.TOKEN_KEY);
+      console.log('Verified token data was stored:', !!stored);
+    } catch (error) {
+      console.error('Error storing token data:', error);
+      throw error;
+    }
   }
 
   static setTokens(accessToken: string, refreshToken: string | null, user: any) {

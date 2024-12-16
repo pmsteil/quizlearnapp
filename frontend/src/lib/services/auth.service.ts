@@ -31,6 +31,14 @@ interface TokenResponse {
   user: User;
 }
 
+interface TokenData {
+  access_token: string;
+  refresh_token: string;
+  expires_in: number;
+  token_type: string;
+  user: User;
+}
+
 export class AuthService {
   private static instance: AuthService;
 
@@ -47,9 +55,22 @@ export class AuthService {
     try {
       console.log('Attempting login with:', { email: credentials.email });
       const response = await api.post<TokenResponse>('/auth/login', credentials);
-      TokenManager.setToken(response.data.access_token);
-      return response.data;
+      console.log('Login response:', {
+        ...response,
+        access_token: '[REDACTED]',
+        refresh_token: '[REDACTED]'
+      });
+      
+      try {
+        TokenManager.setTokenData(response as TokenData);
+        console.log('Token data set successfully');
+        return response;
+      } catch (tokenError) {
+        console.error('Error setting token data:', tokenError);
+        throw new AppError('TOKEN_ERROR', 'Failed to store authentication token');
+      }
     } catch (error) {
+      console.error('Login error:', error);
       if (error instanceof AppError) {
         throw error;
       }

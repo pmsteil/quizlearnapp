@@ -73,18 +73,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const login = useCallback(async (email: string, password: string) => {
     try {
       const response = await authService.login({ email, password });
-      TokenManager.setTokenData(response);
+      // response is already the data from the API
       setUser(response.user);
       toast({
         title: "Success",
         description: "Successfully logged in",
       });
     } catch (error) {
-      toast({
-        title: "Error",
-        description: "Failed to log in. Please check your credentials.",
-        variant: "destructive",
-      });
+      console.error('Login error:', error);
       throw error;
     }
   }, []);

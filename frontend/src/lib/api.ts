@@ -52,9 +52,9 @@ export class ApiClient {
         const error = await response.json();
         console.error('API Error:', error);
         throw new AppError(
-          error.detail?.message || error.detail || 'An unexpected error occurred',
+          error.detail || error.message || 'An unexpected error occurred',
           response.status,
-          error.detail?.code || 'UNKNOWN_ERROR'
+          error.error_code || 'UNKNOWN_ERROR'
         );
       } else {
         const text = await response.text();

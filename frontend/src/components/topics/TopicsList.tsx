@@ -39,6 +39,7 @@ function TopicSkeleton() {
 export default function TopicsList() {
   const navigate = useNavigate();
   const { user } = useAuth();
+  console.log('TopicsList user:', user);
   const [sortBy, setSort] = useState<'recent' | 'progress' | 'name'>('recent');
   const [configError, setConfigError] = useState<{title: string; message: string} | null>(null);
 
