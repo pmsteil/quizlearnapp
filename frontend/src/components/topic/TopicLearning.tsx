@@ -75,11 +75,18 @@ export default function TopicLearning() {
 
     try {
       await topicsService.deleteTopic(id);
-      toast.success('Topic deleted successfully');
+      toast({
+        title: "Success",
+        description: "Topic deleted successfully"
+      });
       navigate('/dashboard');
     } catch (error) {
       console.error('Error deleting topic:', error);
-      toast.error('Failed to delete topic');
+      toast({
+        title: "Error",
+        description: "Failed to delete topic",
+        variant: "destructive"
+      });
     }
   };
 
