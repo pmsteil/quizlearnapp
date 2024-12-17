@@ -34,6 +34,10 @@ export default function TopicLearning() {
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
 
   useEffect(() => {
+    window.scrollTo(0, 0);
+  }, []);
+
+  useEffect(() => {
     const loadTopic = async () => {
       if (!id) return;
 
@@ -44,7 +48,11 @@ export default function TopicLearning() {
         ]);
 
         if (!topicData) {
-          toast.error('Topic not found');
+          toast({
+            title: "Error",
+            description: "Topic not found",
+            variant: "destructive"
+          });
           return;
         }
 
@@ -57,7 +65,11 @@ export default function TopicLearning() {
         }
       } catch (error) {
         console.error('Error loading topic:', error);
-        toast.error('Failed to load the topic. Please try again.');
+        toast({
+          title: "Error",
+          description: "Failed to load the topic. Please try again.",
+          variant: "destructive"
+        });
       } finally {
         setIsLoading(false);
       }
@@ -165,13 +177,20 @@ export default function TopicLearning() {
                         ...currentLesson,
                         content
                       });
-                      toast.success('Lesson updated successfully');
+                      toast({
+                        title: "Success",
+                        description: "Lesson updated successfully"
+                      });
                       // Refresh lessons
                       const updatedLessons = await lessonsService.getLessonsForTopic(id);
                       setLessons(updatedLessons);
                     } catch (error) {
                       console.error('Error updating lesson:', error);
-                      toast.error('Failed to update lesson');
+                      toast({
+                        title: "Error",
+                        description: "Failed to update lesson",
+                        variant: "destructive"
+                      });
                     }
                   }}
                 />

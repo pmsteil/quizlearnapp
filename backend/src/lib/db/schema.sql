@@ -47,8 +47,8 @@ CREATE TABLE IF NOT EXISTS topic_lessons (
     content TEXT NOT NULL,
     order_index INTEGER NOT NULL,
     parent_lesson_id TEXT,
-    created_at INTEGER,
-    updated_at INTEGER,
+    created_at INTEGER DEFAULT (unixepoch()),
+    updated_at INTEGER DEFAULT (unixepoch()),
     FOREIGN KEY (topic_id) REFERENCES topics(topic_id) ON DELETE CASCADE,
     FOREIGN KEY (parent_lesson_id) REFERENCES topic_lessons(lesson_id) ON DELETE CASCADE
 );

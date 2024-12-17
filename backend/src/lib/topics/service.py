@@ -209,22 +209,6 @@ class TopicService:
             logger.info(f"Topic {topic_id} already has {count} lessons")
 
     @staticmethod
-    def build_lesson_tree(lessons: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
-        """Build a tree structure from a flat list of lessons."""
-        lesson_map = {lesson["lesson_id"]: {**lesson, "children": []} for lesson in lessons}
-        root_lessons = []
-
-        for lesson in lessons:
-            if lesson["parent_lesson_id"] is None:
-                root_lessons.append(lesson_map[lesson["lesson_id"]])
-            else:
-                parent = lesson_map.get(lesson["parent_lesson_id"])
-                if parent:
-                    parent["children"].append(lesson_map[lesson["lesson_id"]])
-
-        return root_lessons
-
-    @staticmethod
     async def get_topic_lessons(topic_id: str, db) -> List[Dict[str, Any]]:
         """Get all lessons for a topic."""
         try:
@@ -238,8 +222,8 @@ class TopicService:
                         content,
                         order_index,
                         parent_lesson_id,
-                        created_at,
-                        updated_at,
+                        COALESCE(created_at, unixepoch()) as created_at,
+                        COALESCE(updated_at, unixepoch()) as updated_at,
                         0 as level
                     FROM topic_lessons
                     WHERE topic_id = ? AND parent_lesson_id IS NULL
@@ -254,8 +238,8 @@ class TopicService:
                         t.content,
                         t.order_index,
                         t.parent_lesson_id,
-                        t.created_at,
-                        t.updated_at,
+                        COALESCE(t.created_at, unixepoch()) as created_at,
+                        COALESCE(t.updated_at, unixepoch()) as updated_at,
                         lt.level + 1
                     FROM topic_lessons t
                     JOIN lesson_tree lt ON t.parent_lesson_id = lt.lesson_id
@@ -278,8 +262,8 @@ class TopicService:
                 }
                 lessons.append(lesson)
             
-            # Build the lesson tree
-            return TopicService.build_lesson_tree(lessons)
+            # Return flat list of lessons
+            return lessons
         except Exception as e:
             logger.error(f"Error getting lessons for topic {topic_id}")
             logger.error(f"Error type: {type(e)}")
