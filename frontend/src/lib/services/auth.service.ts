@@ -54,7 +54,10 @@ export class AuthService {
   async login(credentials: LoginCredentials) {
     try {
       console.log('Attempting login with:', { email: credentials.email });
-      const response = await api.post<TokenResponse>('/auth/login', credentials);
+      const response = await api.post<TokenResponse>('/auth/login', {
+        email: credentials.email,
+        password: credentials.password
+      });
       console.log('Login response:', {
         ...response,
         access_token: '[REDACTED]',
@@ -62,7 +65,7 @@ export class AuthService {
       });
       
       try {
-        TokenManager.setTokenData(response as TokenData);
+        TokenManager.setTokenData(response);
         console.log('Token data set successfully');
         return response;
       } catch (tokenError) {

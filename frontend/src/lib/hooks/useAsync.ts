@@ -9,6 +9,7 @@ interface UseAsyncOptions {
   onError?: (error: AppError) => void;
   showToast?: boolean;
   successMessage?: string;
+  deps?: any[];
 }
 
 export function useAsync<T = any>(
@@ -20,7 +21,8 @@ export function useAsync<T = any>(
     onSuccess,
     onError,
     showToast = true,
-    successMessage
+    successMessage,
+    deps = []
   } = options;
   const [data, setData] = useState<T | null>(null);
   const [error, setError] = useState<AppError | null>(null);
@@ -61,7 +63,7 @@ export function useAsync<T = any>(
         }
       }
     },
-    [asyncFn, loadingKey, onSuccess, onError, showToast, successMessage, toast, startLoading, stopLoading]
+    [...deps, asyncFn, loadingKey, onSuccess, onError, showToast, successMessage, toast, startLoading, stopLoading]
   );
 
   return {

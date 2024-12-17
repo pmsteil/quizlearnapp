@@ -13,7 +13,8 @@ interface User {
 
 interface AuthContextType {
   user: User | null;
-  login: (email: string, password: string) => Promise<void>;
+  isLoading: boolean;
+  login: (email: string, password: string) => Promise<any>;
   logout: () => void;
   signup: (name: string, email: string, password: string) => Promise<void>;
 }
@@ -22,6 +23,7 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
     const init = async () => {
@@ -32,6 +34,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         }
       } catch (error) {
         console.error('Error initializing auth:', error);
+      } finally {
+        setIsLoading(false);
       }
     };
     init();
@@ -70,28 +74,34 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     initAuth();
   }, []);
 
-  const login = useCallback(async (email: string, password: string) => {
+  const login = async (email: string, password: string) => {
     try {
+      setIsLoading(true);
       const response = await authService.login({ email, password });
-      // response is already the data from the API
       setUser(response.user);
       toast({
         title: "Success",
         description: "Successfully logged in",
       });
+      return response;
     } catch (error) {
       console.error('Login error:', error);
       throw error;
+    } finally {
+      setIsLoading(false);
     }
-  }, []);
+  };
 
   const signup = useCallback(async (name: string, email: string, password: string) => {
     try {
+      setIsLoading(true);
       const response = await authService.register({ name, email, password });
       TokenManager.setTokenData(response);
       setUser(response.user);
     } catch (error) {
       throw error;
+    } finally {
+      setIsLoading(false);
     }
   }, []);
 
@@ -105,7 +115,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   return (
-    <AuthContext.Provider value={{ user, login, logout, signup }}>
+    <AuthContext.Provider value={{ user, isLoading, login, logout, signup }}>
       {children}
     </AuthContext.Provider>
   );

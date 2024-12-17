@@ -38,24 +38,24 @@ function TopicSkeleton() {
 
 export default function TopicsList() {
   const navigate = useNavigate();
-  const { user } = useAuth();
-  console.log('TopicsList user:', user);
+  const { user, isLoading: isAuthLoading } = useAuth();
   const [sortBy, setSort] = useState<'recent' | 'progress' | 'name'>('recent');
   const [configError, setConfigError] = useState<{title: string; message: string} | null>(null);
-
-  const handleTopicClick = (topic: Topic) => {
-    navigate(`/topic/${topic.topic_id}`);
-  };
 
   const {
     data: topics,
     error: topicsError,
-    loading: isLoading,
+    loading: isTopicsLoading,
     execute: fetchTopics,
   } = useAsync(
     () => {
-      if (!user?.user_id) throw new Error('User not authenticated');
-      return topicsService.getUserTopics(user.user_id);
+      const tokenData = TokenManager.getTokenData();
+      if (!tokenData?.user?.id) {
+        console.log('No user ID found in token data');
+        throw new Error('User not authenticated');
+      }
+      console.log('Fetching topics for user:', tokenData.user.id);
+      return topicsService.getUserTopics(tokenData.user.id);
     },
     {
       onError: (error) => {
@@ -70,37 +70,24 @@ export default function TopicsList() {
           });
         }
       },
-    },
-    [user?.user_id]
-  );
-
-  const {
-    loading: isCreating,
-    error: createError,
-    execute: createTopic,
-  } = useAsync(
-    async (data: CreateTopicData) => {
-      if (!user?.user_id) throw new Error('User not authenticated');
-      const topic = await topicsService.createTopic(data);
-      await fetchTopics();
-      return topic;
-    },
-    {
-      onError: (error) => {
-        toast({
-          title: "Error",
-          description: "Failed to create topic",
-          variant: "destructive",
-        });
-      },
+      deps: []  // Empty deps since we'll handle user changes separately
     }
   );
 
   useEffect(() => {
-    if (user?.user_id) {
+    const tokenData = TokenManager.getTokenData();
+    if (tokenData?.user?.id) {
+      console.log('Fetching topics on mount or token change');
       fetchTopics();
     }
-  }, [user?.user_id]);
+  }, []);
+
+  useEffect(() => {
+    if (!isAuthLoading && user?.id) {
+      console.log('Fetching topics because auth state changed');
+      fetchTopics();
+    }
+  }, [user?.id, isAuthLoading]);
 
   const sortedTopics = useMemo(() => {
     if (!topics) return [];
@@ -121,8 +108,12 @@ export default function TopicsList() {
     console.log('Sorted topics:', sortedTopics);
   }, [sortedTopics]);
 
+  const handleTopicClick = (topic: Topic) => {
+    navigate(`/topic/${topic.topic_id}`);
+  };
+
   const handleCreateTopic = async (title: string) => {
-    if (!user?.user_id) {
+    if (!user?.id) {
       toast({
         title: "Error",
         description: "Please log in to create a topic",
@@ -140,10 +131,10 @@ export default function TopicsList() {
       
       console.log('Creating topic:', {
         title,
-        user_id: user.user_id
+        user_id: user.id
       });
       const topic = await createTopic({
-        user_id: user.user_id,
+        user_id: user.id,
         title,
         description: title, // Use title as description for now
       });
@@ -170,6 +161,28 @@ export default function TopicsList() {
     }
   };
 
+  const {
+    loading: isCreating,
+    error: createError,
+    execute: createTopic,
+  } = useAsync(
+    async (data: CreateTopicData) => {
+      if (!user?.id) throw new Error('User not authenticated');
+      const topic = await topicsService.createTopic(data);
+      await fetchTopics();
+      return topic;
+    },
+    {
+      onError: (error) => {
+        toast({
+          title: "Error",
+          description: "Failed to create topic",
+          variant: "destructive",
+        });
+      },
+    }
+  );
+
   if (configError) {
     return (
       <ErrorMessage
@@ -179,7 +192,7 @@ export default function TopicsList() {
     );
   }
 
-  if (isLoading) {
+  if (isAuthLoading || isTopicsLoading) {
     return <TopicSkeleton />;
   }
 
@@ -192,7 +205,7 @@ export default function TopicsList() {
             size="icon"
             variant="outline"
             onClick={() => fetchTopics()}
-            disabled={isLoading}
+            disabled={isTopicsLoading}
           >
             <RefreshCcw className="h-4 w-4" />
           </Button>
