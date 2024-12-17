@@ -29,7 +29,7 @@ export default function TopicLearning() {
   const navigate = useNavigate();
   const [topic, setTopic] = useState<Topic | null>(null);
   const [lessons, setLessons] = useState<TopicLesson[]>([]);
-  const [currentLessonId, setCurrentLessonId] = useState<number | null>(null);
+  const [currentLessonId, setCurrentLessonId] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
 
@@ -61,7 +61,7 @@ export default function TopicLearning() {
 
         // Set current lesson to first lesson if available
         if (lessonsData.length > 0) {
-          setCurrentLessonId(lessonsData[0].lesson_id);
+          setCurrentLessonId(lessonsData[0].lesson_id.toString());
         }
       } catch (error) {
         console.error('Error loading topic:', error);
@@ -102,7 +102,7 @@ export default function TopicLearning() {
     }
   };
 
-  const handleLessonSelect = (lessonId: number) => {
+  const handleLessonSelect = (lessonId: string) => {
     setCurrentLessonId(lessonId);
   };
 
@@ -138,7 +138,7 @@ export default function TopicLearning() {
   }
 
   const currentLesson = currentLessonId
-    ? lessons.find(l => l.lesson_id === currentLessonId)
+    ? lessons.find(l => l.lesson_id.toString() === currentLessonId)
     : null;
 
   return (
@@ -173,7 +173,7 @@ export default function TopicLearning() {
                   lesson={currentLesson}
                   onEdit={async (content) => {
                     try {
-                      await lessonsService.updateLesson(currentLesson.lesson_id, {
+                      await lessonsService.updateLesson(id, currentLesson.lesson_id, {
                         ...currentLesson,
                         content
                       });
@@ -187,8 +187,8 @@ export default function TopicLearning() {
                     } catch (error) {
                       console.error('Error updating lesson:', error);
                       toast({
-                        title: "Error",
-                        description: "Failed to update lesson",
+                        title: "Error updating lesson",
+                        description: error instanceof Error ? error.message : "Not Found",
                         variant: "destructive"
                       });
                     }

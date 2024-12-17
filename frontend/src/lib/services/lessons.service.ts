@@ -7,18 +7,18 @@ class LessonsService {
     return response.data;
   }
 
-  async getLesson(lessonId: number): Promise<TopicLesson> {
-    const response = await api.get(`/lessons/${lessonId}`);
+  async getLesson(topicId: string, lessonId: string): Promise<TopicLesson> {
+    const response = await api.get(`/topics/${topicId}/lessons/${lessonId}`);
     return response.data;
   }
 
-  async updateLesson(lessonId: number, data: Partial<TopicLesson>): Promise<TopicLesson> {
-    const response = await api.put(`/lessons/${lessonId}`, data);
+  async updateLesson(topicId: string, lessonId: string, data: Partial<TopicLesson>): Promise<TopicLesson> {
+    const response = await api.put(`/topics/${topicId}/lessons/${lessonId}`, data);
     return response.data;
   }
 
-  async updateLessonProgress(lessonId: number, status: ProgressStatus): Promise<void> {
-    await api.put(`/lessons/${lessonId}/progress`, { status });
+  async updateLessonProgress(topicId: string, lessonId: string, status: ProgressStatus): Promise<void> {
+    await api.put(`/topics/${topicId}/lessons/${lessonId}/progress`, { status });
   }
 }
 

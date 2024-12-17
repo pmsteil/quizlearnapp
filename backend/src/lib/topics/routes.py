@@ -1,7 +1,7 @@
 from fastapi import APIRouter, Depends, HTTPException, Request
 from typing import List
 from src.lib.auth.service import get_current_user, require_admin
-from src.lib.topics.service import TopicService, TopicCreate, TopicUpdate, LessonPlan
+from src.lib.topics.service import TopicService, TopicCreate, TopicUpdate, LessonPlan, LessonUpdate
 from pydantic import BaseModel, ValidationError
 import logging
 import json
@@ -190,6 +190,52 @@ async def update_topic(topic_id: str, topic: TopicUpdate, request: Request, curr
     if not updated_topic:
         raise HTTPException(status_code=400, detail="No fields to update")
     return TopicResponse(**updated_topic)
+
+@router.put("/{topic_id}/lessons/{lesson_id}", response_model=TopicLessonResponse)
+async def update_lesson(
+    topic_id: str,
+    lesson_id: str,
+    lesson: LessonUpdate,
+    request: Request,
+    current_user = Depends(get_current_user)
+):
+    """Update a lesson within a topic."""
+    try:
+        logger.info(f"Updating lesson {lesson_id} in topic {topic_id}")
+        topic_service = TopicService(request.app.state.db)
+        
+        # First verify the user has access to this topic
+        topic = await topic_service.get_topic_by_id(topic_id, request.app.state.db)
+        if not topic:
+            raise HTTPException(status_code=404, detail="Topic not found")
+            
+        if topic["user_id"] != current_user["user_id"] and "role_admin" not in current_user.get("roles", []):
+            raise HTTPException(status_code=403, detail="Not authorized to update this lesson")
+        
+        # Update the lesson
+        updated_lesson = await topic_service.update_lesson(
+            lesson_id,
+            topic_id,
+            lesson,
+            request.app.state.db
+        )
+        
+        if not updated_lesson:
+            raise HTTPException(status_code=404, detail="Lesson not found")
+            
+        return TopicLessonResponse(**updated_lesson)
+        
+    except HTTPException as e:
+        raise e
+    except Exception as e:
+        logger.error(f"Error updating lesson {lesson_id} in topic {topic_id}")
+        logger.error(f"Error type: {type(e)}")
+        logger.error(f"Error message: {str(e)}")
+        logger.exception(e)
+        raise HTTPException(
+            status_code=500,
+            detail={"error": str(e), "type": str(type(e))}
+        )
 
 @router.delete("/{topic_id}")
 async def delete_topic(topic_id: str, request: Request, current_user = Depends(get_current_user)):

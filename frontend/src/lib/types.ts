@@ -1,6 +1,6 @@
 // Topic and Lesson Types
 export interface Topic {
-  topic_id: number;
+  topic_id: string;
   title: string;
   description: string | null;
   created_at: number;
@@ -23,9 +23,9 @@ export interface TopicLesson {
 export type ProgressStatus = 'not_started' | 'in_progress' | 'completed';
 
 export interface UserLessonProgress {
-  progress_id: number;
-  user_id: number;
-  lesson_id: number;
+  progress_id: string;
+  user_id: string;
+  lesson_id: string;
   status: ProgressStatus;
   last_interaction_at: number;
   completion_date: number | null;
@@ -35,7 +35,7 @@ export interface UserLessonProgress {
 export type MessageType = 'user' | 'ai';
 
 export interface Message {
-  id: number;
+  id: string;
   type: MessageType;
   content: string;
   created_at?: number;

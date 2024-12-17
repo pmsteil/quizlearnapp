@@ -46,6 +46,12 @@ class TopicUpdate(BaseModel):
     description: str | None = None
     lesson_plan: LessonPlan | None = None
 
+class LessonUpdate(BaseModel):
+    title: str | None = None
+    content: str | None = None
+    order_index: int | None = None
+    parent_lesson_id: str | None = None
+
 class Topic(BaseModel):
     topic_id: str
     user_id: str
@@ -582,6 +588,90 @@ class TopicService:
             
         except Exception as e:
             logger.error(f"Error deleting topic {topic_id}")
+            logger.error(f"Error type: {type(e)}")
+            logger.error(f"Error message: {str(e)}")
+            logger.exception(e)
+            raise HTTPException(
+                status_code=500,
+                detail={"error": str(e), "type": str(type(e))}
+            )
+
+    @staticmethod
+    async def update_lesson(lesson_id: str, topic_id: str, data: LessonUpdate, db) -> Dict[str, Any]:
+        """Update a lesson."""
+        try:
+            logger.info(f"Updating lesson {lesson_id} in topic {topic_id}")
+            
+            # First check if lesson exists and belongs to the topic
+            result = db.execute("""
+                SELECT lesson_id FROM topic_lessons 
+                WHERE lesson_id = ? AND topic_id = ?
+            """, [lesson_id, topic_id])
+            
+            lesson = result.fetchone()
+            if not lesson:
+                logger.error(f"Lesson {lesson_id} not found in topic {topic_id}")
+                raise HTTPException(status_code=404, detail="Lesson not found")
+            
+            # Build update query dynamically based on provided fields
+            update_fields = []
+            params = []
+            
+            if data.title is not None:
+                update_fields.append("title = ?")
+                params.append(data.title)
+            
+            if data.content is not None:
+                update_fields.append("content = ?")
+                params.append(data.content)
+            
+            if data.order_index is not None:
+                update_fields.append("order_index = ?")
+                params.append(data.order_index)
+            
+            if data.parent_lesson_id is not None:
+                update_fields.append("parent_lesson_id = ?")
+                params.append(data.parent_lesson_id)
+            
+            if not update_fields:
+                logger.warning("No fields to update")
+                return None
+            
+            # Add updated_at timestamp
+            update_fields.append("updated_at = ?")
+            params.extend([int(time.time()), lesson_id, topic_id])
+            
+            # Execute update
+            query = f"""
+                UPDATE topic_lessons 
+                SET {", ".join(update_fields)}
+                WHERE lesson_id = ? AND topic_id = ?
+                RETURNING *
+            """
+            
+            result = db.execute(query, params)
+            updated_lesson = result.fetchone()
+            
+            if not updated_lesson:
+                logger.error(f"Failed to update lesson {lesson_id}")
+                raise HTTPException(status_code=500, detail="Failed to update lesson")
+            
+            # Convert row to dict
+            return {
+                "lesson_id": updated_lesson[0],
+                "topic_id": updated_lesson[1],
+                "title": updated_lesson[2],
+                "content": updated_lesson[3],
+                "order_index": updated_lesson[4],
+                "parent_lesson_id": updated_lesson[5],
+                "created_at": updated_lesson[6],
+                "updated_at": updated_lesson[7]
+            }
+            
+        except HTTPException as e:
+            raise e
+        except Exception as e:
+            logger.error(f"Error updating lesson {lesson_id}")
             logger.error(f"Error type: {type(e)}")
             logger.error(f"Error message: {str(e)}")
             logger.exception(e)
