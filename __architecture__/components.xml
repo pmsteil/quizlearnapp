@@ -1,0 +1,97 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<components version="1.0" description="Listing of all components used in the QuizLearn app">
+  <!-- Root App Component -->
+  <component name="App" file="frontend/src/App.tsx">
+    <providers>
+      <provider name="ErrorBoundary" file="frontend/src/components/error/ErrorBoundary.tsx" />
+      <provider name="BrowserRouter" package="react-router-dom" />
+      <provider name="DatabaseProvider" file="frontend/src/lib/context/DatabaseContext.tsx" />
+      <provider name="LoadingProvider" file="frontend/src/lib/contexts/loading.context.tsx" />
+      <provider name="AuthProvider" file="frontend/src/lib/contexts/auth.context.tsx" />
+      <provider name="ThemeProvider" file="frontend/src/components/theme-provider.tsx" />
+    </providers>
+
+    <!-- Main Routes -->
+    <routes>
+      <!-- Public Routes -->
+      <route path="/" component="PublicHome" file="frontend/src/components/home/PublicHome.tsx">
+        <components>
+          <component name="LoginForm" file="frontend/src/components/auth/LoginForm.tsx" />
+          <component name="SignUpForm" file="frontend/src/components/auth/SignUpForm.tsx" />
+          <component name="Hero" file="frontend/src/components/home/Hero.tsx" />
+          <component name="Features" file="frontend/src/components/home/Features.tsx" />
+        </components>
+      </route>
+
+      <!-- Protected Routes -->
+      <route path="/dashboard" component="Dashboard" file="frontend/src/components/dashboard/Dashboard.tsx">
+        <components>
+          <component name="TopicList" file="frontend/src/components/topics/TopicList.tsx" />
+          <component name="TopicCard" file="frontend/src/components/topics/TopicCard.tsx" />
+          <component name="ProgressStats" file="frontend/src/components/dashboard/ProgressStats.tsx" />
+        </components>
+      </route>
+
+      <route path="/topic/:id" component="TopicLearning" file="frontend/src/components/topic/TopicLearning.tsx">
+        <components>
+          <component name="PageLayout" file="frontend/src/components/layout/PageLayout.tsx">
+            <components>
+              <component name="LearningProgress" file="frontend/src/components/learning/LearningProgress.tsx" />
+              <component name="LearningTree" file="frontend/src/components/learning/LearningTree.tsx" />
+              <component name="ChatInterface" file="frontend/src/components/chat/ChatInterface.tsx" />
+            </components>
+          </component>
+          <component name="AlertDialog" file="frontend/src/components/ui/alert-dialog.tsx" />
+        </components>
+      </route>
+
+      <route path="/new-topic" component="NewTopicSetup" file="frontend/src/components/topics/NewTopicSetup.tsx">
+        <components>
+          <component name="TopicForm" file="frontend/src/components/topics/TopicForm.tsx" />
+          <component name="LessonEditor" file="frontend/src/components/topics/LessonEditor.tsx" />
+        </components>
+      </route>
+
+      <route path="/admin" component="AdminPage" file="frontend/src/components/admin/AdminPage.tsx">
+        <components>
+          <component name="UserManagement" file="frontend/src/components/admin/UserManagement.tsx" />
+          <component name="TopicManagement" file="frontend/src/components/admin/TopicManagement.tsx" />
+          <component name="SystemSettings" file="frontend/src/components/admin/SystemSettings.tsx" />
+        </components>
+      </route>
+    </routes>
+
+    <!-- Shared Components -->
+    <shared>
+      <component name="ProtectedRoute" file="frontend/src/components/auth/ProtectedRoute.tsx" />
+      <component name="RoleGuard" file="frontend/src/components/auth/RoleGuard.tsx" />
+      <component name="ErrorBoundary" file="frontend/src/components/error/ErrorBoundary.tsx" />
+      <component name="Toaster" file="frontend/src/components/ui/toaster.tsx" />
+    </shared>
+
+    <!-- UI Components -->
+    <ui>
+      <component name="Button" file="frontend/src/components/ui/button.tsx" />
+      <component name="Input" file="frontend/src/components/ui/input.tsx" />
+      <component name="Textarea" file="frontend/src/components/ui/textarea.tsx" />
+      <component name="Card" file="frontend/src/components/ui/card.tsx" />
+      <component name="Dialog" file="frontend/src/components/ui/dialog.tsx" />
+      <component name="DropdownMenu" file="frontend/src/components/ui/dropdown-menu.tsx" />
+      <component name="Form" file="frontend/src/components/ui/form.tsx" />
+      <component name="Toast" file="frontend/src/components/ui/toast.tsx" />
+      <component name="Progress" file="frontend/src/components/ui/progress.tsx" />
+      <component name="ErrorMessage" file="frontend/src/components/ui/error-message.tsx" />
+      <component name="Badge" file="frontend/src/components/ui/badge.tsx" />
+      <component name="Tabs" file="frontend/src/components/ui/tabs.tsx" />
+      <component name="Chart" file="frontend/src/components/ui/chart.tsx" />
+      <component name="NavigationMenu" file="frontend/src/components/ui/navigation-menu.tsx" />
+      <component name="Carousel" file="frontend/src/components/ui/carousel.tsx" />
+      <component name="Calendar" file="frontend/src/components/ui/calendar.tsx" />
+      <component name="Command" file="frontend/src/components/ui/command.tsx" />
+      <component name="ContextMenu" file="frontend/src/components/ui/context-menu.tsx" />
+      <component name="Sheet" file="frontend/src/components/ui/sheet.tsx" />
+      <component name="Table" file="frontend/src/components/ui/table.tsx" />
+      <component name="Skeleton" file="frontend/src/components/ui/skeleton.tsx" />
+    </ui>
+  </component>
+</components>
