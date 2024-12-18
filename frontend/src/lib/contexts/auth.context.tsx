@@ -13,7 +13,7 @@ interface User {
 
 interface AuthContextType {
   user: User | null;
-  isLoading: boolean;
+  initializing: boolean;
   login: (email: string, password: string) => Promise<any>;
   logout: () => void;
   signup: (name: string, email: string, password: string) => Promise<void>;
@@ -23,61 +23,68 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
+  const [initializing, setInitializing] = useState(true);
 
-  useEffect(() => {
-    const init = async () => {
-      try {
-        const tokenData = TokenManager.getTokenData();
-        if (tokenData?.user) {
-          setUser(tokenData.user);
-        }
-      } catch (error) {
-        console.error('Error initializing auth:', error);
-      } finally {
-        setIsLoading(false);
-      }
-    };
-    init();
+  const logout = useCallback(() => {
+    TokenManager.clearTokens();
+    setUser(null);
   }, []);
 
+  // Single initialization effect
   useEffect(() => {
     const initAuth = async () => {
-      const tokenData = TokenManager.getTokenData();
-      if (!tokenData) {
-        return;
-      }
-
       try {
+        const tokenData = TokenManager.getTokenData();
+        if (!tokenData) {
+          console.log('No token data found');
+          setInitializing(false);
+          return;
+        }
+
         if (TokenManager.isTokenExpired()) {
+          console.log('Token expired, attempting refresh');
           const refreshToken = tokenData.refresh_token;
           if (!refreshToken) {
-            console.log('No refresh token, logging out');
+            console.log('No refresh token available');
             logout();
+            setInitializing(false);
             return;
           }
-          console.log('Token expired, refreshing...');
-          const response = await authService.refreshToken(refreshToken);
-          TokenManager.setTokenData(response);
-          setUser(response.user);
+
+          try {
+            const response = await authService.refreshToken(refreshToken);
+            TokenManager.setTokenData(response);
+            setUser(response.user);
+          } catch (error) {
+            console.error('Error refreshing token:', error);
+            logout();
+          }
         } else {
-          console.log('Token valid, getting user data');
-          const user = await authService.getCurrentUser();
-          setUser(user);
+          console.log('Token valid, setting user data');
+          try {
+            const userData = await authService.getCurrentUser();
+            setUser(userData);
+          } catch (error) {
+            console.error('Error getting current user:', error);
+            logout();
+          }
         }
-      } catch (err) {
-        console.error('Error refreshing token:', err);
+      } catch (error) {
+        console.error('Auth initialization error:', error);
         logout();
+      } finally {
+        setInitializing(false);
       }
     };
 
     initAuth();
-  }, []);
+  }, [logout]);
 
   const login = async (email: string, password: string) => {
     try {
-      setIsLoading(true);
+      setInitializing(true);
       const response = await authService.login({ email, password });
+      TokenManager.setTokenData(response);
       setUser(response.user);
       toast({
         title: "Success",
@@ -88,34 +95,38 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       console.error('Login error:', error);
       throw error;
     } finally {
-      setIsLoading(false);
+      setInitializing(false);
     }
   };
 
   const signup = useCallback(async (name: string, email: string, password: string) => {
     try {
-      setIsLoading(true);
+      setInitializing(true);
       const response = await authService.register({ name, email, password });
       TokenManager.setTokenData(response);
       setUser(response.user);
+      toast({
+        title: "Success",
+        description: "Successfully registered",
+      });
     } catch (error) {
+      console.error('Signup error:', error);
       throw error;
     } finally {
-      setIsLoading(false);
+      setInitializing(false);
     }
   }, []);
 
-  const logout = useCallback(() => {
-    TokenManager.clearTokens();
-    setUser(null);
-    toast({
-      title: "Success",
-      description: "Successfully logged out",
-    });
-  }, []);
+  const value = {
+    user,
+    initializing,
+    login,
+    logout,
+    signup,
+  };
 
   return (
-    <AuthContext.Provider value={{ user, isLoading, login, logout, signup }}>
+    <AuthContext.Provider value={value}>
       {children}
     </AuthContext.Provider>
   );

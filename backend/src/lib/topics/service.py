@@ -467,7 +467,103 @@ class TopicService:
                 ])
                 
                 # Create default lessons
-                TopicService.create_default_lessons(topic_id, db)
+                logger.info("Creating default lessons")
+                current_time = int(time.time())
+                
+                # Define default lessons structure
+                default_lessons = [
+                    {
+                        "id": str(uuid.uuid4()),
+                        "title": "Getting Started",
+                        "content": "Welcome to your new topic! Let's begin learning.",
+                        "order_index": 0,
+                        "parent_id": None,
+                        "created_at": current_time,
+                        "updated_at": current_time,
+                        "children": [
+                            {
+                                "id": str(uuid.uuid4()),
+                                "title": "Introduction",
+                                "content": "This is an introduction to your topic.",
+                                "order_index": 0,
+                                "created_at": current_time,
+                                "updated_at": current_time
+                            },
+                            {
+                                "id": str(uuid.uuid4()),
+                                "title": "Key Concepts",
+                                "content": "Here are the key concepts you'll learn.",
+                                "order_index": 1,
+                                "created_at": current_time,
+                                "updated_at": current_time
+                            }
+                        ]
+                    },
+                    {
+                        "id": str(uuid.uuid4()),
+                        "title": "Core Material",
+                        "content": "Let's dive into the main content.",
+                        "order_index": 1,
+                        "parent_id": None,
+                        "created_at": current_time,
+                        "updated_at": current_time,
+                        "children": [
+                            {
+                                "id": str(uuid.uuid4()),
+                                "title": "Basic Principles",
+                                "content": "Understanding the fundamentals.",
+                                "order_index": 0,
+                                "created_at": current_time,
+                                "updated_at": current_time
+                            },
+                            {
+                                "id": str(uuid.uuid4()),
+                                "title": "Advanced Topics",
+                                "content": "Exploring more complex ideas.",
+                                "order_index": 1,
+                                "created_at": current_time,
+                                "updated_at": current_time
+                            }
+                        ]
+                    }
+                ]
+
+                # Insert lessons into database
+                for main_lesson in default_lessons:
+                    # Insert main lesson
+                    db.execute("""
+                        INSERT INTO topic_lessons (
+                            lesson_id, topic_id, title, content, 
+                            order_index, parent_lesson_id, created_at, updated_at
+                        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+                    """, [
+                        main_lesson["id"],
+                        topic_id,
+                        main_lesson["title"],
+                        main_lesson["content"],
+                        main_lesson["order_index"],
+                        None,
+                        main_lesson["created_at"],
+                        main_lesson["updated_at"]
+                    ])
+
+                    # Insert child lessons
+                    for child in main_lesson["children"]:
+                        db.execute("""
+                            INSERT INTO topic_lessons (
+                                lesson_id, topic_id, title, content, 
+                                order_index, parent_lesson_id, created_at, updated_at
+                            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+                        """, [
+                            child["id"],
+                            topic_id,
+                            child["title"],
+                            child["content"],
+                            child["order_index"],
+                            main_lesson["id"],
+                            child["created_at"],
+                            child["updated_at"]
+                        ])
                 
                 # Commit the transaction
                 db.execute("COMMIT")

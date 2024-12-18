@@ -7,11 +7,11 @@ interface ProtectedRouteProps {
 }
 
 export function ProtectedRoute({ children }: ProtectedRouteProps) {
-  const { user, loading } = useAuth();
+  const { user, initializing } = useAuth();
   const location = useLocation();
 
   // Don't redirect while auth is initializing
-  if (loading) {
+  if (initializing) {
     return (
       <div className="min-h-screen flex items-center justify-center">
         <div className="text-center">
@@ -23,6 +23,7 @@ export function ProtectedRoute({ children }: ProtectedRouteProps) {
   }
 
   if (!user) {
+    // Save the attempted URL for redirecting after login
     return <Navigate to="/" state={{ from: location }} replace />;
   }
 

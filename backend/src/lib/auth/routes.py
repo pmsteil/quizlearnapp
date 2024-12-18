@@ -244,9 +244,18 @@ async def register(
         )
 
 @router.post("/refresh", response_model=Token)
-async def refresh_token(refresh_token: str):
+async def refresh_token(request: Request):
     """Get a new access token using a refresh token."""
     try:
+        # Get refresh token from request body
+        body = await request.json()
+        refresh_token = body.get("refresh_token")
+        if not refresh_token:
+            raise HTTPException(
+                status_code=401,
+                detail="Refresh token is required",
+            )
+
         payload = decode_access_token(refresh_token)
         if payload.get("type") != "refresh":
             raise HTTPException(
@@ -255,14 +264,11 @@ async def refresh_token(refresh_token: str):
             )
 
         # Get database connection from request state
-        if not hasattr(refresh_token, "app"):
-            logger.error("Request object not found")
-            raise Exception("Request object not found")
-        if not hasattr(refresh_token.app.state, "db"):
+        if not hasattr(request.app.state, "db"):
             logger.error("Database connection not initialized")
             raise DatabaseError("Database not initialized")
             
-        auth_service = AuthService(refresh_token.app.state.db)
+        auth_service = AuthService(request.app.state.db)
         user = await auth_service.get_user_by_id(payload["sub"])
         if not user:
             raise HTTPException(
@@ -299,10 +305,12 @@ async def refresh_token(refresh_token: str):
             "user": user_response
         }
 
-    except Exception:
+    except Exception as e:
+        logger.error(f"Error refreshing token: {str(e)}")
+        logger.exception(e)
         raise HTTPException(
-            status_code=401,
-            detail="Invalid refresh token",
+            status_code=422,
+            detail={"message": "Invalid refresh token", "error": str(e)}
         )
 
 @router.post("/logout")

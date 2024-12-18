@@ -146,12 +146,9 @@ export class AuthService {
   async refreshToken(refreshToken: string): Promise<TokenResponse> {
     try {
       console.log('Attempting to refresh token');
-      const formData = new URLSearchParams();
-      formData.append('refresh_token', refreshToken);
-
-      const response = await api.post<TokenResponse>('/auth/refresh', formData.toString(), {
+      const response = await api.post<TokenResponse>('/auth/refresh', { refresh_token: refreshToken }, {
         headers: {
-          'Content-Type': 'application/x-www-form-urlencoded',
+          'Content-Type': 'application/json',
         },
       });
 
