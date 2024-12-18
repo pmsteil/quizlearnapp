@@ -1,0 +1,149 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<database name="quizlearn">
+    <table name="users" description="Store user information">
+        <column name="user_id" type="TEXT" primaryKey="true"/>
+        <column name="email" type="TEXT" unique="true" notNull="true"/>
+        <column name="name" type="TEXT" notNull="true"/>
+        <column name="password_hash" type="TEXT" notNull="true"/>
+        <column name="roles" type="TEXT" notNull="true" default="'role_user'"/>
+        <column name="icon" type="TEXT" description="URL or path to user's icon/avatar"/>
+        <column name="default_difficulty" type="TEXT" notNull="true" default="'high_school'" description="Default difficulty level for new lessons"/>
+        <column name="about" type="TEXT" description="JSON blob containing user information such as learning preferences, interests, goals, or for agents, their system prompt"/>
+        <column name="created_at" type="INTEGER"/>
+        <column name="updated_at" type="INTEGER"/>
+        <index name="idx_users_email">
+            <column name="email"/>
+        </index>
+    </table>
+
+    <table name="sessions" description="Store user login sessions">
+        <column name="id" type="TEXT" primaryKey="true"/>
+        <column name="user_id" type="TEXT" notNull="true"/>
+        <column name="created_at" type="INTEGER" notNull="true"/>
+        <column name="expires_at" type="INTEGER" notNull="true"/>
+        <foreignKey foreignTable="users">
+            <reference local="user_id" foreign="user_id" onDelete="CASCADE"/>
+        </foreignKey>
+        <index name="idx_sessions_user_id">
+            <column name="user_id"/>
+        </index>
+        <index name="idx_sessions_expires_at">
+            <column name="expires_at"/>
+        </index>
+    </table>
+
+    <table name="topics" description="Data for each topic created by a user">
+        <column name="topic_id" type="TEXT" primaryKey="true"/>
+        <column name="user_id" type="TEXT" notNull="true"/>
+        <column name="title" type="TEXT" notNull="true"/>
+        <column name="description" type="TEXT"/>
+        <column name="progress" type="INTEGER" default="0"/>
+        <column name="created_at" type="INTEGER"/>
+        <column name="updated_at" type="INTEGER"/>
+        <foreignKey foreignTable="users">
+            <reference local="user_id" foreign="user_id" onDelete="CASCADE"/>
+        </foreignKey>
+        <index name="idx_topics_user_id">
+            <column name="user_id"/>
+        </index>
+    </table>
+
+    <table name="topic_lessons" description="Lessons related to each topic">
+        <column name="lesson_id" type="TEXT" primaryKey="true"/>
+        <column name="topic_id" type="TEXT" notNull="true"/>
+        <column name="title" type="TEXT" notNull="true"/>
+        <column name="content" type="TEXT" notNull="true"/>
+        <column name="order_index" type="INTEGER" notNull="true"/>
+        <column name="parent_lesson_id" type="TEXT"/>
+        <column name="created_at" type="INTEGER"/>
+        <column name="updated_at" type="INTEGER"/>
+        <foreignKey foreignTable="topics">
+            <reference local="topic_id" foreign="topic_id" onDelete="CASCADE"/>
+        </foreignKey>
+        <foreignKey foreignTable="topic_lessons">
+            <reference local="parent_lesson_id" foreign="lesson_id" onDelete="CASCADE"/>
+        </foreignKey>
+        <index name="idx_topic_lessons_topic_id">
+            <column name="topic_id"/>
+        </index>
+        <index name="idx_topic_lessons_parent_id">
+            <column name="parent_lesson_id"/>
+        </index>
+    </table>
+
+    <table name="user_topics" description="User progress on each topic">
+        <column name="user_id" type="TEXT" notNull="true"/>
+        <column name="topic_id" type="TEXT" notNull="true"/>
+        <column name="current_lesson_id" type="TEXT"/>
+        <column name="goal_text" type="TEXT" notNull="true"/>
+        <column name="target_date" type="DATE"/>
+        <column name="started_at" type="INTEGER" default="unixepoch()"/>
+        <column name="last_accessed" type="INTEGER" default="unixepoch()"/>
+        <primaryKey>
+            <column name="user_id"/>
+            <column name="topic_id"/>
+        </primaryKey>
+        <foreignKey foreignTable="users">
+            <reference local="user_id" foreign="user_id" onDelete="CASCADE"/>
+        </foreignKey>
+        <foreignKey foreignTable="topics">
+            <reference local="topic_id" foreign="topic_id" onDelete="CASCADE"/>
+        </foreignKey>
+        <foreignKey foreignTable="topic_lessons">
+            <reference local="current_lesson_id" foreign="lesson_id" onDelete="SET NULL"/>
+        </foreignKey>
+        <index name="idx_user_topics_user_id">
+            <column name="user_id"/>
+        </index>
+        <index name="idx_user_topics_topic_id">
+            <column name="topic_id"/>
+        </index>
+        <index name="idx_user_topics_last_accessed">
+            <column name="last_accessed"/>
+        </index>
+    </table>
+
+    <table name="user_topic_lessons" description="Stores user progress and chat history for each lesson">
+        <column name="user_id" type="TEXT" notNull="true" description="References the user who is taking this lesson"/>
+        <column name="topic_id" type="TEXT" notNull="true" description="References the topic this lesson belongs to"/>
+        <column name="lesson_id" type="TEXT" notNull="true" description="References the specific lesson being taken"/>
+        <column name="status" type="TEXT" notNull="true" default="'not_started'" description="Lesson status: 'not_started' (default, lesson hasn't begun), 'in_progress' (user has started but not completed), 'paused' (user explicitly paused), 'completed' (all questions answered satisfactorily)"/>
+        <column name="progress_percent" type="INTEGER" default="0" description="Percentage of lesson completed (0-100). Calculated based on number of questions answered vs total questions"/>
+        <column name="questions_total" type="INTEGER" default="0" description="Total number of questions generated for this lesson"/>
+        <column name="questions_correct" type="INTEGER" default="0" description="Number of questions answered correctly"/>
+        <column name="chat_history" type="TEXT" description="JSON blob containing the entire conversation history between user and AI. Includes questions, answers, explanations, and any custom requests. See __architecture__/topic_lesson_chat_history_sample.json for an example"/>
+        <column name="last_message_at" type="INTEGER" description="Unix timestamp of the last message in the chat. Used for sorting recent activity and detecting inactive lessons"/>
+        <column name="started_at" type="INTEGER" description="Unix timestamp when the user first started this lesson"/>
+        <column name="completed_at" type="INTEGER" description="Unix timestamp when the lesson was completed. Null if not completed"/>
+        <primaryKey>
+            <column name="user_id"/>
+            <column name="topic_id"/>
+            <column name="lesson_id"/>
+        </primaryKey>
+        <foreignKey foreignTable="users">
+            <reference local="user_id" foreign="user_id" onDelete="CASCADE"/>
+        </foreignKey>
+        <foreignKey foreignTable="topics">
+            <reference local="topic_id" foreign="topic_id" onDelete="CASCADE"/>
+        </foreignKey>
+        <foreignKey foreignTable="topic_lessons">
+            <reference local="lesson_id" foreign="lesson_id" onDelete="CASCADE"/>
+        </foreignKey>
+        <index name="idx_user_topic_lessons_user">
+            <column name="user_id"/>
+        </index>
+        <index name="idx_user_topic_lessons_topic">
+            <column name="topic_id"/>
+        </index>
+        <index name="idx_user_topic_lessons_lesson">
+            <column name="lesson_id"/>
+        </index>
+        <index name="idx_user_topic_lessons_status">
+            <column name="status"/>
+        </index>
+        <index name="idx_user_topic_lessons_last_message">
+            <column name="last_message_at"/>
+        </index>
+    </table>
+
+</database>

@@ -17,6 +17,9 @@ if [ -z "$LOCAL_DB_PATH" ]; then
     exit 1
 fi
 
+# hardcode the database path
+LOCAL_DB_PATH="backend/data/db/quizlearn.db"
+
 # Check if source database exists
 if [ ! -f "$LOCAL_DB_PATH" ]; then
     echo "Error: Database file not found at $LOCAL_DB_PATH"

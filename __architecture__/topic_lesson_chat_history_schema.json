@@ -1,0 +1,138 @@
+{
+    "$schema": "http://json-schema.org/draft-07/schema#",
+    "type": "object",
+    "description": "Schema for topic lesson chat history",
+    "required": ["lesson_id", "messages", "metadata"],
+    "properties": {
+        "lesson_id": {
+            "type": "string",
+            "description": "Unique identifier for the lesson"
+        },
+        "messages": {
+            "type": "array",
+            "description": "Array of chat messages between user and AI agents",
+            "items": {
+                "type": "object",
+                "required": ["id", "timestamp", "user_id", "type", "content"],
+                "properties": {
+                    "id": {
+                        "type": "string",
+                        "description": "Unique identifier for the message"
+                    },
+                    "timestamp": {
+                        "type": "integer",
+                        "description": "Unix timestamp when the message was created"
+                    },
+                    "user_id": {
+                        "type": "string",
+                        "description": "ID of the user or AI agent who sent the message",
+                        "examples": ["user_123", "agent_lesson_teacher", "agent_lesson_plan"]
+                    },
+                    "type": {
+                        "type": "string",
+                        "enum": [
+                            "agent_lesson_goal",
+                            "agent_question",
+                            "agent_teaching",
+                            "user_answer"
+                        ],
+                        "description": "Type of message"
+                    },
+                    "content": {
+                        "type": "string",
+                        "description": "Message content in markdown format"
+                    },
+                    "question_number": {
+                        "type": "integer",
+                        "description": "For question/answer/feedback messages, indicates which question this relates to"
+                    },
+                    "is_correct": {
+                        "type": "boolean",
+                        "description": "For answer messages, indicates if the answer was correct"
+                    }
+                }
+            }
+        },
+        "metadata": {
+            "type": "object",
+            "required": [
+                "questions_total",
+                "questions_answered",
+                "questions_correct",
+                "current_difficulty",
+                "started_at",
+                "last_message_at",
+                "lesson_preferences",
+                "session_stats"
+            ],
+            "properties": {
+                "questions_total": {
+                    "type": "integer",
+                    "description": "Total number of questions planned for this lesson"
+                },
+                "questions_answered": {
+                    "type": "integer",
+                    "description": "Number of questions answered so far"
+                },
+                "questions_correct": {
+                    "type": "integer",
+                    "description": "Number of questions answered correctly"
+                },
+                "current_difficulty": {
+                    "type": "string",
+                    "enum": [
+                        "elementary",
+                        "elementary_advanced",
+                        "junior_high",
+                        "junior_high_advanced",
+                        "high_school",
+                        "high_school_advanced",
+                        "junior college",
+                        "associates degree",
+                        "bachelors degree",
+                        "masters degree",
+                        "phd"
+                    ],
+                    "description": "Current difficulty level of the lesson"
+                },
+                "started_at": {
+                    "type": "integer",
+                    "description": "Unix timestamp when the lesson started"
+                },
+                "last_message_at": {
+                    "type": "integer",
+                    "description": "Unix timestamp of the last message"
+                },
+                "lesson_preferences": {
+                    "type": "string",
+                    "description": "User's preferences for how the lesson should be taught, accumulated from their requests"
+                },
+                "session_stats": {
+                    "type": "object",
+                    "required": ["confidence_trend", "topics_mastered", "topics_struggling"],
+                    "properties": {
+                        "confidence_trend": {
+                            "type": "string",
+                            "enum": ["increasing", "decreasing", "stable"],
+                            "description": "Trend in user's confidence level"
+                        },
+                        "topics_mastered": {
+                            "type": "array",
+                            "items": {
+                                "type": "string"
+                            },
+                            "description": "List of topics the user has mastered"
+                        },
+                        "topics_struggling": {
+                            "type": "array",
+                            "items": {
+                                "type": "string"
+                            },
+                            "description": "List of topics the user is struggling with"
+                        }
+                    }
+                }
+            }
+        }
+    }
+}

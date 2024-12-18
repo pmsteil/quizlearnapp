@@ -12,7 +12,7 @@
         </description>
         <lastUpdated>2024-12-13</lastUpdated>
         <documentation>
-            <file>PROJECT_PLAN.md</file>
+            <file>project_status.md</file>
             <description>
                 Comprehensive project plan detailing the development phases,
                 completed milestones, and upcoming features. This document
@@ -26,8 +26,34 @@
         <ai-integration>
             <description>
                 Planned integration of AI/LLM capabilities for enhanced learning experience:
-                - AI-powered learning plan generation
-                - Interactive chat-based teaching
+                - agent_lesson_plan_creator agent:
+                    - AI-powered learning plan generation. When a topic is created:
+                        - The user is asked to describe his learning goals and preferences for the topic
+                        - The AI generates a learning plan based on the user's inputs
+                        - The learning plan is then displayed to the user for review and tweaking
+                        - The learning plan is an outline of the content that will be covered to meet the user's goals and preferences
+                        - Once the user approves the learning plan, the lesson plan outline is stored in the database as topic_lessons.
+                - agent_lesson_teacher agent:
+                    - Interactive chat-based teaching for each topic_lesson.
+                        - The entire chat conversation for each topic_lesson is stored in the database
+                        - When the user starts a new lesson, the AI generates 10 questions to ask the user based on the topic_lesson at hand.
+                        - These questions are meant to be answered in a chat-like format, where the user answers the questions and the AI provides feedback.
+                        - When the user answers incorrectly, the AI then teaches the user the correct answer and provides an explanation.
+                        - When the user answers correctly, the AI reinforces the user's understanding of the topic.
+                        - The process is repeated until the user completes the lesson.
+                        - The AI can modify the questions based on the user's performance and feedback.
+                        - The AI can also generate additional questions to help the user understand the topic better.
+                        - The user can ask the AI for any modifications to the lesson such as:
+                            - Adding more questions
+                            - Changing the difficulty of the questions
+                            - Customizing the way the questions are asked
+                            - Relating the lesson to what the user already knows
+                            - Changing the type of questions asked such as multiple choice, true/false, open ended, etc.
+                        - Once all the questions have been asked, the AI can:
+                            - Ask the user if they want additional questions for the one's they missed
+                            - Provide a summary of the user's performance
+                            - Provide a summary of the user's progress
+                            - Ask the Lesson Plan Agent to record the user's progress in the database based on their performance
                 - Personalized quiz content adaptation
                 - Natural language processing for student responses
             </description>
@@ -206,7 +232,7 @@
                             - Provides real-time TypeScript checking
                         </description>
                     </frontend>
-                    
+
                     <backend>
                         <command>npm run dev:backend</command>
                         <description>

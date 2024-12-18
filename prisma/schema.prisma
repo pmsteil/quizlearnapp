@@ -1,0 +1,114 @@
+// This is your Prisma schema file
+datasource db {
+  provider = "sqlite"
+  url      = env("PRISMA_DATABASE_URL")
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+model User {
+  id               String    @id @map("user_id")
+  email           String    @unique
+  name            String
+  passwordHash    String    @map("password_hash")
+  roles           String    @default("role_user")
+  icon            String?
+  defaultDifficulty String   @default("high_school") @map("default_difficulty")
+  about           String?
+  createdAt       DateTime  @map("created_at")
+  updatedAt       DateTime  @map("updated_at")
+  topics          Topic[]
+  userTopics      UserTopic[]
+  userTopicLessons UserTopicLesson[]
+
+  @@map("users")
+}
+
+model Topic {
+  id          String    @id @map("topic_id")
+  userId      String    @map("user_id")
+  title       String
+  description String?
+  progress    Int       @default(0)
+  createdAt   DateTime  @map("created_at")
+  updatedAt   DateTime  @map("updated_at")
+  user        User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  lessons     TopicLesson[]
+  userTopics  UserTopic[]
+  userTopicLessons UserTopicLesson[]
+
+  @@map("topics")
+  @@index([userId])
+}
+
+model TopicLesson {
+  id              String    @id @map("lesson_id")
+  topicId         String    @map("topic_id")
+  title           String
+  content         String
+  orderIndex      Int       @map("order_index")
+  parentLessonId  String?   @map("parent_lesson_id")
+  createdAt       DateTime  @map("created_at")
+  updatedAt       DateTime  @map("updated_at")
+  topic           Topic     @relation(fields: [topicId], references: [id], onDelete: Cascade)
+  parentLesson    TopicLesson?  @relation("LessonToLesson", fields: [parentLessonId], references: [id], onDelete: Cascade)
+  childLessons    TopicLesson[] @relation("LessonToLesson")
+  userTopicLessons UserTopicLesson[]
+  currentForUsers UserTopic[] @relation("CurrentLesson")
+
+  @@map("topic_lessons")
+  @@index([topicId])
+  @@index([parentLessonId])
+}
+
+model UserTopic {
+  userId          String    @map("user_id")
+  topicId         String    @map("topic_id")
+  currentLessonId String?   @map("current_lesson_id")
+  goalText        String    @map("goal_text")
+  targetDate      DateTime? @map("target_date")
+  startedAt       DateTime  @default(now()) @map("started_at")
+  lastAccessed    DateTime  @default(now()) @map("last_accessed")
+  user            User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  topic           Topic     @relation(fields: [topicId], references: [id], onDelete: Cascade)
+  currentLesson   TopicLesson? @relation("CurrentLesson", fields: [currentLessonId], references: [id], onDelete: SetNull)
+
+  @@id([userId, topicId])
+  @@map("user_topics")
+  @@index([userId])
+  @@index([topicId])
+  @@index([lastAccessed])
+}
+
+model UserTopicLesson {
+  userId          String    @map("user_id")
+  topicId         String    @map("topic_id")
+  lessonId        String    @map("lesson_id")
+  status          String    @default("not_started")
+  progressPercent Int       @default(0) @map("progress_percent")
+  questionsTotal  Int       @default(0) @map("questions_total")
+  questionsCorrect Int      @default(0) @map("questions_correct")
+  chatHistory     String?   @map("chat_history")
+  lastMessageAt   DateTime? @map("last_message_at")
+  startedAt       DateTime? @map("started_at")
+  completedAt     DateTime? @map("completed_at")
+  user            User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  topic           Topic     @relation(fields: [topicId], references: [id], onDelete: Cascade)
+  lesson          TopicLesson @relation(fields: [lessonId], references: [id], onDelete: Cascade)
+
+  @@id([userId, topicId, lessonId])
+  @@map("user_topic_lessons")
+  @@index([userId])
+  @@index([topicId])
+  @@index([lessonId])
+  @@index([status])
+  @@index([lastMessageAt])
+}
+
+// Enable SQL migrations
+generator migrate {
+  provider = "prisma-migrate"
+  format = "sql"
+}
