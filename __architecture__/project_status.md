@@ -412,34 +412,38 @@ Status: ✅ Done
    - Performance testing for new queries ✅
 
 ## Phase 9: Chat Integration
-Status: 🔜 Do This Next
+Status: 🚧 In Progress
 
 ### Overview
-Implement AI-powered chat functionality for interactive learning experiences.
+Implement AI-powered chat functionality for interactive learning experiences. Chat history will be stored in the `user_topic_lessons` table as a JSON blob in the `chat_history` field.
 
-1. Database Schema
-   ```sql
-   CREATE TABLE user_lesson_chat_history (
-     chat_id INTEGER PRIMARY KEY,
-     user_id INTEGER NOT NULL,
-     lesson_id INTEGER NOT NULL,
-     message_type TEXT NOT NULL CHECK (message_type IN ('user', 'ai')),
-     content TEXT NOT NULL,
-     created_at INTEGER NOT NULL,
-     FOREIGN KEY (user_id) REFERENCES users(user_id) ON DELETE CASCADE,
-     FOREIGN KEY (lesson_id) REFERENCES topic_lessons(lesson_id) ON DELETE CASCADE
-   );
-   CREATE INDEX idx_chat_history_user ON user_lesson_chat_history(user_id);
-   CREATE INDEX idx_chat_history_lesson ON user_lesson_chat_history(lesson_id);
-   ```
+### Implementation Details
+1. LLM Integration Strategy:
+    *   Choose an LLM service (e.g., OpenAI's GPT-3, a custom model).
+    *   Plan how the LLM service will be integrated into the backend (SDK, API calls, etc.).
+    *   Define authentication and API request/response handling.
+2. Design the Chat Interface:
+    *   Plan the UI/UX for the `ChatInterface` component.
+    *   Define message display, input handling, and additional features (timestamps, user avatars, loading indicators).
+3. Backend Logic:
+    *   Implement `getUserLessonChat` API route to fetch chat history from `user_topic_lessons.chat_history`.
+    *   Implement `addUserLessonChat` API route to update `user_topic_lessons.chat_history` with new messages.
+    *   Integrate with the chosen LLM service to send user messages and receive AI responses.
+    *   Handle data transformation and formatting between the application and the LLM service.
+4. Create Frontend Components:
+    *   Develop the `ChatInterface` component based on the design.
+    *   Implement `Message display` and `Input handling` sub-components.
+5. Integrate Frontend and Backend:
+    *   Connect frontend components to API routes for sending and receiving messages.
+    *   Implement real-time updates using technologies like WebSockets.
 
-2. Components to Add
+### Components to Add
    - ChatInterface component
    - Message display
    - Input handling
    - Integration with LLM service (details TBD)
 
-3. API Routes
+### API Routes
    ```typescript
    router.get('/api/v1/users/me/lessons/:lessonId/chat', getUserLessonChat);
    router.post('/api/v1/users/me/lessons/:lessonId/chat', addUserLessonChat);
