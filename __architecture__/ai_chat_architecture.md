@@ -111,7 +111,7 @@ class AIConfig(BaseSettings):
     DEFAULT_MODEL: str = "gpt-4"
     MAX_TOKENS: int = 4000
     TEMPERATURE: float = 0.7
-    
+
     # Agent-specific settings
     AGENT_CONFIGS: Dict[str, dict] = {
         "agent_lesson_teacher": {
@@ -130,7 +130,7 @@ class AIConfig(BaseSettings):
             "streaming": False
         }
     }
-    
+
     class Config:
         env_file = ".env"
 ```
@@ -148,46 +148,46 @@ class AgentInfo:
         agent = await User.prisma().find_unique(
             where={'id': agent_id}
         )
-        
+
         if not agent or agent.roles != 'role_agent':
             raise ValueError(f"Unknown agent ID: {agent_id}")
-            
+
         # Parse the about JSON which contains the prompt
         about = json.loads(agent.about)
-        
+
         return {
             'name': agent.name,
             'icon': agent.icon,
             'prompt': about.get('prompt', {})
         }
-    
+
     @staticmethod
     async def get_agent_prompt(agent_id: str, prompt_type: str) -> str:
         """Get agent's prompt template from about field"""
         agent_info = await AgentInfo.get_agent_info(agent_id)
         prompt = agent_info.get('prompt', {})
-        
+
         if prompt_type not in prompt:
             raise ValueError(f"No prompt found for agent {agent_id} and type {prompt_type}")
-            
+
         return prompt[prompt_type]
-    
+
     @staticmethod
     async def update_agent_info(agent_id: str, updates: Dict[str, Any]) -> None:
         """Update agent information in database"""
         agent = await User.prisma().find_unique(
             where={'id': agent_id}
         )
-        
+
         if not agent:
             raise ValueError(f"Unknown agent ID: {agent_id}")
-            
+
         current_about = json.loads(agent.about)
-        
+
         # Update prompt if provided
         if 'prompt' in updates:
             current_about['prompt'] = updates['prompt']
-        
+
         # Update agent
         await User.prisma().update(
             where={'id': agent_id},
@@ -211,49 +211,104 @@ from ..utils.agent_info import AgentInfo
 class BaseQuizLearnAgent:
     async def __init__(self, model_name: str, user: User):
         self.user = user
-        
+
         # Load agent info from database
         self.agent_info = await AgentInfo.get_agent_info(self.__class__.__name__.lower())
-        
+
         # Use agent-specific configuration
         self.llm = ChatOpenAI(
             model_name=self.agent_info['config'].model,
             temperature=self.agent_info['config'].temperature
         )
-        
+
         self.memory = ConversationBufferMemory(
             memory_key="chat_history",
             return_messages=True
         )
-        
+
         self.chain = await self._create_chain()
-    
+
     async def get_prompt_template(self) -> str:
         """Get prompt template from database"""
         # Get base prompt
         base_prompt = await AgentInfo.get_agent_prompt(
-            self.__class__.__name__.lower(), 
+            self.__class__.__name__.lower(),
             'base'
         )
-        
+
         # Get agent-specific prompt
         specific_prompt = await AgentInfo.get_agent_prompt(
-            self.__class__.__name__.lower(), 
+            self.__class__.__name__.lower(),
             self.get_prompt_type()
         )
-        
+
         return base_prompt + specific_prompt
-    
+
     def get_prompt_type(self) -> str:
         """Override to specify which prompt type to use"""
         raise NotImplementedError
+
+    async def process_message(self, message: str) -> str:
+        try:
+            # Log the interaction start
+            await self.log_interaction(
+                interaction_type="message_received",
+                content=message
+            )
+
+            # Add the formatting instructions to the conversation context
+            context = self.get_conversation_context()
+            context.append({
+                "role": "system",
+                "content": self.formatting_instructions
+            })
+
+            # Process message with LLM
+            response = await self.llm.generate_response(context + [
+                {"role": "user", "content": message}
+            ])
+
+            # Log the successful response
+            await self.log_interaction(
+                interaction_type="message_sent",
+                content=response
+            )
+
+            return response
+
+        except Exception as e:
+            # Log the error
+            await self.log_interaction(
+                interaction_type="error",
+                content=str(e)
+            )
+            raise AIServiceError(
+                "I apologize, but I'm having trouble processing your request right now. "
+                "This might be temporary - please try again in a few moments."
+            )
+
+    async def log_interaction(
+        self,
+        interaction_type: str,
+        content: str,
+        metadata: dict = None
+    ) -> None:
+        """
+        Placeholder for logging agent interactions.
+        Will be implemented to track all AI interactions for:
+        - Performance monitoring
+        - Error tracking
+        - Usage analytics
+        - Quality assessment
+        """
+        pass  # To be implemented
 ```
 
 #### 2.7 Lesson Plan Creator Agent (backend/ai/agents/agent_lesson_plan_creator.py)
 ```python
 class AgentLessonPlanCreator(BaseQuizLearnAgent):
     """Creates structured lesson plans"""
-    
+
     def get_prompt_type(self) -> str:
         return 'lesson_plan'
 ```
@@ -262,7 +317,7 @@ class AgentLessonPlanCreator(BaseQuizLearnAgent):
 ```python
 class AgentLessonTeacher(BaseQuizLearnAgent):
     """Conducts interactive lessons"""
-    
+
     def get_prompt_type(self) -> str:
         return 'teaching'
 ```
@@ -271,7 +326,7 @@ class AgentLessonTeacher(BaseQuizLearnAgent):
 ```python
 class AgentLessonEvaluator(BaseQuizLearnAgent):
     """Evaluates learning progress"""
-    
+
     def get_prompt_type(self) -> str:
         return 'evaluation'
 ```
@@ -305,20 +360,20 @@ async def agent_lesson_teacher(
     try:
         # Sanitize input
         message = sanitize_message_content(message)
-        
+
         # Get user topic lesson
         user_topic_lesson = await chat_repo.get_chat_history(user.id, lesson_id)
-        
+
         # Create teacher agent with config
         agent_config = config.AGENT_CONFIGS["agent_lesson_teacher"]
         agent = AgentLessonTeacher(
             model_name=agent_config["model"],
             user=user
         )
-        
+
         # Load chat history
         await agent.load_chat_history(user_topic_lesson)
-        
+
         # Process message
         response = await agent.chain.apredict(
             input=message,
@@ -328,7 +383,7 @@ async def agent_lesson_teacher(
             questions_total=user_topic_lesson.questionsTotal,
             questions_correct=user_topic_lesson.questionsCorrect
         )
-        
+
         # Create and save message
         new_message = Message(
             id=f"msg_{uuid4()}",
@@ -338,17 +393,17 @@ async def agent_lesson_teacher(
             content=response
         )
         await agent.save_message(user_topic_lesson, new_message)
-        
+
         # Calculate progress metrics
         metrics = calculate_progress_metrics(
             json.loads(user_topic_lesson.chat_history)["messages"]
         )
-        
+
         return ChatResponse(
             message=new_message,
             metadata={"progress_metrics": metrics}
         )
-        
+
     except ChatError as e:
         raise e
     except Exception as e:
@@ -362,16 +417,16 @@ async def get_chat_history(
 ) -> ChatHistoryResponse:
     """Get chat history with progress metrics"""
     user_topic_lesson = await chat_repo.get_chat_history(user.id, lesson_id)
-    
+
     if not user_topic_lesson.chat_history:
         return ChatHistoryResponse(
             messages=[],
             metadata={"progress_metrics": calculate_progress_metrics([])}
         )
-    
+
     history = json.loads(user_topic_lesson.chat_history)
     metrics = calculate_progress_metrics(history["messages"])
-    
+
     return ChatHistoryResponse(
         messages=history["messages"],
         metadata={"progress_metrics": metrics}
@@ -388,21 +443,21 @@ async def agent_lesson_plan_creator(
     try:
         # Sanitize input
         message = sanitize_message_content(message)
-        
+
         # Get user topic lesson and topic
         user_topic_lesson = await chat_repo.get_chat_history(user.id, lesson_id)
         topic = await get_topic(user_topic_lesson.topic_id)
-        
+
         # Create plan creator agent with config
         agent_config = config.AGENT_CONFIGS["agent_lesson_plan_creator"]
         agent = AgentLessonPlanCreator(
             model_name=agent_config["model"],
             user=user
         )
-        
+
         # Load chat history
         await agent.load_chat_history(user_topic_lesson)
-        
+
         # Process message
         response = await agent.chain.apredict(
             input=message,
@@ -411,7 +466,7 @@ async def agent_lesson_plan_creator(
             topic_objectives=topic.objectives,
             progress_summary=user_topic_lesson.progressSummary
         )
-        
+
         # Create and save message
         new_message = Message(
             id=f"msg_{uuid4()}",
@@ -421,17 +476,17 @@ async def agent_lesson_plan_creator(
             content=response
         )
         await agent.save_message(user_topic_lesson, new_message)
-        
+
         # Calculate progress metrics
         metrics = calculate_progress_metrics(
             json.loads(user_topic_lesson.chat_history)["messages"]
         )
-        
+
         return ChatResponse(
             message=new_message,
             metadata={"progress_metrics": metrics}
         )
-        
+
     except ChatError as e:
         raise e
     except Exception as e:
@@ -448,20 +503,20 @@ async def agent_lesson_evaluator(
     try:
         # Sanitize input
         message = sanitize_message_content(message)
-        
+
         # Get user topic lesson
         user_topic_lesson = await chat_repo.get_chat_history(user.id, lesson_id)
-        
+
         # Create evaluator agent with config
         agent_config = config.AGENT_CONFIGS["agent_lesson_evaluator"]
         agent = AgentLessonEvaluator(
             model_name=agent_config["model"],
             user=user
         )
-        
+
         # Load chat history
         await agent.load_chat_history(user_topic_lesson)
-        
+
         # Process message
         response = await agent.chain.apredict(
             input=message,
@@ -472,7 +527,7 @@ async def agent_lesson_evaluator(
             questions_correct=user_topic_lesson.questionsCorrect,
             progress_summary=user_topic_lesson.progressSummary
         )
-        
+
         # Create and save message
         new_message = Message(
             id=f"msg_{uuid4()}",
@@ -482,17 +537,17 @@ async def agent_lesson_evaluator(
             content=response
         )
         await agent.save_message(user_topic_lesson, new_message)
-        
+
         # Calculate progress metrics
         metrics = calculate_progress_metrics(
             json.loads(user_topic_lesson.chat_history)["messages"]
         )
-        
+
         return ChatResponse(
             message=new_message,
             metadata={"progress_metrics": metrics}
         )
-        
+
     except ChatError as e:
         raise e
     except Exception as e:
@@ -509,7 +564,7 @@ async def update_agent(
     # Check permissions
     if user.roles != 'role_admin':
         raise HTTPException(status_code=403, detail="Not authorized")
-        
+
     try:
         await agent_repo.update_agent(agent_id, updates)
         return await agent_repo.get_agent_info(agent_id)
@@ -650,13 +705,13 @@ class Queries:
         FROM user
         WHERE email = ?
     """
-    
+
     CREATE_USER = """
         INSERT INTO user (id, email, name, password_hash, roles, default_difficulty, about)
         VALUES (?, ?, ?, ?, ?, ?, ?)
         RETURNING id
     """
-    
+
     UPDATE_USER = """
         UPDATE user
         SET name = COALESCE(?, name),
@@ -666,10 +721,10 @@ class Queries:
         WHERE id = ?
         RETURNING id
     """
-    
+
     # Topic Management
     GET_TOPIC = """
-        SELECT t.*, 
+        SELECT t.*,
                json_group_array(DISTINCT l.id) as lesson_ids,
                json_group_array(DISTINCT l.title) as lesson_titles
         FROM topic t
@@ -677,7 +732,7 @@ class Queries:
         WHERE t.id = ?
         GROUP BY t.id
     """
-    
+
     GET_USER_TOPICS = """
         SELECT t.*,
                COUNT(DISTINCT l.id) as total_lessons,
@@ -689,13 +744,13 @@ class Queries:
         GROUP BY t.id
         ORDER BY t.created_at DESC
     """
-    
+
     CREATE_TOPIC = """
         INSERT INTO topic (id, title, description, difficulty, prerequisites)
         VALUES (?, ?, ?, ?, ?)
         RETURNING id
     """
-    
+
     # Lesson Management
     GET_LESSON = """
         SELECT l.*,
@@ -706,13 +761,13 @@ class Queries:
         JOIN topic t ON t.id = l.topic_id
         WHERE l.id = ?
     """
-    
+
     CREATE_LESSON = """
         INSERT INTO lesson (id, topic_id, title, content, order_index)
         VALUES (?, ?, ?, ?, ?)
         RETURNING id
     """
-    
+
     # User Progress
     GET_USER_PROGRESS = """
         SELECT t.id as topic_id,
@@ -726,21 +781,21 @@ class Queries:
         LEFT JOIN lesson l ON l.topic_id = t.id
         LEFT JOIN user_topic_lesson utl ON utl.topic_id = t.id AND utl.user_id = ?
         WHERE t.id IN (
-            SELECT DISTINCT topic_id 
-            FROM user_topic_lesson 
+            SELECT DISTINCT topic_id
+            FROM user_topic_lesson
             WHERE user_id = ?
         )
         GROUP BY t.id
         ORDER BY last_activity DESC
     """
-    
+
     # Agent Management
     GET_AGENT = """
         SELECT id, name, icon, about
         FROM user
         WHERE id = ? AND roles = 'role_agent'
     """
-    
+
     UPDATE_AGENT = """
         UPDATE user
         SET name = COALESCE(?, name),
@@ -750,7 +805,7 @@ class Queries:
         WHERE id = ? AND roles = 'role_agent'
         RETURNING id, name, icon, about
     """
-    
+
     # Chat and Lesson Progress
     GET_USER_TOPIC_LESSON = """
         SELECT utl.*,
@@ -763,14 +818,14 @@ class Queries:
         JOIN lesson l ON l.topic_id = t.id
         WHERE utl.user_id = ? AND utl.topic_id = ?
     """
-    
+
     CREATE_USER_TOPIC_LESSON = """
         INSERT INTO user_topic_lesson (id, user_id, topic_id, questions_total, questions_correct, chat_history)
         VALUES (?, ?, ?, 0, 0, '{"messages":[]}')
         ON CONFLICT (user_id, topic_id) DO NOTHING
         RETURNING id
     """
-    
+
     UPDATE_CHAT_HISTORY = """
         UPDATE user_topic_lesson
         SET chat_history = ?,
@@ -780,16 +835,16 @@ class Queries:
             updated_at = CURRENT_TIMESTAMP
         WHERE user_id = ? AND topic_id = ?
     """
-    
+
     # Analytics
     GET_USER_ANALYTICS = """
-        SELECT 
+        SELECT
             COUNT(DISTINCT t.id) as total_topics,
             COUNT(DISTINCT utl.topic_id) as started_topics,
             SUM(utl.questions_total) as total_questions,
             SUM(utl.questions_correct) as correct_questions,
-            AVG(CASE WHEN utl.questions_total > 0 
-                THEN utl.questions_correct * 100.0 / utl.questions_total 
+            AVG(CASE WHEN utl.questions_total > 0
+                THEN utl.questions_correct * 100.0 / utl.questions_total
                 ELSE 0 END) as avg_score,
             MAX(utl.updated_at) as last_activity
         FROM user u
@@ -803,12 +858,12 @@ class Queries:
 class ProgressRepository:
     def __init__(self, db: AsyncClient = Depends(get_db)):
         self.db = db
-    
+
     async def get_user_progress(self, user_id: str) -> Dict[str, Any]:
         """Get user's overall progress across all topics"""
         result = await self.db.execute(Queries.GET_USER_ANALYTICS, [user_id])
         analytics = result.rows[0] if result.rows else None
-        
+
         if not analytics:
             return {
                 'total_topics': 0,
@@ -818,7 +873,7 @@ class ProgressRepository:
                 'avg_score': 0,
                 'last_activity': None
             }
-            
+
         return {
             'total_topics': analytics[0],
             'started_topics': analytics[1],
@@ -827,7 +882,7 @@ class ProgressRepository:
             'avg_score': round(analytics[4], 2),
             'last_activity': analytics[5]
         }
-    
+
     async def get_topic_progress(self, user_id: str) -> List[Dict[str, Any]]:
         """Get user's progress for each topic they've started"""
         result = await self.db.execute(Queries.GET_USER_PROGRESS, [user_id, user_id])
@@ -932,7 +987,7 @@ class BaseLLM(ABC):
     async def generate(self, prompt: str, **kwargs) -> LLMResponse:
         """Generate response from the model"""
         pass
-    
+
     @abstractmethod
     async def get_model_info(self) -> Dict[str, Any]:
         """Get model metadata"""
@@ -943,7 +998,7 @@ class OpenAILLM(BaseLLM):
     def __init__(self, model_name: str = "gpt-4"):
         self.model_name = model_name
         self.client = AsyncOpenAI()
-    
+
     async def generate(self, prompt: str, **kwargs) -> LLMResponse:
         start_time = time.time()
         response = await self.client.chat.completions.create(
@@ -952,7 +1007,7 @@ class OpenAILLM(BaseLLM):
             **kwargs
         )
         latency = (time.time() - start_time) * 1000
-        
+
         return LLMResponse(
             content=response.choices[0].message.content,
             tokens_used=response.usage.total_tokens,
@@ -965,7 +1020,7 @@ class AnthropicLLM(BaseLLM):
     def __init__(self, model_name: str = "claude-2"):
         self.model_name = model_name
         self.client = anthropic.AsyncClient()
-    
+
     async def generate(self, prompt: str, **kwargs) -> LLMResponse:
         start_time = time.time()
         response = await self.client.messages.create(
@@ -974,7 +1029,7 @@ class AnthropicLLM(BaseLLM):
             **kwargs
         )
         latency = (time.time() - start_time) * 1000
-        
+
         return LLMResponse(
             content=response.content[0].text,
             tokens_used=response.usage.total_tokens,
@@ -1005,21 +1060,21 @@ class BenchmarkSuite:
         self.results: List[BenchmarkResult] = []
         self.test_cases = test_cases
         self.results: List[BenchmarkResult] = []
-    
+
     async def run_benchmark(self) -> Dict[str, Any]:
         """Run benchmark suite across all models and test cases"""
         for model in self.models:
             for test in self.test_cases:
                 result = await self._run_test(model, test)
                 self.results.append(result)
-                
+
         return self.get_summary()
-    
+
     async def _run_test(self, model: BaseLLM, test: Dict[str, Any]) -> BenchmarkResult:
         """Run single test case"""
         response = await model.generate(test["prompt"])
         score = await self._evaluate_response(response.content, test["expected"])
-        
+
         return BenchmarkResult(
             model_name=response.model_info["model"],
             provider=response.model_info["provider"],
@@ -1031,20 +1086,20 @@ class BenchmarkSuite:
             score=score,
             timestamp=datetime.utcnow()
         )
-    
+
     async def _evaluate_response(self, response: str, expected: str) -> float:
         """Evaluate response quality (can be extended with multiple metrics)"""
         # Basic similarity score for now
         return self._calculate_similarity(response, expected)
-    
+
     def get_summary(self) -> Dict[str, Any]:
         """Get benchmark summary statistics"""
         summary = {}
         for model in self.models:
             model_info = model.get_model_info()
-            model_results = [r for r in self.results 
+            model_results = [r for r in self.results
                            if r.model_name == model_info["model"]]
-            
+
             summary[model_info["model"]] = {
                 "avg_score": statistics.mean(r.score for r in model_results),
                 "avg_latency": statistics.mean(r.latency_ms for r in model_results),
@@ -1052,7 +1107,7 @@ class BenchmarkSuite:
                 "total_cost": self._calculate_cost(model_results),
                 "test_cases": len(model_results)
             }
-        
+
         return summary
 
 # Example usage:
@@ -1072,28 +1127,28 @@ async def run_model_benchmarks():
             "category": "assessment"
         }
     ]
-    
+
     # Initialize models
     models = [
         OpenAILLM("gpt-4"),
         OpenAILLM("gpt-3.5-turbo"),
         AnthropicLLM("claude-2")
     ]
-    
+
     # Run benchmark
     suite = BenchmarkSuite(models, test_cases)
     results = await suite.run_benchmark()
-    
+
     # Store results
     async with get_db() as db:
         await store_benchmark_results(db, results)
-    
+
     return results
 
 # backend/db/queries.py
 class Queries:
     # ... existing queries ...
-    
+
     # Benchmark related queries
     STORE_BENCHMARK_RESULT = """
         INSERT INTO model_benchmark (
@@ -1101,7 +1156,7 @@ class Queries:
             tokens_used, latency_ms, score, timestamp
         ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
     """
-    
+
     GET_BENCHMARK_RESULTS = """
         SELECT model_name, provider,
                AVG(score) as avg_score,
@@ -1191,22 +1246,22 @@ class AgentBenchmarkSuite:
         # Default to example scenarios if no file provided
         self.test_scenarios_file = test_scenarios_file or Path(__file__).parent.parent.parent / "__architecture__" / "benchmark_scenarios_example.json"
         self.test_data = self._load_test_data()
-    
+
     def _load_test_data(self) -> Dict[str, Any]:
         """Load test scenarios from JSON file"""
         with open(self.test_scenarios_file, 'r') as f:
             return json.load(f)
-        
+
     async def load_test_cases(self) -> List[AgentTestCase]:
         """Create test cases from JSON configuration"""
         test_cases = []
-        
+
         for scenario_name, scenario in self.test_data["test_scenarios"].items():
             # Get referenced data
             topic = self.test_data["topics"][scenario["topic_ref"]]
             user = self.test_data["users"][scenario["user_ref"]]
             chat_history = self.test_data["chat_histories"][scenario["chat_history_ref"]]
-            
+
             # Create test case for each input in the scenario
             for test_input in scenario["test_inputs"]:
                 test_cases.append(
@@ -1220,30 +1275,30 @@ class AgentBenchmarkSuite:
                         evaluation_criteria=scenario["evaluation_criteria"]
                     )
                 )
-        
+
         return test_cases
 
     async def run_agent_benchmarks(self) -> Dict[str, Any]:
         """Run benchmarks for all agents with different models"""
         test_cases = await self.load_test_cases()
-        
+
         for model in self.models:
             for test_case in test_cases:
                 result = await self._run_agent_test(model, test_case)
                 self.results.append(result)
                 await self._store_result(result)
-        
+
         return self.get_summary()
 
     async def _run_agent_test(
-        self, 
-        model: BaseLLM, 
+        self,
+        model: BaseLLM,
         test_case: AgentTestCase
     ) -> AgentBenchmarkResult:
         """Run test using our actual agent implementation"""
         # Get our actual agent class
         agent_class = self._get_agent_class(test_case.agent_type)
-        
+
         # Initialize our actual agent with test data
         agent = agent_class(
             model=model,
@@ -1251,7 +1306,7 @@ class AgentBenchmarkSuite:
             topic=test_case.topic,
             user_profile=test_case.user_profile
         )
-        
+
         # Use our actual agent's handle_message method
         start_time = time.time()
         response = await agent.handle_message(
@@ -1259,13 +1314,13 @@ class AgentBenchmarkSuite:
             chat_history=test_case.chat_history
         )
         latency = (time.time() - start_time) * 1000
-        
+
         scores = await self._evaluate_response(
             response.content,
             test_case.evaluation_criteria,
             test_case.agent_type
         )
-        
+
         return AgentBenchmarkResult(
             agent_type=test_case.agent_type,
             model_name=model.model_name,
@@ -1282,17 +1337,17 @@ class AgentBenchmarkSuite:
     def _get_agent_class(self, agent_type: str) -> Type:
         """Get our actual agent implementations"""
         return {
-            "teacher": TeacherAgent,  
-            "evaluator": EvaluatorAgent,  
-            "planner": PlannerAgent  
+            "teacher": TeacherAgent,
+            "evaluator": EvaluatorAgent,
+            "planner": PlannerAgent
         }[agent_type]
 
     def _get_agent_prompt(self, agent_type: str) -> str:
         """Get our actual production prompts"""
         return {
-            "teacher": TEACHER_PROMPT,  
-            "evaluator": EVALUATOR_PROMPT,  
-            "planner": PLANNER_PROMPT  
+            "teacher": TEACHER_PROMPT,
+            "evaluator": EVALUATOR_PROMPT,
+            "planner": PLANNER_PROMPT
         }[agent_type]
 
     async def _evaluate_response(
@@ -1304,8 +1359,8 @@ class AgentBenchmarkSuite:
         """Evaluate agent response based on criteria"""
         scores = {}
         # Use another model to evaluate responses
-        eval_model = OpenAILLM("gpt-4")  
-        
+        eval_model = OpenAILLM("gpt-4")
+
         for criterion in criteria:
             eval_prompt = f"""
             Evaluate this {agent_type} agent response for {criterion}.
@@ -1315,27 +1370,593 @@ class AgentBenchmarkSuite:
             """
             eval_response = await eval_model.generate(eval_prompt)
             scores[criterion] = float(eval_response.content.strip())
-        
+
         return scores
 
 # Example usage
 async def benchmark_agents():
     # Initialize with different models to test
     models = [
-        OpenAILLM("gpt-4"),  
-        OpenAILLM("gpt-3.5-turbo"),  
-        AnthropicLLM("claude-2")  
+        OpenAILLM("gpt-4"),
+        OpenAILLM("gpt-3.5-turbo"),
+        AnthropicLLM("claude-2")
     ]
-    
+
     # Run benchmarks using our actual agents with JSON-configured test data
     suite = AgentBenchmarkSuite(models)
     results = await suite.run_agent_benchmarks()
-    
+
     # Store results
     async with get_db() as db:
         await db.execute(
             Queries.STORE_BENCHMARK_RESULTS,
             results
         )
-    
+
     return results
+
+## Message Formatting Guidelines
+
+The AI agents will be instructed to format their responses using specific markdown blocks and conventions that align with our frontend renderer. This ensures consistent and properly formatted content.
+
+### Response Format Templates
+
+```python
+# In backend/ai/prompts/formatting_instructions.py
+
+FORMATTING_INSTRUCTIONS = """
+You can use the following formatting blocks in your responses. Always use the appropriate block for the content type:
+
+1. Code Blocks:
+   ```[language]
+   your code here
+   ```
+   Supported languages: python, javascript, typescript, sql, html, css, json
+
+2. Math Equations:
+   Inline: $equation$
+   Block:
+   $$
+   equation
+   $$
+
+3. Tables:
+   | Column 1 | Column 2 |
+   |----------|----------|
+   | Data 1   | Data 2   |
+
+4. Special Blocks:
+   ```question
+   Question text here
+   ```
+
+   ```explanation
+   Detailed explanation here
+   ```
+
+   ```hint
+   Hint text here
+   ```
+
+   ```important
+   Important note here
+   ```
+
+   ```example
+   Example content here
+   ```
+
+5. Interactive Elements:
+   ```quiz
+   {
+     "question": "Question text",
+     "options": ["A", "B", "C", "D"],
+     "correct": 0,
+     "explanation": "Why this is correct"
+   }
+   ```
+
+   ```exercise
+   {
+     "task": "Task description",
+     "starter_code": "def solution():\\n    pass",
+     "test_cases": [
+       {"input": "test input", "expected": "test output"}
+     ]
+   }
+   ```
+
+6. References:
+   ```reference
+   {
+     "type": "documentation",
+     "url": "https://example.com",
+     "title": "Reference Title",
+     "relevance": "Brief explanation of why this is relevant"
+   }
+   """
+```
+
+# In backend/ai/agents/base.py
+
+class BaseAgent:
+    def __init__(self):
+        self.formatting_instructions = FORMATTING_INSTRUCTIONS
+
+    def get_system_prompt(self):
+        return f"""You are an AI teaching assistant. Format your responses using the following conventions:
+
+{self.formatting_instructions}
+
+Additional formatting rules:
+1. Always wrap code in appropriate language-specific code blocks
+2. Use math blocks for any mathematical expressions
+3. Use tables for structured data
+4. Use special blocks to highlight important information
+5. Format exercises and quizzes using the specified JSON structure
+"""
+
+    async def process_message(self, message: str) -> str:
+        try:
+            # Log the interaction start
+            await self.log_interaction(
+                interaction_type="message_received",
+                content=message
+            )
+
+            # Add the formatting instructions to the conversation context
+            context = self.get_conversation_context()
+            context.append({
+                "role": "system",
+                "content": self.formatting_instructions
+            })
+
+            # Process message with LLM
+            response = await self.llm.generate_response(context + [
+                {"role": "user", "content": message}
+            ])
+
+            # Log the successful response
+            await self.log_interaction(
+                interaction_type="message_sent",
+                content=response
+            )
+
+            return response
+
+        except Exception as e:
+            # Log the error
+            await self.log_interaction(
+                interaction_type="error",
+                content=str(e)
+            )
+            raise AIServiceError(
+                "I apologize, but I'm having trouble processing your request right now. "
+                "This might be temporary - please try again in a few moments."
+            )
+
+    async def log_interaction(
+        self,
+        interaction_type: str,
+        content: str,
+        metadata: dict = None
+    ) -> None:
+        """
+        Placeholder for logging agent interactions.
+        Will be implemented to track all AI interactions for:
+        - Performance monitoring
+        - Error tracking
+        - Usage analytics
+        - Quality assessment
+        """
+        pass  # To be implemented
+
+## Error Handling
+
+### Backend Error Handling
+
+```python
+# backend/ai/errors.py
+
+class AIServiceError(Exception):
+    """Base exception for AI service errors"""
+    def __init__(self, message: str, status_code: int = 503):
+        self.message = message
+        self.status_code = status_code
+        super().__init__(self.message)
+
+# backend/routes/chat.py
+
+@router.post("/lessons/{lesson_id}/chat")
+async def handle_chat_message(
+    lesson_id: str,
+    message: ChatMessage,
+    current_user: User = Depends(get_current_user)
+):
+    try:
+        response = await chat_service.process_message(lesson_id, message)
+        return response
+    except AIServiceError as e:
+        # Return a user-friendly error message
+        return JSONResponse(
+            status_code=e.status_code,
+            content={
+                "error": "AI Service Temporarily Unavailable",
+                "message": str(e),
+                "suggestion": "Please try again in a few moments. If the problem persists, you can continue later.",
+                "retry_after": 30  # Suggest retry after 30 seconds
+            }
+        )
+    except Exception as e:
+        # Log unexpected errors
+        logger.error(f"Unexpected error in chat: {str(e)}")
+        return JSONResponse(
+            status_code=500,
+            content={
+                "error": "Internal Server Error",
+                "message": "An unexpected error occurred. Our team has been notified.",
+                "correlation_id": generate_correlation_id()  # For error tracking
+            }
+        )
+```
+
+### Frontend Error Handling
+
+```typescript
+// frontend/src/components/chat/ErrorStates.tsx
+
+interface ErrorStateProps {
+  type: 'service-down' | 'connection-error' | 'unexpected';
+  onRetry?: () => void;
+}
+
+export function ChatErrorState({ type, onRetry }: ErrorStateProps) {
+  const messages = {
+    'service-down': {
+      title: 'AI Assistant Temporarily Unavailable',
+      message: 'Our AI teaching assistant is taking a short break. This usually resolves quickly.',
+      action: 'Try Again'
+    },
+    'connection-error': {
+      title: 'Connection Lost',
+      message: 'We\'re having trouble connecting to our AI service. Please check your internet connection.',
+      action: 'Reconnect'
+    },
+    'unexpected': {
+      title: 'Unexpected Error',
+      message: 'Something went wrong. We\'ve noted this issue and will look into it.',
+      action: 'Retry'
+    }
+  };
+
+  const error = messages[type];
+
+  return (
+    <div className="chat-error-state">
+      <div className="error-icon">
+        {type === 'service-down' ? <CoffeeIcon /> : <AlertIcon />}
+      </div>
+      <h3 className="error-title">{error.title}</h3>
+      <p className="error-message">{error.message}</p>
+      {onRetry && (
+        <button
+          onClick={onRetry}
+          className="retry-button"
+        >
+          {error.action}
+        </button>
+      )}
+      <div className="error-suggestions">
+        <h4>While you wait:</h4>
+        <ul>
+          <li>Review your previous messages</li>
+          <li>Take notes on what you've learned</li>
+          <li>Try again in a few moments</li>
+        </ul>
+      </div>
+    </div>
+  );
+}
+
+// Usage in ChatInterface component:
+function ChatInterface() {
+  const [error, setError] = useState<ErrorType | null>(null);
+
+  const handleMessageSend = async (message: string) => {
+    try {
+      setError(null);
+      await sendMessage(message);
+    } catch (e) {
+      if (e instanceof AIServiceError) {
+        setError('service-down');
+      } else if (e instanceof NetworkError) {
+        setError('connection-error');
+      } else {
+        setError('unexpected');
+      }
+    }
+  };
+
+  if (error) {
+    return (
+      <ChatErrorState
+        type={error}
+        onRetry={() => {
+          setError(null);
+          // Retry last action
+        }}
+      />
+    );
+  }
+
+  return (
+    // Normal chat interface
+  );
+}
+```
+
+This setup provides:
+
+1. **Backend**:
+   - Structured error handling with specific error types
+   - User-friendly error messages
+   - Retry suggestions
+   - Error logging and tracking
+
+2. **Frontend**:
+   - Visual error states with helpful messages
+   - Retry functionality
+   - Alternative actions for users
+   - Clear communication about the system status
+
+3. **Logging**:
+   - Placeholder for comprehensive interaction logging
+   - Error tracking with correlation IDs
+   - Performance monitoring capabilities
+
+```
+
+Follow these instructions to make the following change to my code document.
+
+Instruction: Adding logging placeholder and error handling documentation
+
+Code Edit:
+```
+{{ ... }}
+
+class BaseAgent:
+    def __init__(self):
+        self.formatting_instructions = FORMATTING_INSTRUCTIONS
+
+    def get_system_prompt(self):
+        return f"""You are an AI teaching assistant. Format your responses using the following conventions:
+
+{self.formatting_instructions}
+
+Additional formatting rules:
+1. Always wrap code in appropriate language-specific code blocks
+2. Use math blocks for any mathematical expressions
+3. Use tables for structured data
+4. Use special blocks to highlight important information
+5. Format exercises and quizzes using the specified JSON structure
+"""
+
+    async def process_message(self, message: str) -> str:
+        try:
+            # Log the interaction start
+            await self.log_interaction(
+                interaction_type="message_received",
+                content=message
+            )
+
+            # Add the formatting instructions to the conversation context
+            context = self.get_conversation_context()
+            context.append({
+                "role": "system",
+                "content": self.formatting_instructions
+            })
+
+            # Process message with LLM
+            response = await self.llm.generate_response(context + [
+                {"role": "user", "content": message}
+            ])
+
+            # Log the successful response
+            await self.log_interaction(
+                interaction_type="message_sent",
+                content=response
+            )
+
+            return response
+
+        except Exception as e:
+            # Log the error
+            await self.log_interaction(
+                interaction_type="error",
+                content=str(e)
+            )
+            raise AIServiceError(
+                "I apologize, but I'm having trouble processing your request right now. "
+                "This might be temporary - please try again in a few moments."
+            )
+
+    async def log_interaction(
+        self,
+        interaction_type: str,
+        content: str,
+        metadata: dict = None
+    ) -> None:
+        """
+        Placeholder for logging agent interactions.
+        Will be implemented to track all AI interactions for:
+        - Performance monitoring
+        - Error tracking
+        - Usage analytics
+        - Quality assessment
+        """
+        pass  # To be implemented
+
+## Error Handling
+
+### Backend Error Handling
+
+```python
+# backend/ai/errors.py
+
+class AIServiceError(Exception):
+    """Base exception for AI service errors"""
+    def __init__(self, message: str, status_code: int = 503):
+        self.message = message
+        self.status_code = status_code
+        super().__init__(self.message)
+
+# backend/routes/chat.py
+
+@router.post("/lessons/{lesson_id}/chat")
+async def handle_chat_message(
+    lesson_id: str,
+    message: ChatMessage,
+    current_user: User = Depends(get_current_user)
+):
+    try:
+        response = await chat_service.process_message(lesson_id, message)
+        return response
+    except AIServiceError as e:
+        # Return a user-friendly error message
+        return JSONResponse(
+            status_code=e.status_code,
+            content={
+                "error": "AI Service Temporarily Unavailable",
+                "message": str(e),
+                "suggestion": "Please try again in a few moments. If the problem persists, you can continue later.",
+                "retry_after": 30  # Suggest retry after 30 seconds
+            }
+        )
+    except Exception as e:
+        # Log unexpected errors
+        logger.error(f"Unexpected error in chat: {str(e)}")
+        return JSONResponse(
+            status_code=500,
+            content={
+                "error": "Internal Server Error",
+                "message": "An unexpected error occurred. Our team has been notified.",
+                "correlation_id": generate_correlation_id()  # For error tracking
+            }
+        )
+```
+
+### Frontend Error Handling
+
+```typescript
+// frontend/src/components/chat/ErrorStates.tsx
+
+interface ErrorStateProps {
+  type: 'service-down' | 'connection-error' | 'unexpected';
+  onRetry?: () => void;
+}
+
+export function ChatErrorState({ type, onRetry }: ErrorStateProps) {
+  const messages = {
+    'service-down': {
+      title: 'AI Assistant Temporarily Unavailable',
+      message: 'Our AI teaching assistant is taking a short break. This usually resolves quickly.',
+      action: 'Try Again'
+    },
+    'connection-error': {
+      title: 'Connection Lost',
+      message: 'We\'re having trouble connecting to our AI service. Please check your internet connection.',
+      action: 'Reconnect'
+    },
+    'unexpected': {
+      title: 'Unexpected Error',
+      message: 'Something went wrong. We\'ve noted this issue and will look into it.',
+      action: 'Retry'
+    }
+  };
+
+  const error = messages[type];
+
+  return (
+    <div className="chat-error-state">
+      <div className="error-icon">
+        {type === 'service-down' ? <CoffeeIcon /> : <AlertIcon />}
+      </div>
+      <h3 className="error-title">{error.title}</h3>
+      <p className="error-message">{error.message}</p>
+      {onRetry && (
+        <button
+          onClick={onRetry}
+          className="retry-button"
+        >
+          {error.action}
+        </button>
+      )}
+      <div className="error-suggestions">
+        <h4>While you wait:</h4>
+        <ul>
+          <li>Review your previous messages</li>
+          <li>Take notes on what you've learned</li>
+          <li>Try again in a few moments</li>
+        </ul>
+      </div>
+    </div>
+  );
+}
+
+// Usage in ChatInterface component:
+function ChatInterface() {
+  const [error, setError] = useState<ErrorType | null>(null);
+
+  const handleMessageSend = async (message: string) => {
+    try {
+      setError(null);
+      await sendMessage(message);
+    } catch (e) {
+      if (e instanceof AIServiceError) {
+        setError('service-down');
+      } else if (e instanceof NetworkError) {
+        setError('connection-error');
+      } else {
+        setError('unexpected');
+      }
+    }
+  };
+
+  if (error) {
+    return (
+      <ChatErrorState
+        type={error}
+        onRetry={() => {
+          setError(null);
+          // Retry last action
+        }}
+      />
+    );
+  }
+
+  return (
+    // Normal chat interface
+  );
+}
+```
+
+This setup provides:
+
+1. **Backend**:
+   - Structured error handling with specific error types
+   - User-friendly error messages
+   - Retry suggestions
+   - Error logging and tracking
+
+2. **Frontend**:
+   - Visual error states with helpful messages
+   - Retry functionality
+   - Alternative actions for users
+   - Clear communication about the system status
+
+3. **Logging**:
+   - Placeholder for comprehensive interaction logging
+   - Error tracking with correlation IDs
+   - Performance monitoring capabilities
+
+{{ ... }}
