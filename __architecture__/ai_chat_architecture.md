@@ -910,3 +910,432 @@ async def error_handler(request: Request, call_next):
             status_code=e.status_code,
             content={"detail": e.detail}
         )
+
+## AI Model Testing Framework
+
+### AI Model Testing Framework
+
+```python
+# backend/ai/models/base.py
+from abc import ABC, abstractmethod
+from typing import Dict, Any, List
+from pydantic import BaseModel
+
+class LLMResponse(BaseModel):
+    content: str
+    tokens_used: int
+    latency_ms: float
+    model_info: Dict[str, Any]
+
+class BaseLLM(ABC):
+    @abstractmethod
+    async def generate(self, prompt: str, **kwargs) -> LLMResponse:
+        """Generate response from the model"""
+        pass
+    
+    @abstractmethod
+    async def get_model_info(self) -> Dict[str, Any]:
+        """Get model metadata"""
+        pass
+
+# backend/ai/models/openai_llm.py
+class OpenAILLM(BaseLLM):
+    def __init__(self, model_name: str = "gpt-4"):
+        self.model_name = model_name
+        self.client = AsyncOpenAI()
+    
+    async def generate(self, prompt: str, **kwargs) -> LLMResponse:
+        start_time = time.time()
+        response = await self.client.chat.completions.create(
+            model=self.model_name,
+            messages=[{"role": "user", "content": prompt}],
+            **kwargs
+        )
+        latency = (time.time() - start_time) * 1000
+        
+        return LLMResponse(
+            content=response.choices[0].message.content,
+            tokens_used=response.usage.total_tokens,
+            latency_ms=latency,
+            model_info={"model": self.model_name, "provider": "openai"}
+        )
+
+# backend/ai/models/anthropic_llm.py
+class AnthropicLLM(BaseLLM):
+    def __init__(self, model_name: str = "claude-2"):
+        self.model_name = model_name
+        self.client = anthropic.AsyncClient()
+    
+    async def generate(self, prompt: str, **kwargs) -> LLMResponse:
+        start_time = time.time()
+        response = await self.client.messages.create(
+            model=self.model_name,
+            messages=[{"role": "user", "content": prompt}],
+            **kwargs
+        )
+        latency = (time.time() - start_time) * 1000
+        
+        return LLMResponse(
+            content=response.content[0].text,
+            tokens_used=response.usage.total_tokens,
+            latency_ms=latency,
+            model_info={"model": self.model_name, "provider": "anthropic"}
+        )
+
+# backend/ai/testing/benchmark.py
+from typing import List, Dict, Any
+from datetime import datetime
+import json
+import statistics
+
+class BenchmarkResult(BaseModel):
+    model_name: str
+    provider: str
+    test_case: str
+    prompt: str
+    response: str
+    tokens_used: int
+    latency_ms: float
+    score: float
+    timestamp: datetime
+
+class BenchmarkSuite:
+    def __init__(self, models: List[BaseLLM], test_cases: List[Dict[str, Any]]):
+        self.models = models
+        self.results: List[BenchmarkResult] = []
+        self.test_cases = test_cases
+        self.results: List[BenchmarkResult] = []
+    
+    async def run_benchmark(self) -> Dict[str, Any]:
+        """Run benchmark suite across all models and test cases"""
+        for model in self.models:
+            for test in self.test_cases:
+                result = await self._run_test(model, test)
+                self.results.append(result)
+                
+        return self.get_summary()
+    
+    async def _run_test(self, model: BaseLLM, test: Dict[str, Any]) -> BenchmarkResult:
+        """Run single test case"""
+        response = await model.generate(test["prompt"])
+        score = await self._evaluate_response(response.content, test["expected"])
+        
+        return BenchmarkResult(
+            model_name=response.model_info["model"],
+            provider=response.model_info["provider"],
+            test_case=test["name"],
+            prompt=test["prompt"],
+            response=response.content,
+            tokens_used=response.tokens_used,
+            latency_ms=response.latency_ms,
+            score=score,
+            timestamp=datetime.utcnow()
+        )
+    
+    async def _evaluate_response(self, response: str, expected: str) -> float:
+        """Evaluate response quality (can be extended with multiple metrics)"""
+        # Basic similarity score for now
+        return self._calculate_similarity(response, expected)
+    
+    def get_summary(self) -> Dict[str, Any]:
+        """Get benchmark summary statistics"""
+        summary = {}
+        for model in self.models:
+            model_info = model.get_model_info()
+            model_results = [r for r in self.results 
+                           if r.model_name == model_info["model"]]
+            
+            summary[model_info["model"]] = {
+                "avg_score": statistics.mean(r.score for r in model_results),
+                "avg_latency": statistics.mean(r.latency_ms for r in model_results),
+                "avg_tokens": statistics.mean(r.tokens_used for r in model_results),
+                "total_cost": self._calculate_cost(model_results),
+                "test_cases": len(model_results)
+            }
+        
+        return summary
+
+# Example usage:
+async def run_model_benchmarks():
+    # Define test cases
+    test_cases = [
+        {
+            "name": "lesson_explanation",
+            "prompt": "Explain the concept of photosynthesis to a high school student",
+            "expected": "Photosynthesis is the process...",
+            "category": "teaching"
+        },
+        {
+            "name": "question_generation",
+            "prompt": "Generate a question about cell biology",
+            "expected": "What is the function of...",
+            "category": "assessment"
+        }
+    ]
+    
+    # Initialize models
+    models = [
+        OpenAILLM("gpt-4"),
+        OpenAILLM("gpt-3.5-turbo"),
+        AnthropicLLM("claude-2")
+    ]
+    
+    # Run benchmark
+    suite = BenchmarkSuite(models, test_cases)
+    results = await suite.run_benchmark()
+    
+    # Store results
+    async with get_db() as db:
+        await store_benchmark_results(db, results)
+    
+    return results
+
+# backend/db/queries.py
+class Queries:
+    # ... existing queries ...
+    
+    # Benchmark related queries
+    STORE_BENCHMARK_RESULT = """
+        INSERT INTO model_benchmark (
+            model_name, provider, test_case, prompt, response,
+            tokens_used, latency_ms, score, timestamp
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+    """
+    
+    GET_BENCHMARK_RESULTS = """
+        SELECT model_name, provider,
+               AVG(score) as avg_score,
+               AVG(latency_ms) as avg_latency,
+               AVG(tokens_used) as avg_tokens,
+               COUNT(*) as test_count
+        FROM model_benchmark
+        WHERE timestamp >= datetime('now', '-7 days')
+        GROUP BY model_name, provider
+        ORDER BY avg_score DESC
+    """
+```
+
+This framework provides:
+1. Abstract LLM interface for easy model swapping
+2. Structured benchmark suite with metrics
+3. Result storage and analysis
+4. Easy addition of new models and test cases
+
+The database schema would need this additional table:
+
+```sql
+CREATE TABLE IF NOT EXISTS model_benchmark (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    model_name TEXT NOT NULL,
+    provider TEXT NOT NULL,
+    test_case TEXT NOT NULL,
+    prompt TEXT NOT NULL,
+    response TEXT NOT NULL,
+    tokens_used INTEGER NOT NULL,
+    latency_ms FLOAT NOT NULL,
+    score FLOAT NOT NULL,
+    timestamp DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE INDEX IF NOT EXISTS idx_benchmark_model ON model_benchmark(model_name, provider);
+CREATE INDEX IF NOT EXISTS idx_benchmark_timestamp ON model_benchmark(timestamp);
+
+```
+
+### Agent Benchmarking Framework
+
+```python
+# backend/ai/testing/agent_benchmark.py
+from typing import Dict, Any, List, Type
+from datetime import datetime
+import json
+from pathlib import Path
+from pydantic import BaseModel
+
+# Import our actual agent implementations
+from backend.ai.agents.teacher import TeacherAgent
+from backend.ai.agents.evaluator import EvaluatorAgent
+from backend.ai.agents.planner import PlannerAgent
+from backend.ai.models.base import BaseLLM
+from backend.ai.prompts import (
+    TEACHER_PROMPT,
+    EVALUATOR_PROMPT,
+    PLANNER_PROMPT
+)
+
+class AgentTestCase(BaseModel):
+    agent_type: str
+    scenario: str
+    topic: Dict[str, Any]
+    user_profile: Dict[str, Any]
+    chat_history: List[Dict[str, str]]
+    test_input: str
+    evaluation_criteria: List[str]
+
+class AgentBenchmarkResult(BaseModel):
+    agent_type: str
+    model_name: str
+    provider: str
+    scenario: str
+    response: str
+    tokens_used: int
+    latency_ms: float
+    criteria_scores: Dict[str, float]
+    overall_score: float
+    timestamp: datetime
+
+class AgentBenchmarkSuite:
+    def __init__(self, llm_models: List[BaseLLM], test_scenarios_file: str = None):
+        self.models = llm_models
+        self.results: List[AgentBenchmarkResult] = []
+        # Default to example scenarios if no file provided
+        self.test_scenarios_file = test_scenarios_file or Path(__file__).parent.parent.parent / "__architecture__" / "benchmark_scenarios_example.json"
+        self.test_data = self._load_test_data()
+    
+    def _load_test_data(self) -> Dict[str, Any]:
+        """Load test scenarios from JSON file"""
+        with open(self.test_scenarios_file, 'r') as f:
+            return json.load(f)
+        
+    async def load_test_cases(self) -> List[AgentTestCase]:
+        """Create test cases from JSON configuration"""
+        test_cases = []
+        
+        for scenario_name, scenario in self.test_data["test_scenarios"].items():
+            # Get referenced data
+            topic = self.test_data["topics"][scenario["topic_ref"]]
+            user = self.test_data["users"][scenario["user_ref"]]
+            chat_history = self.test_data["chat_histories"][scenario["chat_history_ref"]]
+            
+            # Create test case for each input in the scenario
+            for test_input in scenario["test_inputs"]:
+                test_cases.append(
+                    AgentTestCase(
+                        agent_type=scenario["agent_type"],
+                        scenario=scenario_name,
+                        topic=topic,
+                        user_profile=user,
+                        chat_history=chat_history["messages"],
+                        test_input=test_input,
+                        evaluation_criteria=scenario["evaluation_criteria"]
+                    )
+                )
+        
+        return test_cases
+
+    async def run_agent_benchmarks(self) -> Dict[str, Any]:
+        """Run benchmarks for all agents with different models"""
+        test_cases = await self.load_test_cases()
+        
+        for model in self.models:
+            for test_case in test_cases:
+                result = await self._run_agent_test(model, test_case)
+                self.results.append(result)
+                await self._store_result(result)
+        
+        return self.get_summary()
+
+    async def _run_agent_test(
+        self, 
+        model: BaseLLM, 
+        test_case: AgentTestCase
+    ) -> AgentBenchmarkResult:
+        """Run test using our actual agent implementation"""
+        # Get our actual agent class
+        agent_class = self._get_agent_class(test_case.agent_type)
+        
+        # Initialize our actual agent with test data
+        agent = agent_class(
+            model=model,
+            system_prompt=self._get_agent_prompt(test_case.agent_type),
+            topic=test_case.topic,
+            user_profile=test_case.user_profile
+        )
+        
+        # Use our actual agent's handle_message method
+        start_time = time.time()
+        response = await agent.handle_message(
+            test_case.test_input,
+            chat_history=test_case.chat_history
+        )
+        latency = (time.time() - start_time) * 1000
+        
+        scores = await self._evaluate_response(
+            response.content,
+            test_case.evaluation_criteria,
+            test_case.agent_type
+        )
+        
+        return AgentBenchmarkResult(
+            agent_type=test_case.agent_type,
+            model_name=model.model_name,
+            provider=model.provider,
+            scenario=test_case.scenario,
+            response=response.content,
+            tokens_used=response.tokens_used,
+            latency_ms=latency,
+            criteria_scores=scores,
+            overall_score=sum(scores.values()) / len(scores),
+            timestamp=datetime.utcnow()
+        )
+
+    def _get_agent_class(self, agent_type: str) -> Type:
+        """Get our actual agent implementations"""
+        return {
+            "teacher": TeacherAgent,  
+            "evaluator": EvaluatorAgent,  
+            "planner": PlannerAgent  
+        }[agent_type]
+
+    def _get_agent_prompt(self, agent_type: str) -> str:
+        """Get our actual production prompts"""
+        return {
+            "teacher": TEACHER_PROMPT,  
+            "evaluator": EVALUATOR_PROMPT,  
+            "planner": PLANNER_PROMPT  
+        }[agent_type]
+
+    async def _evaluate_response(
+        self,
+        response: str,
+        criteria: List[str],
+        agent_type: str
+    ) -> Dict[str, float]:
+        """Evaluate agent response based on criteria"""
+        scores = {}
+        # Use another model to evaluate responses
+        eval_model = OpenAILLM("gpt-4")  
+        
+        for criterion in criteria:
+            eval_prompt = f"""
+            Evaluate this {agent_type} agent response for {criterion}.
+            Response: {response}
+            Score from 0-1 where 1 is perfect.
+            Return only the numeric score.
+            """
+            eval_response = await eval_model.generate(eval_prompt)
+            scores[criterion] = float(eval_response.content.strip())
+        
+        return scores
+
+# Example usage
+async def benchmark_agents():
+    # Initialize with different models to test
+    models = [
+        OpenAILLM("gpt-4"),  
+        OpenAILLM("gpt-3.5-turbo"),  
+        AnthropicLLM("claude-2")  
+    ]
+    
+    # Run benchmarks using our actual agents with JSON-configured test data
+    suite = AgentBenchmarkSuite(models)
+    results = await suite.run_agent_benchmarks()
+    
+    # Store results
+    async with get_db() as db:
+        await db.execute(
+            Queries.STORE_BENCHMARK_RESULTS,
+            results
+        )
+    
+    return results

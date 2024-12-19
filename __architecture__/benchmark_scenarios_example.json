@@ -1,0 +1,201 @@
+{
+    "topics": {
+        "quantum": {
+            "id": 1,
+            "title": "Quantum Mechanics",
+            "content": "Introduction to quantum mechanics:\n1. Wave-particle duality\n2. Superposition principle\n3. Quantum entanglement\n4. Heisenberg uncertainty principle",
+            "difficulty": "high_school",
+            "prerequisites": ["basic physics", "algebra"]
+        },
+        "cell_biology": {
+            "id": 2,
+            "title": "Cell Biology",
+            "content": "Cell structure and function:\n1. Cell membrane\n2. Mitochondria\n3. Nucleus\n4. Endoplasmic reticulum",
+            "difficulty": "high_school",
+            "prerequisites": ["basic biology"]
+        },
+        "machine_learning": {
+            "id": 3,
+            "title": "Introduction to Machine Learning",
+            "content": "Basic concepts of machine learning:\n1. Supervised Learning\n2. Unsupervised Learning\n3. Neural Networks\n4. Model Evaluation",
+            "difficulty": "college",
+            "prerequisites": ["calculus", "linear algebra", "programming"]
+        },
+        "world_war_2": {
+            "id": 4,
+            "title": "World War II",
+            "content": "Key aspects of World War II:\n1. Causes and Origins\n2. Major Battles\n3. Key Figures\n4. Impact and Aftermath",
+            "difficulty": "middle_school",
+            "prerequisites": ["basic history"]
+        }
+    },
+    "users": {
+        "visual_learner": {
+            "id": 1,
+            "grade_level": "high_school",
+            "learning_style": "visual",
+            "previous_knowledge": ["basic physics", "algebra"],
+            "interests": ["science", "technology"]
+        },
+        "verbal_learner": {
+            "id": 2,
+            "grade_level": "high_school",
+            "learning_style": "verbal",
+            "previous_knowledge": ["basic biology"],
+            "interests": ["reading", "writing"]
+        },
+        "hands_on_learner": {
+            "id": 3,
+            "grade_level": "college",
+            "learning_style": "kinesthetic",
+            "previous_knowledge": ["calculus", "programming"],
+            "interests": ["coding", "robotics"]
+        },
+        "struggling_student": {
+            "id": 4,
+            "grade_level": "middle_school",
+            "learning_style": "mixed",
+            "previous_knowledge": ["basic math"],
+            "interests": ["games", "sports"]
+        }
+    },
+    "chat_histories": {
+        "quantum_intro": {
+            "messages": [
+                {"role": "user", "content": "What is quantum mechanics?"},
+                {"role": "assistant", "content": "Quantum mechanics is a fundamental theory in physics that describes nature at the smallest scales of energy levels of atoms and subatomic particles."},
+                {"role": "user", "content": "That sounds complex. Can you explain it simpler?"}
+            ]
+        },
+        "cell_discussion": {
+            "messages": [
+                {"role": "user", "content": "What does a mitochondria do?"},
+                {"role": "assistant", "content": "The mitochondria is often called the powerhouse of the cell because it produces energy."},
+                {"role": "user", "content": "How does it produce energy?"}
+            ]
+        },
+        "ml_confusion": {
+            "messages": [
+                {"role": "user", "content": "I'm confused about the difference between supervised and unsupervised learning."},
+                {"role": "assistant", "content": "Let me explain. Supervised learning is when you have labeled data to train your model, like having answers to check against. Unsupervised learning is when you don't have labels and the model needs to find patterns on its own."},
+                {"role": "user", "content": "Can you give me an example?"}
+            ]
+        },
+        "ww2_discussion": {
+            "messages": [
+                {"role": "user", "content": "Why did World War II start?"},
+                {"role": "assistant", "content": "World War II had multiple causes, including the aftermath of World War I, the rise of fascism, and Germany's invasion of Poland in 1939."},
+                {"role": "user", "content": "What happened after Germany invaded Poland?"}
+            ]
+        }
+    },
+    "test_scenarios": {
+        "teacher_quantum": {
+            "agent_type": "teacher",
+            "topic_ref": "quantum",
+            "user_ref": "visual_learner",
+            "chat_history_ref": "quantum_intro",
+            "test_inputs": [
+                "Can you explain quantum entanglement using a visual analogy?",
+                "How does this relate to Einstein's theory of relativity?",
+                "Can you give me a real-world application of this?"
+            ],
+            "evaluation_criteria": [
+                "visual_explanation",
+                "concept_accuracy",
+                "student_engagement",
+                "prerequisite_connection",
+                "real_world_application"
+            ]
+        },
+        "evaluator_cells": {
+            "agent_type": "evaluator",
+            "topic_ref": "cell_biology",
+            "user_ref": "verbal_learner",
+            "chat_history_ref": "cell_discussion",
+            "test_inputs": [
+                "The mitochondria uses the electron transport chain to produce ATP",
+                "The process involves moving protons across the membrane",
+                "This creates a gradient that powers ATP synthase"
+            ],
+            "evaluation_criteria": [
+                "concept_understanding",
+                "terminology_usage",
+                "process_explanation",
+                "knowledge_integration"
+            ]
+        },
+        "planner_ml": {
+            "agent_type": "planner",
+            "topic_ref": "machine_learning",
+            "user_ref": "hands_on_learner",
+            "chat_history_ref": "ml_confusion",
+            "test_inputs": [
+                "Design a hands-on coding project to teach supervised learning",
+                "Create a lesson plan for neural networks with coding exercises",
+                "Plan a group project for comparing ML algorithms"
+            ],
+            "evaluation_criteria": [
+                "hands_on_activities",
+                "code_integration",
+                "project_feasibility",
+                "learning_objectives",
+                "prerequisite_handling"
+            ]
+        },
+        "teacher_struggling": {
+            "agent_type": "teacher",
+            "topic_ref": "world_war_2",
+            "user_ref": "struggling_student",
+            "chat_history_ref": "ww2_discussion",
+            "test_inputs": [
+                "Can you explain World War II using a sports analogy?",
+                "How can we make learning about historical dates more fun?",
+                "Can we turn this into a game-like activity?"
+            ],
+            "evaluation_criteria": [
+                "engagement_level",
+                "simplification",
+                "interest_connection",
+                "confidence_building",
+                "retention_strategies"
+            ]
+        },
+        "evaluator_advanced": {
+            "agent_type": "evaluator",
+            "topic_ref": "machine_learning",
+            "user_ref": "hands_on_learner",
+            "chat_history_ref": "ml_confusion",
+            "test_inputs": [
+                "I've built a neural network for image classification with 3 hidden layers",
+                "I used ReLU activation functions and dropout for regularization",
+                "The validation accuracy is 95% but test accuracy is 85%"
+            ],
+            "evaluation_criteria": [
+                "technical_accuracy",
+                "problem_identification",
+                "solution_suggestion",
+                "depth_of_feedback",
+                "next_steps_guidance"
+            ]
+        },
+        "planner_remedial": {
+            "agent_type": "planner",
+            "topic_ref": "world_war_2",
+            "user_ref": "struggling_student",
+            "chat_history_ref": "ww2_discussion",
+            "test_inputs": [
+                "Create a simplified timeline of key events",
+                "Design an interactive map activity",
+                "Plan a role-playing exercise for different perspectives"
+            ],
+            "evaluation_criteria": [
+                "simplification_strategy",
+                "engagement_methods",
+                "scaffolding_approach",
+                "assessment_adaptation",
+                "confidence_building"
+            ]
+        }
+    }
+}
