@@ -7,6 +7,7 @@ import json
 from ..models.message import Message, ChatResponse
 from ..utils.errors import AgentError
 from ..config import AIConfig
+import sqlite3
 
 class BaseQuizLearnAgent(ABC):
     def __init__(self, agent_id: str, config: AIConfig):
@@ -26,6 +27,33 @@ class BaseQuizLearnAgent(ABC):
         
         # Initialize conversation history
         self.conversation_history = []
+        
+        # Load agent info from database
+        try:
+            conn = sqlite3.connect(config.DATABASE_PATH)
+            cursor = conn.cursor()
+            cursor.execute(
+                "SELECT name, icon, about FROM users WHERE user_id = ?",
+                (agent_id,)
+            )
+            result = cursor.fetchone()
+            if not result:
+                raise AgentError(f"Agent {agent_id} not found in database")
+            
+            name, icon, about = result
+            self.agent_info = {
+                "name": name,
+                "icon": icon,
+                "about": eval(about) if about else {}
+            }
+            conn.close()
+        except Exception as e:
+            raise AgentError(f"Failed to load agent info: {str(e)}")
+        
+        # Initialize conversation history with system message
+        base_prompt = self.agent_info.get('about', {}).get('prompt', {}).get('base')
+        if base_prompt:
+            self.conversation_history.append(SystemMessage(content=base_prompt))
 
     async def initialize(self, client: Client) -> None:
         """Load agent information from the database"""

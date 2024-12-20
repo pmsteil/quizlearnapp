@@ -1,9 +1,12 @@
 from pydantic_settings import BaseSettings
 from typing import Dict
+import os
+from pydantic import BaseModel
 
 class AIConfig(BaseSettings):
-    OPENAI_API_KEY: str
-    OPENAI_MODEL: str = "gpt-4"
+    OPENAI_API_KEY: str = os.getenv("OPENAI_API_KEY", "")
+    OPENAI_MODEL: str = os.getenv("OPENAI_MODEL", "gpt-4-1106-preview")
+    DATABASE_PATH: str = os.path.join(os.path.dirname(os.path.dirname(__file__)), "data", "db", "quizlearn.db")
     MAX_TOKENS: int = 4000
     TEMPERATURE: float = 0.7
 
