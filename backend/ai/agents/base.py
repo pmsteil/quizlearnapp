@@ -44,7 +44,7 @@ class BaseQuizLearnAgent(ABC):
             self.agent_info = {
                 "name": name,
                 "icon": icon,
-                "about": eval(about) if about else {}
+                "about": json.loads(about) if about else {}
             }
             conn.close()
         except Exception as e:
@@ -84,7 +84,7 @@ class BaseQuizLearnAgent(ABC):
         except Exception as e:
             raise AgentError(f"Failed to initialize agent: {str(e)}")
 
-    def _format_message_for_history(self, message: Message) -> HumanMessage | AIMessage:
+    def format_history_message(self, message: Message) -> HumanMessage | AIMessage:
         """Format a message for the conversation history"""
         if message.user_id == self.agent_id:
             return AIMessage(content=message.content)
@@ -92,7 +92,7 @@ class BaseQuizLearnAgent(ABC):
 
     def add_to_history(self, message: Message) -> None:
         """Add a message to the conversation history"""
-        self.conversation_history.append(self._format_message_for_history(message))
+        self.conversation_history.append(self.format_history_message(message))
 
     def clear_history(self) -> None:
         """Clear the conversation history except for the base prompt"""

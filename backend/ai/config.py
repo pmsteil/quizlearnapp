@@ -9,6 +9,7 @@ class AIConfig(BaseSettings):
     DATABASE_PATH: str = os.path.join(os.path.dirname(os.path.dirname(__file__)), "data", "db", "quizlearn.db")
     MAX_TOKENS: int = 4000
     TEMPERATURE: float = 0.7
+    JWT_SECRET: str = os.getenv("JWT_SECRET", "test_secret_key")
 
     # Agent-specific settings
     AGENT_CONFIGS: Dict[str, dict] = {
@@ -32,5 +33,6 @@ class AIConfig(BaseSettings):
         }
     }
 
-    class Config:
-        env_file = ".env"
+    model_config = {
+        "env_file": ".env"
+    }

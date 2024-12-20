@@ -1,0 +1,22 @@
+[build-system]
+requires = ["setuptools>=61.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "quizlearn"
+version = "1.0.0"
+authors = [
+    { name="QuizLearn Team" },
+]
+description = "AI-powered learning platform"
+readme = "README.md"
+requires-python = ">=3.9"
+
+[tool.pytest.ini_options]
+pythonpath = [
+    "."
+]
+asyncio_mode = "auto"
+testpaths = [
+    "backend/tests",
+]
